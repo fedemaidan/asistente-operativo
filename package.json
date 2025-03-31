@@ -1,0 +1,19 @@
+{
+  "name": "metal-grande",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "cd src && npx sequelize db:migrate",
+    "migrate-prod": "cd src && npx sequelize db:migrate --env production",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.17.16",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^4.90.0",
+    "qrcode": "^1.5.4"
+  }
+}

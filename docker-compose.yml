@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    container_name: base_de_datos
+    restart: always
+    environment:
+      POSTGRES_USER: sorby_development
+      POSTGRES_PASSWORD: sorby_development
+      POSTGRES_DB: bot-fundas
+    ports:
+      - "5433:5432" # Cambié el puerto externo a 5433
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ifundas
+    restart: always
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: "postgres://sorby_development:sorby_development@db:5432/bot-fundas"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    command: ["npm", "start"]
+
+volumes:
+  postgres_data:
