@@ -1,11 +1,7 @@
 const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
 const FlowManager = require("../../../FlowControl/FlowManager");
 
-module.exports = async function ConfirmarOModificarEgreso(
-  userId,
-  message,
-  sock
-) {
+module.exports = async function ValidacionComprobante(userId, message, sock) {
   const data = await opcionElegida(message);
 
   if (data.data.Eleccion == "1") {

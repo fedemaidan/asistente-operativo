@@ -31,7 +31,12 @@ module.exports = async function EnvioComprobante(userId, data, sock) {
       text: "✅ Si los datos son correctos, responde con *1*. Si hay algún error, responde con *2* y si quieres cancelar *3*.",
     });
 
-    FlowManager.setFlow(userId, "ENVIOCOMPROBANTE", "ValidarComprobante", data);
+    FlowManager.setFlow(
+      userId,
+      "ENVIOCOMPROBANTE",
+      "ValidacionComprobante",
+      data
+    );
   } catch (error) {
     console.error("❌ Error en PrimeraEleccionEntrega:", error);
   }
