@@ -13,7 +13,10 @@
     "@whiskeysockets/baileys": "^6.17.16",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "googleapis": "^148.0.0",
     "openai": "^4.90.0",
-    "qrcode": "^1.5.4"
+    "pg": "^8.14.1",
+    "qrcode": "^1.5.4",
+    "sequelize": "^6.37.7"
   }
 }

@@ -1,4 +1,7 @@
 const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
+const {
+  addComprobanteToSheet,
+} = require("../../../Utiles/GoogleServices/Sheets/comprobante");
 const FlowManager = require("../../../FlowControl/FlowManager");
 
 module.exports = async function ValidacionComprobante(userId, message, sock) {
@@ -7,7 +10,13 @@ module.exports = async function ValidacionComprobante(userId, message, sock) {
   if (data.data.Eleccion == "1") {
     await sock.sendMessage(userId, { text: "🔄 Procesando..." });
 
-    //TODO: Logica subir datos a google sheets
+    const comprobante = FlowManager.userFlows[userId].flowData;
+    comprobante.estado = "PENDIENTE";
+    await addComprobanteToSheet(comprobante);
+
+    await sock.sendMessage(userId, {
+      text: "✅ Comprobante enviado correctamente. Estamos procesando tu solicitud.",
+    });
 
     FlowManager.resetFlow(userId);
   } else if (data.data.Eleccion == "2") {
