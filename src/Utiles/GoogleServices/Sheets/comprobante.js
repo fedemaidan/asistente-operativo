@@ -13,6 +13,7 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.monto,
     comprobante.estado,
     "ACTIVE", // Estado para el registro en Sheets
+    comprobante.imagen ?? "",
   ];
   return values;
 }
@@ -28,6 +29,7 @@ function getTitlesToSheetGeneral() {
     "Monto",
     "Estado",
     "Status",
+    "Imagen",
   ];
 }
 

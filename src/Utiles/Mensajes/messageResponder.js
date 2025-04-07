@@ -36,8 +36,13 @@ const messageResponder = async (messageType, msg, sock, sender) => {
           });
           return;
         }
+
         console.log("Esta es la transcripcion", transcripcion);
-        ComprobanteFlow.start(sender, transcripcion.data, sock);
+        ComprobanteFlow.start(
+          sender,
+          { ...transcripcion.data, imagen: imageUrl },
+          sock
+        );
 
         // Enviar el texto extraído al flujo de procesamiento
       } catch (error) {

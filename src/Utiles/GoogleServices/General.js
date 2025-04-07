@@ -106,27 +106,121 @@ async function checkIfSheetExists(sheetId, sheetName) {
 
 // Función para crear una hoja
 
-async function createSheet(sheetId, sheetName) {
-  const request = {
-    spreadsheetId: sheetId,
-    resource: {
-      requests: [
-        {
-          addSheet: {
-            properties: {
-              title: sheetName,
+async function createSheet(spreadsheetId, sheetName) {
+  try {
+    // 1. Crear la hoja
+    const createRequest = {
+      spreadsheetId: spreadsheetId,
+      resource: {
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: sheetName,
+              },
             },
           },
-        },
-      ],
-    },
-  };
+        ],
+      },
+    };
 
-  try {
-    await sheets.spreadsheets.batchUpdate(request);
+    const createResponse = await sheets.spreadsheets.batchUpdate(createRequest);
     console.log(`Sheet "${sheetName}" created.`);
+
+    const newSheetId =
+      createResponse.data.replies[0].addSheet.properties.sheetId;
+
+    const headers = [
+      "Numero de comprobante",
+      "Fecha",
+      "Hora",
+      "Nombre",
+      "CUIT",
+      "DNI",
+      "Monto",
+      "Estado",
+      "Status",
+      "Imagen",
+    ];
+
+    const headerRequest = {
+      spreadsheetId: spreadsheetId,
+      range: `${sheetName}!A1:J1`,
+      valueInputOption: "RAW",
+      resource: {
+        values: [headers],
+      },
+    };
+
+    await sheets.spreadsheets.values.update(headerRequest);
+
+    const formatRequest = {
+      spreadsheetId: spreadsheetId,
+      resource: {
+        requests: [
+          // Primer request (estilo de la cabecera)
+          {
+            repeatCell: {
+              range: {
+                sheetId: newSheetId,
+                startRowIndex: 0,
+                endRowIndex: 1,
+                startColumnIndex: 0,
+                endColumnIndex: headers.length,
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: {
+                    red: 0.12,
+                    green: 0.17,
+                    blue: 0.45,
+                  },
+                  textFormat: {
+                    bold: true,
+                    foregroundColor: {
+                      red: 1.0,
+                      green: 1.0,
+                      blue: 1.0,
+                    },
+                  },
+                  horizontalAlignment: "CENTER",
+                  verticalAlignment: "MIDDLE",
+                },
+              },
+              fields:
+                "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+            },
+          },
+          {
+            updateSheetProperties: {
+              properties: {
+                sheetId: newSheetId,
+                gridProperties: {
+                  frozenRowCount: 1,
+                },
+              },
+              fields: "gridProperties.frozenRowCount",
+            },
+          },
+          // Ajustar ancho de columnas
+          {
+            autoResizeDimensions: {
+              dimensions: {
+                sheetId: newSheetId,
+                dimension: "COLUMNS",
+                startIndex: 0,
+                endIndex: headers.length,
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    await sheets.spreadsheets.batchUpdate(formatRequest);
+    console.log(`Headers added and formatted for sheet "${sheetName}".`);
   } catch (err) {
-    console.error("Failed to create sheet:", err);
+    console.error("Failed to create sheet with formatted headers:", err);
   }
 }
 

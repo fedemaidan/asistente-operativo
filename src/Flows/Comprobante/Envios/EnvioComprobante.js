@@ -28,7 +28,7 @@ module.exports = async function EnvioComprobante(userId, data, sock) {
     console.log("✅ Mensaje enviado correctamente.");
 
     await sock.sendMessage(userId, {
-      text: "✅ Si los datos son correctos, responde con *1*. Si hay algún error, responde con *2* y si quieres cancelar *3*.",
+      text: "¿Los datos son correctos? Indiqué con el número su respuesta.\n\n*1.* ✅ *Si*\n*2.* 📝 *No, quiero corregirlo.*\n*3.* ❌ *Cancelar, voy a pedirlo nuevamente.*",
     });
 
     FlowManager.setFlow(
