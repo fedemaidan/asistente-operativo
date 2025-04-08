@@ -6,17 +6,7 @@ module.exports = async function ElegirCliente(userId, message, sock) {
   const data = FlowManager.userFlows[userId].flowData.data;
 
   //TODO: cuenta de destino
-  const mensaje = `📌 *Confirmación de Datos* 📌\nPara procesar tu solicitud, necesitamos que confirmes los siguientes datos de la transferencia:\n
-		🔹 *Número de comprobante:* ${data.numero_comprobante}
-		🔹 *Fecha:* ${data.fecha}
-		🔹 *Hora:* ${data.hora}
-		🔹 *Cuenta de origen:* ${data.nombre} ${data.apellido}
-		🔹 *Cliente*: ${cliente.nombre} ${cliente.apellido}
-		🔹 *Cuenta de destino:* SorbyData
-		🔹 *Monto:* $${data.monto}
-		🔹 *Moneda:* ${cliente.cc}
-		🔹 *CUIT:* ${data.cuit}\n\n⚠️ *Por favor, revisa que los datos sean correctos.
-		`;
+  const mensaje = `📌 *Confirmación de Datos* 📌\nPara procesar tu solicitud, necesitamos que confirmes los siguientes datos de la transferencia:\n🔹 *Número de comprobante:* ${data.numero_comprobante}\n🔹 *Fecha:* ${data.fecha}\n🔹 *Hora:* ${data.hora}\n🔹 *Cuenta de origen:* ${data.nombre} ${data.apellido}\n🔹 *Cliente*: ${cliente.nombre} ${cliente.apellido}\n🔹 *Cuenta de destino:* SorbyData\n🔹 *Monto:* $${data.monto}\n🔹 *Moneda:* ${cliente.cc}\n🔹 *CUIT:* ${data.cuit}\n\n⚠️ *Por favor, revisa que los datos sean correctos.`;
 
   await sock.sendMessage(userId, {
     text: mensaje,
