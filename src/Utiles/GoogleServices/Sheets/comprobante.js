@@ -7,12 +7,13 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.numero_comprobante,
     comprobante.fecha,
     comprobante.hora,
+    comprobante.cliente,
     `${comprobante.nombre} ${comprobante.apellido}`,
+    comprobante.destino,
     comprobante.cuit,
-    comprobante.dni,
     comprobante.monto,
+    comprobante.cc,
     comprobante.estado,
-    "ACTIVE", // Estado para el registro en Sheets
     comprobante.imagen ?? "",
   ];
   return values;
@@ -23,12 +24,12 @@ function getTitlesToSheetGeneral() {
     "Número Comprobante",
     "Fecha",
     "Hora",
+    "Cliente",
     "Nombre",
     "CUIT",
-    "DNI",
     "Monto",
+    "Cuenta Corriente",
     "Estado",
-    "Status",
     "Imagen",
   ];
 }

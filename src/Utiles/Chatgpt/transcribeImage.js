@@ -13,13 +13,13 @@ No incluyas explicaciones adicionales ni texto extra. Solo el JSON.
         data:
         {
             numero_comprobante: "Es el numero de comprobante o de transferencia.",
-            monto: "Es el monto total del comprobante o de transferencia.",
-            fecha: "Es la fecha del comprobante o de transferencia.",
+            monto: "Es el monto total del comprobante o de transferencia. No debe incluir ningun signo de pesos ni comas. Solo el numero",
+            moneda: "Es la moneda del comprobante o de transferencia. Ejemplo: Pesos, Dolares, etc. Si no indica la moneda, se asume que es pesos",
+            fecha: "Es la fecha del comprobante o de transferencia. Formato dd/mm/yyyy",  
             hora: "Es la hora del comprobante o de transferencia.",
             nombre: "Es el nombre de la persona que hizo la transferencia.",
             apellido: "Es el apellido de la persona que hizo la transferencia.",
             cuit: "Es el cuit de la persona que hizo la transferencia.",
-            dni: "Es el dni de la persona que hizo la transferencia.",
         }
     }
 `;

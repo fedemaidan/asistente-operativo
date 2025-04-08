@@ -134,18 +134,19 @@ async function createSheet(spreadsheetId, sheetName) {
       "Numero de comprobante",
       "Fecha",
       "Hora",
-      "Nombre",
+      "Cliente",
+      "Cuenta de origen",
+      "Cuenta de destino",
       "CUIT",
-      "DNI",
       "Monto",
+      "Moneda",
       "Estado",
-      "Status",
       "Imagen",
     ];
 
     const headerRequest = {
       spreadsheetId: spreadsheetId,
-      range: `${sheetName}!A1:J1`,
+      range: `${sheetName}!A1:K1`,
       valueInputOption: "RAW",
       resource: {
         values: [headers],

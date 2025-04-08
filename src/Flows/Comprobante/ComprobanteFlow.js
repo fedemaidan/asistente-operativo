@@ -18,6 +18,10 @@ const ComprobanteFlow = {
   async Handle(userId, message, currentStep, sock, messageType) {
     if (userId != null && sock != null) {
       // Y que EgresoMaterialSteps es un objeto que contiene tus funciones
+      console.log("ComprobanteSteps", ComprobanteSteps);
+
+      console.log("type", typeof ComprobanteSteps[currentStep]);
+
       if (typeof ComprobanteSteps[currentStep] === "function") {
         await ComprobanteSteps[currentStep](userId, message, sock);
       } else {

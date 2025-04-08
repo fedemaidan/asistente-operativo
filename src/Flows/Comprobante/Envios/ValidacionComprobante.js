@@ -1,22 +1,31 @@
 const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
-const {
-  addComprobanteToSheet,
-} = require("../../../Utiles/GoogleServices/Sheets/comprobante");
+const getClientesFromSheet = require("../../../Utiles/Funciones/Clientes/getClientesFromSheet");
 const FlowManager = require("../../../FlowControl/FlowManager");
 
 module.exports = async function ValidacionComprobante(userId, message, sock) {
   const data = await opcionElegida(message);
 
   if (data.data.Eleccion == "1") {
-    await sock.sendMessage(userId, { text: "🔄 Procesando..." });
+    const clientes = await getClientesFromSheet();
+    console.log(clientes);
+    const mensaje = `📌 *Confirmación de Cliente* 📌\nPara procesar tu solicitud, necesitamos que confirmes a que cliente pertenece el comprobante:\n
+    \n${clientes
+      .map(
+        (cliente, index) =>
+          `*${index}.* ${cliente.nombre} ${cliente.apellido} - CC ${cliente.cc}`
+      )
+      .join("\n")}
+    `;
 
-    const comprobante = FlowManager.userFlows[userId].flowData;
-    comprobante.estado = "PENDIENTE";
-    await addComprobanteToSheet(comprobante);
-
-    FlowManager.resetFlow(userId);
     await sock.sendMessage(userId, {
-      text: `✅ *Comprobante enviado correctamente. Link al Google Sheet: https://docs.google.com/spreadsheets/d/${process.env.GOOGLE_SHEET_ID}/edit?usp=sharing*`,
+      text: mensaje,
+    });
+
+    FlowManager.setFlow(userId);
+
+    FlowManager.setFlow(userId, "ENVIOCOMPROBANTE", "ElegirCliente", {
+      ...FlowManager.userFlows[userId].flowData,
+      clientes: clientes,
     });
   } else if (data.data.Eleccion == "2") {
     await sock.sendMessage(userId, {
