@@ -138,8 +138,15 @@ const messageResponder = async (messageType, msg, sock, sender) => {
         console.log(`📄 Documento recibido: ${fileName}, URL: ${fileUrl}`);
 
         // Guardar el documento y obtener su ruta
-        const transcripcion = await saveImageToStorage(docMessage, sender);
-        if (!transcripcion) {
+        const pdfUrl = await saveImageToStorage(
+          {
+            message: {
+              documentMessage: docMessage,
+            },
+          },
+          sender
+        );
+        if (!pdfUrl) {
           console.error("❌ No se pudo obtener el documento.");
           await sock.sendMessage(sender, {
             text: "❌ No se pudo procesar tu documento.",
@@ -148,10 +155,15 @@ const messageResponder = async (messageType, msg, sock, sender) => {
         }
 
         // Llamar a la función de transcripción con la ruta obtenida
-        const text = await transcribeImage(transcripcion.imagenFirebase);
+        const transcripcion = await transcribeImage(pdfUrl);
 
         // Enviar el resultado a FlowMapper
-        await FlowMapper.handleMessage(sender, text, sock, "document");
+
+        ComprobanteFlow.start(
+          sender,
+          { ...transcripcion.data, document: pdfUrl },
+          sock
+        );
       } catch (error) {
         console.error("❌ Error al procesar el documento:", error);
         await sock.sendMessage(sender, {
