@@ -1,13 +1,12 @@
 const EnvioComprobante = require("./Envios/EnvioComprobante");
-//const ValidacionComprobante = require("./Envios/ValidacionComprobante");
-//const ModificarComprobante = require("./Envios/ModificarComprobante");
-const ElegirCliente = require("./Envios/ElegirCliente1");
-//const ValidacionCliente = require("./Envios/ValidacionCliente");
+const ElegirCliente = require("./Envios/ElegirCliente");
 const ValidacionDatos = require("./Envios/ValidacionDatos");
+const ModificarDatos = require("./Envios/ModificarDatos");
 
 const ComprobanteSteps = {
   EnvioComprobante,
   ElegirCliente,
   ValidacionDatos,
+  ModificarDatos,
 };
 module.exports = { ComprobanteSteps };

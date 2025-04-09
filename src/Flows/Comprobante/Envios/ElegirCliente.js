@@ -1,23 +1,36 @@
-const getClientesFromSheet = require("../../../Utiles/Funciones/Clientes/getClientesFromSheet");
 const FlowManager = require("../../../FlowControl/FlowManager");
+const analizarCliente = require("../../../Utiles/Chatgpt/analizarCliente");
 
 module.exports = async function ElegirCliente(userId, message, sock) {
-  const data = FlowManager.userFlows[userId].flowData.clientes;
-  console.log("data", data);
-  console.log("message", message);
+  const cliente = await analizarCliente(message);
+  const comprobante = FlowManager.userFlows[userId].flowData.data;
 
-  if (message >= 0 && message < data.length) {
-    const clienteElegido = data[message];
-    const mensaje = `📌 *Confirmación de Cliente* 📌\nHas elegido al cliente: \n*${clienteElegido.nombre} ${clienteElegido.apellido} - ${clienteElegido.cuit}*\n\n⚠️ *Por favor, verifica si ha seleccionado el cliente correcto.*\nIndiqué con el número su respuesta.\n\n*1.* ✅ *Si*\n*2.* 📝 *No, quiero corregirlo.*\n*3.* ❌ *Cancelar, voy a pedirlo nuevamente.*.`;
+  console.log("cliente", cliente);
+  console.log("comprobante", comprobante);
 
-    await sock.sendMessage(userId, { text: mensaje });
-    FlowManager.setFlow(userId, "ENVIOCOMPROBANTE", "ValidacionCliente", {
-      ...FlowManager.userFlows[userId].flowData,
-      clienteElegido,
-    });
-  } else {
-    await sock.sendMessage(userId, {
-      text: "❌ Opción inválida. Por favor, selecciona un cliente de la lista.",
-    });
-  }
+  //TODO: cuenta de destino
+  const mensaje = `📌 *Confirmación de Datos* 📌\nPara procesar tu solicitud, necesitamos que confirmes los siguientes datos de la transferencia:\n🔹 *Número de comprobante:* ${comprobante.numero_comprobante}\n🔹 *Fecha:* ${comprobante.fecha}\n🔹 *Hora:* ${comprobante.hora}\n🔹 *Cuenta de origen:* ${comprobante.nombre} ${comprobante.apellido}\n🔹 *Cliente*: ${cliente.nombre} ${cliente.apellido}\n🔹 *Cuenta de destino:* SorbyData\n🔹 *Monto:* $${comprobante.monto}\n🔹 *Moneda:* ${cliente.cc}\n🔹 *CUIT:* ${comprobante.cuit}\n\n⚠️ *Por favor, revisa que los datos sean correctos.`;
+
+  await sock.sendMessage(userId, {
+    text: mensaje,
+  });
+
+  await sock.sendMessage(userId, {
+    text: "¿Los datos son correctos? Indiqué con el número su respuesta.\n\n*1.* ✅ *Si*\n*2.* 📝 *No, quiero corregirlo.*\n*3.* ❌ *Cancelar, voy a pedirlo nuevamente.*",
+  });
+
+  comprobante.estado = "PENDIENTE";
+  comprobante.monto = parseFloat(comprobante.monto);
+  comprobante.cliente = `${cliente.nombre} ${cliente.apellido}`;
+  comprobante.destino = "Sorby Data";
+  comprobante.cc = cliente.cc;
+
+  console.log("comprobante original", comprobante);
+
+  FlowManager.setFlow(
+    userId,
+    "ENVIOCOMPROBANTE",
+    "ValidacionDatos",
+    comprobante
+  );
 };

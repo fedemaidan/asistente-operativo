@@ -7,20 +7,10 @@ const {
 module.exports = async function ValidacionDatos(userId, message, sock) {
   const data = await opcionElegida(message);
 
-  const { cliente, comprobante } = FlowManager.userFlows[userId].flowData;
+  const comprobante = FlowManager.userFlows[userId].flowData;
 
   if (data.data.Eleccion == "1") {
     await sock.sendMessage(userId, { text: "🔄 Procesando..." });
-
-    console.log("cliente", cliente);
-    console.log("comprobante", comprobante);
-    console.log("data", data);
-
-    comprobante.estado = "PENDIENTE";
-    comprobante.monto = parseFloat(comprobante.monto);
-    comprobante.cliente = `${cliente.nombre} ${cliente.apellido}`;
-    comprobante.destino = "Sorby Data";
-    comprobante.cc = cliente.cc;
 
     //TODO: manejar errores
     await addComprobanteToSheet(comprobante);
@@ -30,14 +20,17 @@ module.exports = async function ValidacionDatos(userId, message, sock) {
       text: `✅ *Comprobante enviado correctamente. Link al Google Sheet: https://docs.google.com/spreadsheets/d/${process.env.GOOGLE_SHEET_ID}/edit?usp=sharing*`,
     });
   } else if (data.data.Eleccion == "2") {
-    // await sock.sendMessage(userId, {
-    //   text: "✏️ Por favor, revisa los datos y dinos donde esta el error.\n\nEjemplo: El monto es incorrecto, debería ser $10.000 en lugar de $9.500.",
-    // });
     await sock.sendMessage(userId, {
-      text: "En desarrollo ...",
+      text: "✏️ Por favor, revisa los datos y dinos donde esta el error.\n\nEjemplo: El monto es incorrecto, debería ser $10.000 en lugar de $9.500.",
     });
-    FlowManager.resetFlow(userId);
-  } else if (message == "3") {
+
+    FlowManager.setFlow(
+      userId,
+      "ENVIOCOMPROBANTE",
+      "ModificarDatos",
+      comprobante
+    );
+  } else if (data.data.Eleccion == "3") {
     await sock.sendMessage(userId, {
       text: "❌ Has cancelado el proceso de confirmación.",
     });
