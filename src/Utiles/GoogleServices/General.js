@@ -86,6 +86,31 @@ async function getLastRow(sheetId, sheetName) {
   return rows.length === 0 ? 1 : rows.length;
 }
 
+async function getRowsValues(sheetId, sheetName, range) {
+  try {
+    const sheetExists = await checkIfSheetExists(sheetId, sheetName);
+    if (!sheetExists) {
+      console.error(`Sheet "${sheetName}" does not exist`);
+      return [];
+    }
+
+    const request = {
+      spreadsheetId: sheetId,
+      range: `${sheetName}!${range}`,
+    };
+
+    console.log(`Requesting range: ${sheetName}!${range}`);
+    const response = await sheets.spreadsheets.values.get(request);
+
+    const rows = response.data.values || [];
+    const data = rows.map((row) => row[0]);
+    return data;
+  } catch (error) {
+    console.error("Error retrieving rows:", error);
+    return [];
+  }
+}
+
 // Función para verificar si una hoja existe
 async function checkIfSheetExists(sheetId, sheetName) {
   try {
@@ -332,6 +357,7 @@ module.exports = {
   updateSheetWithBatchDelete,
   checkEditPermissions,
   updateRow,
+  getRowsValues,
   createSheet,
   checkIfSheetExists,
   addRow,

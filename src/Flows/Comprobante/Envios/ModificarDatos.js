@@ -3,6 +3,8 @@ const FlowManager = require("../../../FlowControl/FlowManager");
 
 module.exports = async function ModificarDatos(userId, message, sock) {
   try {
+    await sock.sendMessage(userId, { text: "⏳ Analizando mensaje ⏳" });
+
     const data = await ModificarComprobanteGpt(message, userId);
 
     if (!data) {
@@ -11,8 +13,7 @@ module.exports = async function ModificarDatos(userId, message, sock) {
       });
       return;
     }
-    console.log("comprobante modificado", data);
-    const mensaje = `📌 *Confirmación de Datos* 📌\nPor favor, necesitamos que confirmes los siguientes datos que modificamos de la transferencia:\n🔹 *Número de comprobante:* ${data.numero_comprobante}\n🔹 *Fecha:* ${data.fecha}\n🔹 *Hora:* ${data.hora}\n🔹 *Cuenta de origen:* ${data.nombre} ${data.apellido}\n🔹 *Cliente*: ${data.cliente}\n🔹 *Cuenta de destino:* ${data.destino}\n🔹 *Monto:* $${data.monto}\n🔹 *Moneda:* ${data.cc}\n🔹 *CUIT:* ${data.cuit}\n\n⚠️ *Por favor, revisa que los datos sean correctos.`;
+    const mensaje = `📌 *Confirmación de Datos* 📌\nPor favor, necesitamos que confirmes los siguientes datos que modificamos de la transferencia:\n🔹 *Número de comprobante:* ${data.numero_comprobante}\n🔹 *Fecha:* ${data.fecha}\n🔹 *Hora:* ${data.hora}\n🔹 *Cuenta de origen:* ${data.nombre} ${data.apellido}\n🔹 *Cliente*: ${data.cliente}\n🔹 *Cuenta de destino:* ${data.destino}\n🔹 *Monto:* $${data.monto}\n🔹 *Moneda:* ${data.moneda}\n🔹 *CUIT:* ${data.cuit}\n\n⚠️ *Por favor, revisa que los datos sean correctos.`;
     await sock.sendMessage(userId, {
       text: mensaje,
     });

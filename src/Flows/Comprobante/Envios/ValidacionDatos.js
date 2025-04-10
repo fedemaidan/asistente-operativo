@@ -9,9 +9,11 @@ module.exports = async function ValidacionDatos(userId, message, sock) {
 
   const comprobante = FlowManager.userFlows[userId].flowData;
 
+  console.log(comprobante);
+
   if (data.data.Eleccion == "1") {
     await sock.sendMessage(userId, { text: "🔄 Procesando..." });
-
+    console.log("comprobante", comprobante);
     //TODO: manejar errores
     await addComprobanteToSheet(comprobante);
 

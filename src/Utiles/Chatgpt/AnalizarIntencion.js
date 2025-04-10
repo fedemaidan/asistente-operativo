@@ -4,14 +4,27 @@ const FlowManager = require("../../FlowControl/FlowManager");
 const opciones = [
   {
     accion: "Confirmar datos",
-    descripcion:
-      "Necesito analizar los datos del usuario. Numero de transferencia, monto, nombre, apellido, CUIT, fecha y hora.",
+    descripcion: `Necesito analizar los datos del usuario. Numero de transferencia, monto, nombre, apellido, destino, CUIT, fecha y hora.
+      Para obtener el destino debes usar el atributo nombre unicamente de una de las siguientes 2 opciones:
+      [
+        {
+          "nombre": "ASOCIACION CONSULTURA MUTUAL",
+          "cuit": "30-71108832-2",
+          "cvu": "0000252500000001000054"
+        },
+        {
+          "nombre": "ENSHOP SRL",
+          "cuit": "30-71519047-4",
+          "cbu": "0720044120000000414890"
+        }
+      ]
+      En el caso de que falten algunos atributos, devolve un - en el campo correspondiente  
+      `,
     data: {
       numero_comprobante: "numero de comprobante de la transferencia",
       monto:
-        "monto de la transferencia. No debe incluir ningun signo de pesos ni comas. Solo el numero",
-      moneda:
-        "moneda de la transferencia. Ejemplo: Pesos, Dolares, etc. Si no indica la moeneda, se asume que es pesos",
+        "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
+      destino: "cuenta de destino",
       fecha: "fecha de la transferencia, en formato dd/mm/yyyy",
       hora: "hora de la transferencia",
       nombre: "nombre de origen",

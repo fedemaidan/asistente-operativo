@@ -12,7 +12,7 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.destino,
     comprobante.cuit,
     comprobante.monto,
-    comprobante.cc,
+    comprobante.moneda,
     comprobante.estado,
     comprobante.imagen ?? "",
   ];
@@ -28,7 +28,7 @@ function getTitlesToSheetGeneral() {
     "Nombre",
     "CUIT",
     "Monto",
-    "Cuenta Corriente",
+    "Moneda",
     "Estado",
     "Imagen",
   ];

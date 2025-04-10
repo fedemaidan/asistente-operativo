@@ -161,7 +161,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
 
         ComprobanteFlow.start(
           sender,
-          { ...transcripcion.data, document: pdfUrl },
+          { ...transcripcion.data, image: pdfUrl },
           sock
         );
       } catch (error) {
