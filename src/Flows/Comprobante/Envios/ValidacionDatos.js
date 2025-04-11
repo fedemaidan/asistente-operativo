@@ -3,19 +3,22 @@ const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
 const {
   addComprobanteToSheet,
 } = require("../../../Utiles/GoogleServices/Sheets/comprobante");
+const {
+  addClienteComprobanteToSheet,
+} = require("../../../Utiles/GoogleServices/Sheets/cliente");
 
 module.exports = async function ValidacionDatos(userId, message, sock) {
   const data = await opcionElegida(message);
 
   const comprobante = FlowManager.userFlows[userId].flowData;
 
-  console.log(comprobante);
+  console.log("comprobante", comprobante);
 
   if (data.data.Eleccion == "1") {
     await sock.sendMessage(userId, { text: "🔄 Procesando..." });
     console.log("comprobante", comprobante);
-    //TODO: manejar errores
     await addComprobanteToSheet(comprobante);
+    await addClienteComprobanteToSheet(comprobante);
 
     FlowManager.resetFlow(userId);
     await sock.sendMessage(userId, {

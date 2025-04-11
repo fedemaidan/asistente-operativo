@@ -1,11 +1,38 @@
-const general_range = "ClientesRAW!A1:Z1000";
+const general_range = "ClientesRAW!A1:Z10000";
 const GOOGLE_SHEET_CLIENTS_ID = process.env.GOOGLE_SHEET_CLIENTS_ID;
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const { addRow, updateRow, getRowsValues } = require("../General");
 
-async function getArrayToSheetGeneral(cliente) {
-  const data = await getRows(GOOGLE_SHEET_ID, general_range);
+function getTitlesToSheetGeneral() {
+  return [
+    "Número Comprobante",
+    "Fecha",
+    "Hora",
+    "Cuenta de origen",
+    "Cuenta de destino",
+    "CUIT",
+    "Monto enviado",
+    "Monto",
+    "Moneda",
+    "Estado",
+    "Imagen",
+  ];
+}
 
-  const values = [cliente];
+async function getArrayToSheetGeneral(cliente) {
+  const values = [
+    cliente.numero_comprobante,
+    cliente.fecha,
+    cliente.hora,
+    `${cliente.nombre} ${cliente.apellido}`,
+    cliente.destino,
+    cliente.cuit,
+    cliente.montoEnviado,
+    cliente.monto,
+    cliente.moneda,
+    cliente.estado,
+    cliente.imagen ?? "",
+  ];
   return values;
 }
 
@@ -19,9 +46,15 @@ async function getClientesFromSheet() {
   return data;
 }
 
-async function addClienteToSheet(cliente) {
+async function addClienteComprobanteToSheet(cliente) {
+  const headers = getTitlesToSheetGeneral();
   const values = await getArrayToSheetGeneral(cliente);
-  await addRow(GOOGLE_SHEET_ID, values, general_range);
+  await addRow(
+    GOOGLE_SHEET_ID,
+    values,
+    `${cliente.cliente}!A1:Z10000`,
+    headers
+  );
 }
 
 async function updateClienteStatus(cliente) {
@@ -32,6 +65,6 @@ async function updateClienteStatus(cliente) {
 
 module.exports = {
   getClientesFromSheet,
-  addClienteToSheet,
+  addClienteComprobanteToSheet,
   updateClienteStatus,
 };

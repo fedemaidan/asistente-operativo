@@ -11,6 +11,7 @@ async function getArrayToSheetGeneral(comprobante) {
     `${comprobante.nombre} ${comprobante.apellido}`,
     comprobante.destino,
     comprobante.cuit,
+    comprobante.montoEnviado,
     comprobante.monto,
     comprobante.moneda,
     comprobante.estado,
@@ -25,8 +26,10 @@ function getTitlesToSheetGeneral() {
     "Fecha",
     "Hora",
     "Cliente",
-    "Nombre",
+    "Cuenta de origen",
+    "Cuenta de destino",
     "CUIT",
+    "Monto enviado",
     "Monto",
     "Moneda",
     "Estado",
@@ -35,10 +38,10 @@ function getTitlesToSheetGeneral() {
 }
 
 async function addComprobanteToSheet(comprobante) {
-  console.log(comprobante);
+  const headers = getTitlesToSheetGeneral();
   const values = await getArrayToSheetGeneral(comprobante);
   console.log(values);
-  await addRow(GOOGLE_SHEET_ID, values, general_range);
+  await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
 }
 
 module.exports = {
