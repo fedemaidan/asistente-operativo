@@ -47,7 +47,6 @@ El usuario dice: "${message}"
 
 Tienes estas acciones posibles debes analizar la palabra clave del usuario: ${opcionesTxt}.
 `;
-    console.log(prompt);
 
     const response = await getByChatGpt4o(prompt);
     const respuesta = JSON.parse(response);

@@ -1,6 +1,6 @@
 const general_range = "ComprobanteRAW!A1:Z1000";
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const { addRow } = require("../General");
+const { addRow, updateRow } = require("../General");
 
 async function getArrayToSheetGeneral(comprobante) {
   const values = [
@@ -14,6 +14,7 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.montoEnviado,
     comprobante.monto,
     comprobante.moneda,
+    comprobante.tipoDeCambio,
     comprobante.estado,
     comprobante.imagen ?? "",
   ];
@@ -32,6 +33,7 @@ function getTitlesToSheetGeneral() {
     "Monto enviado",
     "Monto",
     "Moneda",
+    "Tipo de cambio",
     "Estado",
     "Imagen",
   ];
@@ -40,10 +42,36 @@ function getTitlesToSheetGeneral() {
 async function addComprobanteToSheet(comprobante) {
   const headers = getTitlesToSheetGeneral();
   const values = await getArrayToSheetGeneral(comprobante);
-  console.log(values);
   await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
+}
+
+async function updateComprobanteToSheet(matchs) {
+  for (const match of matchs) {
+    if (
+      Math.round(match.comprobante.montoEnviado) ==
+      Math.round(match.movimiento.importe)
+    ) {
+      match.comprobante.estado = "CONFIRMADO";
+    } else {
+      match.comprobante.estado = "REVISAR MONTO";
+    }
+    match.comprobante.nombre = match.comprobante.cuentaOrigen.split(" ")[0];
+    match.comprobante.apellido = match.comprobante.cuentaOrigen.split(" ")[1];
+    console.log("match", match);
+
+    let values = await getArrayToSheetGeneral(match.comprobante);
+
+    await updateRow(
+      GOOGLE_SHEET_ID,
+      values,
+      general_range,
+      0,
+      match.comprobante.numero_comprobante
+    );
+  }
 }
 
 module.exports = {
   addComprobanteToSheet,
+  updateComprobanteToSheet,
 };

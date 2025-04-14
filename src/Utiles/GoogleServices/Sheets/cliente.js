@@ -14,6 +14,7 @@ function getTitlesToSheetGeneral() {
     "Monto enviado",
     "Monto",
     "Moneda",
+    "Tipo de cambio",
     "Estado",
     "Imagen",
   ];
@@ -30,6 +31,7 @@ async function getArrayToSheetGeneral(cliente) {
     cliente.montoEnviado,
     cliente.monto,
     cliente.moneda,
+    cliente.tipoDeCambio,
     cliente.estado,
     cliente.imagen ?? "",
   ];
@@ -37,12 +39,12 @@ async function getArrayToSheetGeneral(cliente) {
 }
 
 async function getClientesFromSheet() {
-  const data = await getRowsValues(
+  let data = await getRowsValues(
     GOOGLE_SHEET_CLIENTS_ID,
     "ClientesRAW",
     "A2:A1000"
   );
-
+  data = rows.map((row) => row[0]);
   return data;
 }
 

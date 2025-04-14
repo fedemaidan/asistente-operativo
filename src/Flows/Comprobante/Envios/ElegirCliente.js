@@ -46,8 +46,10 @@ module.exports = async function ElegirCliente(userId, message, sock) {
   if (cliente.moneda !== "ARS") {
     dolarValue = await DolarService.dameValorDelDolar(cliente.moneda);
     comprobante.monto = parseInt(comprobante.monto / dolarValue);
+    comprobante.tipoDeCambio = dolarValue;
   } else {
     comprobante.monto = parseFloat(comprobante.monto);
+    comprobante.tipoDeCambio = "-";
   }
 
   comprobante.moneda = CURRENCY_DISPLAY[cliente.moneda];

@@ -4,8 +4,6 @@ const path = require("path");
 
 module.exports = async function downloadMedia(message) {
   try {
-    console.log("Mensaje recibido:", message);
-
     const messageType = message?.message?.imageMessage
       ? "image"
       : message?.message?.documentMessage
@@ -35,11 +33,8 @@ module.exports = async function downloadMedia(message) {
       },
     };
 
-    console.log("Mensaje enriquecido:", enrichedMessage);
-
     // Descargar el contenido
     const buffer = await downloadMediaMessage(enrichedMessage, "buffer");
-    console.log("Buffer obtenido:", buffer ? "Sí" : "No");
 
     // Obtener el nombre del archivo y su extensión
     let fileName = mediaContent.fileName || `${messageType}_${Date.now()}`;
@@ -61,13 +56,11 @@ module.exports = async function downloadMedia(message) {
 
     // Ruta donde se guardará el archivo
     const filePath = path.join(__dirname, "../downloads", fileName);
-    console.log("Ruta del archivo:", filePath);
     // Crear directorio si no existe
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
     // Guardar el archivo
     fs.writeFileSync(filePath, buffer);
-    console.log(`Archivo guardado en: ${filePath}`);
 
     return filePath;
   } catch (error) {

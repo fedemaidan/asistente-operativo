@@ -222,8 +222,7 @@ async function getRowsValues(sheetId, sheetName, range) {
     const response = await sheets.spreadsheets.values.get(request);
 
     const rows = response.data.values || [];
-    const data = rows.map((row) => row[0]);
-    return data;
+    return rows;
   } catch (error) {
     console.error("Error retrieving rows:", error);
     return [];
@@ -249,7 +248,6 @@ async function checkIfSheetExists(sheetId, sheetName) {
 }
 
 async function updateRow(sheetId, values, range, posIdColumn, idValue) {
-  console.log(sheetId, values, range, posIdColumn, idValue);
   const readRequest = {
     spreadsheetId: sheetId,
     range: range,

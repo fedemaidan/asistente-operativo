@@ -1,10 +1,10 @@
 const FlowMapper = require("../../FlowControl/FlowMapper");
-
-//const transcribeAudio = require('../Utiles/Chatgpt/transcribeAudio');
-const { saveImageToStorage } = require("../Chatgpt/storageHandler");
 const downloadMedia = require("../Chatgpt/downloadMedia");
-const transcribeImage = require("../Chatgpt/transcribeImage");
 const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
+const analizarExcel = require("../Funciones/analizarExcel");
+const transcribeImage = require("../Chatgpt/transcribeImage");
+const { saveImageToStorage } = require("../Chatgpt/storageHandler");
+const { saveExcelToBuffer } = require("../Chatgpt/storageHandler");
 
 const messageResponder = async (messageType, msg, sock, sender) => {
   switch (messageType) {
@@ -17,7 +17,9 @@ const messageResponder = async (messageType, msg, sock, sender) => {
     }
     case "image": {
       try {
-        await sock.sendMessage(sender, { text: "⏳ Analizando imagen... ⏳" });
+        await sock.sendMessage(sender, {
+          text: "⏳ Analizando imagen... ⏳",
+        });
         // Verificar si el mensaje tiene una imagen (no audio)
         if (!msg.message || !msg.message.imageMessage) {
           await sock.sendMessage(sender, {
@@ -104,19 +106,11 @@ const messageResponder = async (messageType, msg, sock, sender) => {
         await sock.sendMessage(sender, {
           text: "⏳ Analizando documento... ⏳",
         });
-        if (!msg || !msg.message) {
-          console.error("❌ El objeto 'msg' no tiene la propiedad 'message'");
-          await sock.sendMessage(sender, {
-            text: "❌ Hubo un problema al procesar tu documento.",
-          });
-          return;
-        }
+        console.log("messageType", messageType);
+        console.log("msg", msg);
 
-        // Depuración: imprimir el contenido del mensaje recibido
-        console.log(
-          "📩 Contenido del mensaje recibido:",
-          JSON.stringify(msg.message, null, 2)
-        );
+        const mimetype = msg.message.documentMessage.mimetype;
+        console.log("mimetype", mimetype);
 
         // Verificar si el mensaje contiene un documento
         let docMessage =
@@ -131,39 +125,40 @@ const messageResponder = async (messageType, msg, sock, sender) => {
           return;
         }
 
-        // Extraer la URL y el nombre del archivo
-        const fileUrl = docMessage.url;
-        const fileName = docMessage.fileName || "archivo.pdf";
+        if (mimetype.endsWith("pdf")) {
+          // Extraer la URL y el nombre del archivo
+          const fileUrl = docMessage.url;
+          const fileName = docMessage.fileName || "archivo.pdf";
 
-        console.log(`📄 Documento recibido: ${fileName}, URL: ${fileUrl}`);
+          console.log(`📄 Documento recibido: ${fileName}, URL: ${fileUrl}`);
 
-        // Guardar el documento y obtener su ruta
-        const pdfUrl = await saveImageToStorage(
-          {
-            message: {
-              documentMessage: docMessage,
+          // Guardar el documento y obtener su ruta
+          const pdfUrl = await saveImageToStorage(
+            {
+              message: {
+                documentMessage: docMessage,
+              },
             },
-          },
-          sender
-        );
-        if (!pdfUrl) {
-          console.error("❌ No se pudo obtener el documento.");
-          await sock.sendMessage(sender, {
-            text: "❌ No se pudo procesar tu documento.",
-          });
-          return;
+            sender
+          );
+          if (!pdfUrl) {
+            console.error("❌ No se pudo obtener el documento.");
+            await sock.sendMessage(sender, {
+              text: "❌ No se pudo procesar tu documento.",
+            });
+            return;
+          }
+
+          const transcripcion = await transcribeImage(pdfUrl);
+
+          ComprobanteFlow.start(
+            sender,
+            { ...transcripcion.data, image: pdfUrl },
+            sock
+          );
+        } else if (mimetype.endsWith(".excel")) {
+          console.log("Es un Excel");
         }
-
-        // Llamar a la función de transcripción con la ruta obtenida
-        const transcripcion = await transcribeImage(pdfUrl);
-
-        // Enviar el resultado a FlowMapper
-
-        ComprobanteFlow.start(
-          sender,
-          { ...transcripcion.data, image: pdfUrl },
-          sock
-        );
       } catch (error) {
         console.error("❌ Error al procesar el documento:", error);
         await sock.sendMessage(sender, {
@@ -175,59 +170,23 @@ const messageResponder = async (messageType, msg, sock, sender) => {
     case "document-caption": {
       try {
         await sock.sendMessage(sender, {
-          text: "⏳ Analizando documento... ⏳",
+          text: "⏳ Analizando Excel... ⏳",
         });
-        if (!msg || !msg.message) {
-          console.error("❌ El objeto 'msg' no tiene la propiedad 'message'");
+
+        const { data, success } = await saveExcelToBuffer(msg, sender);
+
+        if (!success) {
           await sock.sendMessage(sender, {
-            text: "❌ Hubo un problema al procesar tu documento.",
+            text: "❌ No se encontró un documento Excel válido.",
           });
           return;
         }
 
-        // Depuración: imprimir el contenido del mensaje recibido
-        console.log(
-          "📩 Contenido del mensaje recibido:",
-          JSON.stringify(msg.message, null, 2)
-        );
-
-        // Verificar si el mensaje contiene un documento
-        let docMessage =
-          msg.message.documentMessage ||
-          msg.message.documentWithCaptionMessage?.message?.documentMessage;
-
-        if (!docMessage) {
-          console.error("❌ El mensaje no contiene un documento válido.");
-          await sock.sendMessage(sender, {
-            text: "❌ No se encontró un documento adjunto.",
-          });
-          return;
-        }
-
-        // Extraer la URL y el nombre del archivo
-        const fileUrl = docMessage.url;
-        const fileName = docMessage.fileName || "archivo.pdf";
-
-        console.log(`📄 Documento recibido: ${fileName}, URL: ${fileUrl}`);
-
-        // Guardar el documento y obtener su ruta
-        const transcripcion = await saveImageToStorage(docMessage, sender);
-        if (!transcripcion) {
-          console.error("❌ No se pudo obtener el documento.");
-          await sock.sendMessage(sender, {
-            text: "❌ No se pudo procesar tu documento.",
-          });
-          return;
-        }
-        // Llamar a la función de transcripción con la ruta obtenida
-        const text = await transcribeImage(transcripcion.imagenFirebase);
-
-        // Enviar el resultado a FlowMapper
-        await FlowMapper.handleMessage(sender, text, sock, "document-caption");
+        analizarExcel(data, sender, sock);
       } catch (error) {
-        console.error("❌ Error al procesar el documento:", error);
+        console.error("❌ Error al procesar el Excel:", error);
         await sock.sendMessage(sender, {
-          text: "❌ Hubo un error al procesar tu documento.",
+          text: "❌ Hubo un error al procesar tu archivo Excel.",
         });
       }
       break;
