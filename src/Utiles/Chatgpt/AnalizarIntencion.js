@@ -24,7 +24,8 @@ const opciones = [
       numero_comprobante: "numero de comprobante de la transferencia",
       monto:
         "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
-      destino: "cuenta de destino",
+      destino:
+        "cuenta de destino. En el caso de que el usuario indique cual es el destino, debes basarte en el nombre, cuit o cbu para determinarlo",
       fecha: "fecha de la transferencia, en formato dd/mm/yyyy",
       hora: "hora de la transferencia",
       nombre: "nombre de origen",

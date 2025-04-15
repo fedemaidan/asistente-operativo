@@ -39,13 +39,13 @@ async function getArrayToSheetGeneral(cliente) {
 }
 
 async function getClientesFromSheet() {
-  let data = await getRowsValues(
+  const data = await getRowsValues(
     GOOGLE_SHEET_CLIENTS_ID,
     "ClientesRAW",
     "A2:A1000"
   );
-  data = rows.map((row) => row[0]);
-  return data;
+  res = data.map((row) => row[0]);
+  return res;
 }
 
 async function addClienteComprobanteToSheet(cliente) {

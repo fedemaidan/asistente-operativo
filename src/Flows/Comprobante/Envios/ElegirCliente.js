@@ -1,14 +1,7 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
 const analizarCliente = require("../../../Utiles/Chatgpt/analizarCliente");
 const { formatCurrency } = require("../../../Utiles/Funciones/formatCurrency");
-const DolarService = require("../../../Utiles/Funciones/dolarService");
-
-const CURRENCY_DISPLAY = {
-  ARS: "ARS",
-  USD_OFICIAL_VENTA: "USD OFICIAL",
-  USD_BLUE_VENTA: "USD BLUE",
-  USD_MEP_VENTA: "USD MEP",
-};
+const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/CurrencyDisplay");
 
 module.exports = async function ElegirCliente(userId, message, sock) {
   await sock.sendMessage(userId, {
@@ -27,9 +20,7 @@ module.exports = async function ElegirCliente(userId, message, sock) {
     comprobante.destino
   }\n🔹 *Monto:* ${formatCurrency(comprobante.monto, "ARS")}\n🔹 *Moneda:* ${
     CURRENCY_DISPLAY[cliente.moneda]
-  }\n🔹 *CUIT:* ${
-    comprobante.cuit
-  }\n\n⚠️ *Por favor, revisa que los datos sean correctos.`;
+  }\n🔹 *CUIT:* ${comprobante.cuit}`;
 
   await sock.sendMessage(userId, {
     text: mensaje,
@@ -42,17 +33,7 @@ module.exports = async function ElegirCliente(userId, message, sock) {
   comprobante.estado = "PENDIENTE";
   comprobante.montoEnviado = parseFloat(comprobante.monto);
   comprobante.cliente = cliente.nombre;
-
-  if (cliente.moneda !== "ARS") {
-    dolarValue = await DolarService.dameValorDelDolar(cliente.moneda);
-    comprobante.monto = parseInt(comprobante.monto / dolarValue);
-    comprobante.tipoDeCambio = dolarValue;
-  } else {
-    comprobante.monto = parseFloat(comprobante.monto);
-    comprobante.tipoDeCambio = "-";
-  }
-
-  comprobante.moneda = CURRENCY_DISPLAY[cliente.moneda];
+  comprobante.moneda = cliente.moneda;
 
   FlowManager.setFlow(
     userId,

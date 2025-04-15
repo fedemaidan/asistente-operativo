@@ -6,6 +6,7 @@ const {
 const {
   addClienteComprobanteToSheet,
 } = require("../../../Utiles/GoogleServices/Sheets/cliente");
+const DolarService = require("../../../Utiles/Funciones/dolarService");
 
 module.exports = async function ValidacionDatos(userId, message, sock) {
   const data = await opcionElegida(message);
@@ -16,7 +17,20 @@ module.exports = async function ValidacionDatos(userId, message, sock) {
 
   if (data.data.Eleccion == "1") {
     await sock.sendMessage(userId, { text: "🔄 Procesando..." });
+
     console.log("comprobante", comprobante);
+
+    if (comprobante.moneda !== "ARS") {
+      dolarValue = await DolarService.dameValorDelDolar(comprobante.moneda);
+      comprobante.monto = parseInt(comprobante.monto / dolarValue);
+      comprobante.tipoDeCambio = dolarValue;
+    } else {
+      comprobante.monto = parseFloat(comprobante.monto);
+      comprobante.tipoDeCambio = "-";
+    }
+
+    comprobante.moneda = CURRENCY_DISPLAY[comprobante.moneda];
+
     await addComprobanteToSheet(comprobante);
     await addClienteComprobanteToSheet(comprobante);
 
@@ -28,6 +42,8 @@ module.exports = async function ValidacionDatos(userId, message, sock) {
     await sock.sendMessage(userId, {
       text: "✏️ Por favor, revisa los datos y dinos donde esta el error.\n\nEjemplo: El monto es incorrecto, debería ser $10.000 en lugar de $9.500.",
     });
+
+    console.log("COMPROBANTE", comprobante);
 
     FlowManager.setFlow(
       userId,

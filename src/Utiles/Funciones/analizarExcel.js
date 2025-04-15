@@ -64,9 +64,25 @@ module.exports = async function analizarExcel(data, sender, sock) {
     }
   }
 
+  if (matchs.length === 0) {
+    await sock.sendMessage(sender, {
+      text: "❌ No se encontraron comprobantes que coincidan con las referencias del archivo Excel.",
+    });
+    return;
+  }
+
+  const mensajeExito = `✅ *Procesamiento completado*\n\n📊 Se encontraron ${
+    matchs.length
+  } ${
+    matchs.length === 1 ? "comprobante" : "comprobantes"
+  }en el archivo Excel.`;
+
   sock.sendMessage(sender, {
-    text: `✅ ${matchs.length} Comprobantes encontrados`,
+    text: mensajeExito,
   });
 
   await updateComprobanteToSheet(matchs);
+  await sock.sendMessage(sender, {
+    text: `✅ Comprobantes actualizados en la hoja de cálculo. Link al Google Sheet: https://docs.google.com/spreadsheets/d/${process.env.GOOGLE_SHEET_ID}/edit?usp=sharing`,
+  });
 };
