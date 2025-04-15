@@ -22,13 +22,9 @@ module.exports = async function ModificarDatos(userId, message, sock) {
       data.numero_comprobante
     }\n🔹 *Fecha:* ${data.fecha}\n🔹 *Hora:* ${
       data.hora
-    }\n🔹 *Cuenta de origen:* ${data.nombre} ${data.apellido}\n🔹 *Cliente*: ${
-      data.cliente
     }\n🔹 *Cuenta de destino:* ${data.destino}\n🔹 *Monto:* ${formatCurrency(
       data.montoEnviado
-    )}\n🔹 *Moneda:* ${CURRENCY_DISPLAY[data.moneda]}\n🔹 *CUIT:* ${
-      data.cuit
-    }\n\n⚠️ *Por favor, revisa que los datos sean correctos.`;
+    )}\n🔹 *Moneda:* ${CURRENCY_DISPLAY[data.moneda]}\n🔹`;
 
     await sock.sendMessage(userId, {
       text: mensaje,

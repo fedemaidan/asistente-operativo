@@ -34,7 +34,6 @@ const DolarService = {
         ultima_actualizacion: data.last_update,
       };
 
-      console.log("Valores obtenidos:", valores);
       return valores;
     } catch (error) {
       console.error("Error al obtener los valores del dólar:", error);

@@ -14,13 +14,11 @@ module.exports = async function ElegirCliente(userId, message, sock) {
     comprobante.numero_comprobante
   }\n🔹 *Fecha:* ${comprobante.fecha}\n🔹 *Hora:* ${
     comprobante.hora
-  }\n🔹 *Cuenta de origen:* ${comprobante.nombre} ${
-    comprobante.apellido
   }\n🔹 *Cliente*: ${cliente.nombre}\n🔹 *Cuenta de destino:* ${
     comprobante.destino
   }\n🔹 *Monto:* ${formatCurrency(comprobante.monto, "ARS")}\n🔹 *Moneda:* ${
     CURRENCY_DISPLAY[cliente.moneda]
-  }\n🔹 *CUIT:* ${comprobante.cuit}`;
+  }`;
 
   await sock.sendMessage(userId, {
     text: mensaje,

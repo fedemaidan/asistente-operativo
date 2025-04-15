@@ -22,15 +22,13 @@ const parseComprobantes = (arr) =>
     fecha: row[1],
     hora: row[2],
     cliente: row[3],
-    cuentaOrigen: row[4],
-    destino: row[5],
-    cuit: row[6],
-    montoEnviado: row[7],
-    monto: row[8],
-    moneda: row[9],
-    tipoDeCambio: row[10],
-    estado: row[11],
-    imagen: row[12],
+    destino: row[4],
+    montoEnviado: row[5],
+    monto: row[6],
+    moneda: row[7],
+    tipoDeCambio: row[8],
+    estado: row[9],
+    imagen: row[10],
   }));
 
 module.exports = async function analizarExcel(data, sender, sock) {
@@ -74,7 +72,7 @@ module.exports = async function analizarExcel(data, sender, sock) {
   const mensajeExito = `✅ *Procesamiento completado*\n\n📊 Se encontraron ${
     matchs.length
   } ${
-    matchs.length === 1 ? "comprobante" : "comprobantes"
+    matchs.length === 1 ? "comprobante " : "comprobantes "
   }en el archivo Excel.`;
 
   sock.sendMessage(sender, {

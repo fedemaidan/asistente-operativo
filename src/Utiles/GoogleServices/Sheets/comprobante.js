@@ -8,9 +8,7 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.fecha,
     comprobante.hora,
     comprobante.cliente,
-    `${comprobante.nombre} ${comprobante.apellido}`,
     comprobante.destino,
-    comprobante.cuit,
     comprobante.montoEnviado,
     comprobante.monto,
     comprobante.moneda,
@@ -27,9 +25,7 @@ function getTitlesToSheetGeneral() {
     "Fecha",
     "Hora",
     "Cliente",
-    "Cuenta de origen",
     "Cuenta de destino",
-    "CUIT",
     "Monto enviado",
     "Monto",
     "Moneda",
@@ -55,12 +51,11 @@ async function updateComprobanteToSheet(matchs) {
     } else {
       match.comprobante.estado = "REVISAR MONTO";
     }
-    match.comprobante.nombre = match.comprobante.cuentaOrigen.split(" ")[0];
-    match.comprobante.apellido = match.comprobante.cuentaOrigen.split(" ")[1];
-    console.log("match", match);
+
+    console.log("DESTINO", match.comprobante.destino);
 
     let values = await getArrayToSheetGeneral(match.comprobante);
-
+    console.log("VALUES", values);
     await updateRow(
       GOOGLE_SHEET_ID,
       values,
