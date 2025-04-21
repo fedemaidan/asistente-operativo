@@ -8,7 +8,7 @@ const {
 } = require("../../../Utiles/GoogleServices/Sheets/cliente");
 const DolarService = require("../../../Utiles/Funciones/dolarService");
 
-module.exports = async function ValidacionDatos(userId, message, sock) {
+module.exports = async function ValidacionDatosStep(userId, message, sock) {
   const data = await opcionElegida(message);
 
   const comprobante = FlowManager.userFlows[userId].flowData;
@@ -47,7 +47,7 @@ module.exports = async function ValidacionDatos(userId, message, sock) {
     FlowManager.setFlow(
       userId,
       "ENVIOCOMPROBANTE",
-      "ModificarDatos",
+      "ModificarDatosStep",
       comprobante
     );
   } else if (data.data.Eleccion == "3") {

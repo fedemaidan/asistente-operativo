@@ -5,8 +5,8 @@ const ComprobanteFlow = {
     //await sock.sendMessage(userId, { text: '📝 Recopilando datos de la hoja de ruta deseada \n Listando datos detectados:' });
 
     if (userId != null && sock != null) {
-      if (typeof ComprobanteSteps["EnvioComprobante"] === "function") {
-        await ComprobanteSteps["EnvioComprobante"](userId, data, sock);
+      if (typeof ComprobanteSteps["EnvioComprobanteStep"] === "function") {
+        await ComprobanteSteps["EnvioComprobanteStep"](userId, data, sock);
       } else {
         console.log("El step solicitado no existe");
       }

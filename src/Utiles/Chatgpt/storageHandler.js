@@ -88,47 +88,7 @@ async function saveImageToStorage(message, senderPhone) {
   }
 }
 
-async function saveExcelToBuffer(message) {
-  try {
-    const docMessage =
-      message.message.documentWithCaptionMessage?.message?.documentMessage ||
-      message.message.documentMessage;
-
-    if (!docMessage) {
-      console.error("No se encontró el documento en el mensaje");
-      return { success: false, error: "No document message found" };
-    }
-
-    const mimeType = docMessage.mimetype;
-
-    if (!mimeType.endsWith("spreadsheetml.sheet")) {
-      console.error("El archivo no es un Excel válido");
-      return { success: false, error: "Not a valid Excel file" };
-    }
-
-    const buffer = await downloadMediaMessage(
-      { message: { documentMessage: docMessage } },
-      "buffer"
-    );
-
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-    return {
-      success: true,
-      data: jsonData,
-      fileName: docMessage.fileName || "excel.xlsx",
-    };
-  } catch (error) {
-    console.error("Error procesando archivo Excel:", error.message);
-    return { success: false, error: error.message };
-  }
-}
-
 module.exports = {
   saveImageToStorage,
   saveFileToStorage,
-  saveExcelToBuffer,
 };

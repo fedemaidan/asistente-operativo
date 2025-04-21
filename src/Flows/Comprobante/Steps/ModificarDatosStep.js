@@ -3,7 +3,7 @@ const FlowManager = require("../../../FlowControl/FlowManager");
 const { formatCurrency } = require("../../../Utiles/Funciones/formatCurrency");
 const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/CurrencyDisplay");
 
-module.exports = async function ModificarDatos(userId, message, sock) {
+module.exports = async function ModificarDatosStep(userId, message, sock) {
   try {
     await sock.sendMessage(userId, { text: "⏳ Analizando mensaje ⏳" });
 
@@ -37,7 +37,12 @@ module.exports = async function ModificarDatos(userId, message, sock) {
       text: "¿Los datos son correctos? Indique con el número su respuesta.\n\n*1.* ✅ *Si*\n*2.* 📝 *No, quiero corregirlo.*\n*3.* ❌ *Cancelar, voy a pedirlo nuevamente.*",
     });
 
-    FlowManager.setFlow(userId, "ENVIOCOMPROBANTE", "ValidacionDatos", data);
+    FlowManager.setFlow(
+      userId,
+      "ENVIOCOMPROBANTE",
+      "ValidacionDatosStep",
+      data
+    );
   } catch (error) {
     console.error("❌ Error en ModificarComprobante:", error);
   }

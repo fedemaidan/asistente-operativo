@@ -4,7 +4,7 @@ const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
 const analizarExcel = require("../Funciones/analizarExcel");
 const transcribeImage = require("../Chatgpt/transcribeImage");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
-const { saveExcelToBuffer } = require("../Chatgpt/storageHandler");
+const { parseExcelToJson } = require("../Funciones/excelHandler");
 
 const messageResponder = async (messageType, msg, sock, sender) => {
   switch (messageType) {
@@ -101,21 +101,19 @@ const messageResponder = async (messageType, msg, sock, sender) => {
       }
       break;
     }
-    case "document": {
+    case "document":
+    case "document-caption": {
       try {
         await sock.sendMessage(sender, {
           text: "⏳ Analizando documento... ⏳",
         });
-        console.log("messageType", messageType);
-        console.log("msg", msg);
 
-        const mimetype = msg.message.documentMessage.mimetype;
-        console.log("mimetype", mimetype);
-
-        // Verificar si el mensaje contiene un documento
         let docMessage =
           msg.message.documentMessage ||
           msg.message.documentWithCaptionMessage?.message?.documentMessage;
+
+        const mimetype = docMessage.mimetype;
+        console.log("MimeType", mimetype); //application/pdf
 
         if (!docMessage) {
           console.error("❌ El mensaje no contiene un documento válido.");
@@ -126,13 +124,11 @@ const messageResponder = async (messageType, msg, sock, sender) => {
         }
 
         if (mimetype.endsWith("pdf")) {
-          // Extraer la URL y el nombre del archivo
           const fileUrl = docMessage.url;
           const fileName = docMessage.fileName || "archivo.pdf";
 
           console.log(`📄 Documento recibido: ${fileName}, URL: ${fileUrl}`);
 
-          // Guardar el documento y obtener su ruta
           const pdfUrl = await saveImageToStorage(
             {
               message: {
@@ -156,37 +152,22 @@ const messageResponder = async (messageType, msg, sock, sender) => {
             { ...transcripcion.data, imagen: pdfUrl },
             sock
           );
-        } else if (mimetype.endsWith(".excel")) {
-          console.log("Es un Excel");
+        } else if (mimetype.endsWith("spreadsheetml.sheet")) {
+          const { data, success } = await parseExcelToJson(docMessage);
+
+          if (!success) {
+            await sock.sendMessage(sender, {
+              text: "❌ No se encontró un documento Excel válido.",
+            });
+            return;
+          }
+
+          analizarExcel(data, sender, sock);
         }
       } catch (error) {
         console.error("❌ Error al procesar el documento:", error);
         await sock.sendMessage(sender, {
           text: "❌ Hubo un error al procesar tu documento.",
-        });
-      }
-      break;
-    }
-    case "document-caption": {
-      try {
-        await sock.sendMessage(sender, {
-          text: "⏳ Analizando Excel... ⏳",
-        });
-
-        const { data, success } = await saveExcelToBuffer(msg, sender);
-
-        if (!success) {
-          await sock.sendMessage(sender, {
-            text: "❌ No se encontró un documento Excel válido.",
-          });
-          return;
-        }
-
-        analizarExcel(data, sender, sock);
-      } catch (error) {
-        console.error("❌ Error al procesar el Excel:", error);
-        await sock.sendMessage(sender, {
-          text: "❌ Hubo un error al procesar tu archivo Excel.",
         });
       }
       break;
