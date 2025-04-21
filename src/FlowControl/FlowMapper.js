@@ -1,6 +1,7 @@
 const FlowManager = require("../FlowControl/FlowManager");
 const defaultFlow = require("../Flows/INIT/INIT");
 const ComprobanteFlow = require("../Flows/Comprobante/ComprobanteFlow");
+const ExcelFlow = require("../Flows/Excel/ExcelFlow");
 
 class FlowMapper {
   async handleMessage(userId, message, sock, messageType) {
@@ -17,6 +18,14 @@ class FlowMapper {
             messageType
           );
           break;
+        case "EXCEL":
+          await ExcelFlow.Handle(
+            userId,
+            message,
+            flow.currentStep,
+            sock,
+            messageType
+          );
         default:
           await defaultFlow.handle(userId, message, sock, messageType);
       }

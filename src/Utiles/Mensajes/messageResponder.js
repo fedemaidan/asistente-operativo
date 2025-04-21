@@ -1,10 +1,9 @@
 const FlowMapper = require("../../FlowControl/FlowMapper");
 const downloadMedia = require("../Chatgpt/downloadMedia");
 const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
-const analizarExcel = require("../Funciones/analizarExcel");
+const ExcelFlow = require("../../Flows/Excel/ExcelFlow");
 const transcribeImage = require("../Chatgpt/transcribeImage");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
-const { parseExcelToJson } = require("../Funciones/excelHandler");
 
 const messageResponder = async (messageType, msg, sock, sender) => {
   switch (messageType) {
@@ -153,16 +152,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
             sock
           );
         } else if (mimetype.endsWith("spreadsheetml.sheet")) {
-          const { data, success } = await parseExcelToJson(docMessage);
-
-          if (!success) {
-            await sock.sendMessage(sender, {
-              text: "❌ No se encontró un documento Excel válido.",
-            });
-            return;
-          }
-
-          analizarExcel(data, sender, sock);
+          ExcelFlow.start(sender, docMessage, sock);
         }
       } catch (error) {
         console.error("❌ Error al procesar el documento:", error);

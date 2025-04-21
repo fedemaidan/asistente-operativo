@@ -1,3 +1,6 @@
+const { downloadMediaMessage } = require("@whiskeysockets/baileys");
+const XLSX = require("xlsx");
+
 async function parseExcelToJson(docMessage) {
   try {
     const buffer = await downloadMediaMessage(
