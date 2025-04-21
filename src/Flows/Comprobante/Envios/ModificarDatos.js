@@ -18,13 +18,16 @@ module.exports = async function ModificarDatos(userId, message, sock) {
 
     console.log("DATA", data);
 
-    const mensaje = `📌 *Confirmación de Datos* 📌\nPor favor, necesitamos que confirmes los siguientes datos que modificamos de la transferencia:\n🔹 *Número de comprobante:* ${
-      data.numero_comprobante
-    }\n🔹 *Fecha:* ${data.fecha}\n🔹 *Hora:* ${
-      data.hora
-    }\n🔹 *Cuenta de destino:* ${data.destino}\n🔹 *Monto:* ${formatCurrency(
-      data.montoEnviado
-    )}\n🔹 *Moneda:* ${CURRENCY_DISPLAY[data.moneda]}\n🔹`;
+    const mensaje =
+      `📌 *Confirmación de Datos* 📌\n\n` +
+      `Por favor, necesitamos que confirmes los siguientes datos que modificamos de la transferencia:\n\n` +
+      `🔹 *Número de comprobante:* ${data.numero_comprobante}\n` +
+      `🔹 *Fecha:* ${data.fecha}\n` +
+      `🔹 *Hora:* ${data.hora}\n` +
+      `🔹 *Cliente*: ${data.cliente}\n` +
+      `🔹 *Cuenta de destino:* ${data.destino}\n` +
+      `🔹 *Monto:* ${formatCurrency(data.montoEnviado)}\n` +
+      `🔹 *Moneda:* ${CURRENCY_DISPLAY[data.moneda]}`;
 
     await sock.sendMessage(userId, {
       text: mensaje,

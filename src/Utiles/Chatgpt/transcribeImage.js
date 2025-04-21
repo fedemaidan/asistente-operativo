@@ -8,7 +8,7 @@ Sos un experto transcribiendo imagenes. Vas a recibir una imagen de una factura 
 Devolve solo un json con el texto transcribido. En el caso de que falten algunos atributos, devolve un - en el campo correspondiente.
 No incluyas explicaciones adicionales ni texto extra. Solo el JSON.
 
-Para obtener el destino debes usar el atributo nombre unicamente de una de las siguientes 2 opciones:
+Para obtener el destino debes usar el atributo nombre unicamente de una de las siguientes 2 opciones o no encontrado:
 [
   {
     "nombre": "ASOCIACION CONSULTURA MUTUAL",
@@ -28,12 +28,9 @@ Para obtener el destino debes usar el atributo nombre unicamente de una de las s
         {
             numero_comprobante: "numero de comprobante de la transferencia",
             monto: "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
-            destino: "cuenta de destino",            
-            fecha: "Es la fecha del comprobante o de transferencia. Formato dd/mm/yyyy",  
-            hora: "Es la hora del comprobante o de transferencia.",
-            nombre: "Es el nombre de la persona que hizo la transferencia.",
-            apellido: "Es el apellido de la persona que hizo la transferencia.",
-            cuit: "Es el cuit de la persona que hizo la transferencia.",
+            destino: "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTURA MUTUAL, ENSHOP SRL o NO ENCONTRADO",            
+            fecha: "Es la fecha del comprobante o de transferencia. Formato dd/mm/yyyy. Si no la encuentras, devolve -",  
+            hora: "Es la hora del comprobante o de transferencia. Formato hh:mm 24hs. Si no la encuentras, devolve -",
         }
     }
 `;

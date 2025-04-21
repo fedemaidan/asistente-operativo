@@ -32,7 +32,6 @@ module.exports = async function ValidacionDatos(userId, message, sock) {
     comprobante.moneda = CURRENCY_DISPLAY[comprobante.moneda];
 
     await addComprobanteToSheet(comprobante);
-    await addClienteComprobanteToSheet(comprobante);
 
     FlowManager.resetFlow(userId);
     await sock.sendMessage(userId, {

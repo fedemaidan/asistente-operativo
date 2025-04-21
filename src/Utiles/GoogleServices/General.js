@@ -53,7 +53,6 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
       spreadsheetId: spreadsheetId,
       resource: {
         requests: [
-          // Header styling
           {
             repeatCell: {
               range: {
@@ -86,7 +85,6 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
                 "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
             },
           },
-          // Freeze the header row
           {
             updateSheetProperties: {
               properties: {
@@ -98,7 +96,7 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
               fields: "gridProperties.frozenRowCount",
             },
           },
-          // Auto-resize columns
+          // Auto-resize columns based on content
           {
             autoResizeDimensions: {
               dimensions: {
@@ -114,7 +112,9 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
     };
 
     await sheets.spreadsheets.batchUpdate(formatRequest);
-    console.log(`Headers added and formatted for sheet "${sheetName}".`);
+    console.log(
+      `Headers added and formatted for sheet "${sheetName}" (row 1 only).`
+    );
   } catch (err) {
     console.error("Failed to add formatted headers:", err);
   }

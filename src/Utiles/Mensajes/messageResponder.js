@@ -153,7 +153,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
 
           ComprobanteFlow.start(
             sender,
-            { ...transcripcion.data, image: pdfUrl },
+            { ...transcripcion.data, imagen: pdfUrl },
             sock
           );
         } else if (mimetype.endsWith(".excel")) {
