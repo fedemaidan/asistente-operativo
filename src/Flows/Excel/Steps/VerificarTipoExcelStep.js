@@ -19,8 +19,8 @@ module.exports = async function VerificarTipoExcelStep(userId, message, sock) {
     `Por favor, selecciona una opción:\n\n` +
     `*1.* 🏦 *Reporte Banco*\n` +
     `*2.* 💰 *Reporte Financiera*\n` +
-    `*3.* 🧾 *Reporte Stock*` +
-    `Responde con el número de la opción que corresponda (1 o 2).`;
+    `*3.* 🧾 *Reporte Stock*\n\n` +
+    `Responde con el número de la opción que corresponda (1, 2 o 3).`;
 
   await sock.sendMessage(userId, {
     text: mensaje,

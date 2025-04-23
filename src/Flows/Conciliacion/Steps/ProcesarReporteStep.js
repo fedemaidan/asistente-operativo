@@ -1,14 +1,26 @@
-const analizarExcel = require("../../../Utiles/Funciones/Excel/analizarExcel");
+const {
+  parseJsonBancoToInfo,
+  getMatchs,
+} = require("../../../Utiles/Funciones/Excel/excelMovimientos");
 const {
   updateComprobanteToSheet,
+  parseComprobantes,
 } = require("../../../Utiles/GoogleServices/Sheets/comprobante");
+const { getRowsValues } = require("../../../Utiles/GoogleServices/General");
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
 module.exports = async function ProcesarReporteStep(userId, data, sock) {
   await sock.sendMessage(userId, {
     text: "🔄 Procesando...",
   });
 
-  const matchs = await analizarExcel(data, "BANCO");
+  const dataComprobantes = await getRowsValues(
+    GOOGLE_SHEET_ID,
+    "ComprobanteRAW",
+    "A2:M1000"
+  );
+  const comprobantesRAW = parseComprobantes(dataComprobantes);
+  const matchs = getMatchs(comprobantesRAW, data);
 
   if (matchs.length === 0) {
     await sock.sendMessage(userId, {

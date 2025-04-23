@@ -35,6 +35,21 @@ function getTitlesToSheetGeneral() {
   ];
 }
 
+const parseComprobantes = (arr) =>
+  arr.map((row) => ({
+    numero_comprobante: row[0],
+    fecha: row[1],
+    hora: row[2],
+    cliente: row[3],
+    destino: row[4],
+    montoEnviado: row[5],
+    monto: row[6],
+    moneda: row[7],
+    tipoDeCambio: row[8],
+    estado: row[9],
+    imagen: row[10],
+  }));
+
 async function addComprobanteToSheet(comprobante) {
   const headers = getTitlesToSheetGeneral();
   const values = await getArrayToSheetGeneral(comprobante);
@@ -69,4 +84,5 @@ async function updateComprobanteToSheet(matchs) {
 module.exports = {
   addComprobanteToSheet,
   updateComprobanteToSheet,
+  parseComprobantes,
 };
