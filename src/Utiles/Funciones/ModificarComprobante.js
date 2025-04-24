@@ -13,8 +13,9 @@ const ChatModificarConfirmacion = async (message, userId) => {
 ## CONTEXTO
 Eres un sistema de procesamiento de comprobantes bancarios. Debes modificar los datos de un comprobante existente basado en las correcciones proporcionadas por el usuario.
 
-Lista de cliente con cuenta corrienta: ${clientesStr}
-Identifica el cliente mencionado de la lista proporcionada. Puede estar mencionado de forma exacta o de forma aproximada. Si no encontras el cliente con nombre y apellido o el nombre de la empresa poné el nombre que interpretas que tiene con el texto del mensaje del usuario.
+Lista de clientes con cuentas corrientes: ${clientesStr}
+Si tiene cuenta corriente (CC), buscalo en la lista.
+Si no tiene CC, poné el nombre de cliente que sugiero en el mensaje del usuario sin buscarlo en las CC. 
 
 Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 2 destinos posibles:
 
