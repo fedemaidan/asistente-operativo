@@ -1,15 +1,24 @@
 const { getDaysDiff } = require("../HandleDates");
 
-const parseMovimientosBanco = (arr) =>
-  arr.map((row) => ({
-    sucOrigen: row["__EMPTY"],
-    descSucursal: row["__EMPTY_1"],
-    codOperativo: row["__EMPTY_2"],
-    referencia: row["__EMPTY_3"],
-    concepto: row["__EMPTY_4"],
-    importe: row["__EMPTY_5"],
-    saldo: row["__EMPTY_6"],
-  }));
+const parseMovimientosBanco = (arr) => {
+  return arr
+    .map((row) => ({
+      sucOrigen: row["__EMPTY"],
+      descSucursal: row["__EMPTY_1"],
+      codOperativo: row["__EMPTY_2"],
+      referencia: row["__EMPTY_3"],
+      concepto: row["__EMPTY_4"],
+      importe: row["__EMPTY_5"],
+      saldo: row["__EMPTY_6"],
+    }))
+    .filter(
+      (mov) =>
+        mov.referencia !== undefined &&
+        mov.importe !== undefined &&
+        mov.referencia !== "Referencia" &&
+        !isNaN(Number(mov.importe))
+    );
+};
 
 const parseJsonBancoToMovimiento = (data) => {
   const dataArray = Array.isArray(data) ? data : Object.values(data);
@@ -23,11 +32,13 @@ const parseJsonBancoToMovimiento = (data) => {
   const movimientosDelDia = parseMovimientosBanco(
     dataArray.slice(0, limiteIndex - 1)
   );
+
   const ultimosMovimientos = parseMovimientosBanco(
     dataArray.slice(limiteIndex + 3)
   );
 
-  return [...movimientosDelDia, ...ultimosMovimientos];
+  const resultado = [...movimientosDelDia, ...ultimosMovimientos];
+  return resultado;
 };
 
 const parseJsonFinancieraToMovimiento = (data) => {
@@ -54,8 +65,8 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
         if (comprobante.numero_comprobante == movimiento.referencia) {
           // Para banco, solo marcar como CONFIRMADO
           comprobante.estado =
-            Math.round(comprobante.montoEnviado) ==
-            Math.round(movimiento.importe)
+            Math.round(Number(comprobante.montoEnviado)) ==
+            Math.round(Number(movimiento.importe))
               ? "CONFIRMADO"
               : "REVISAR MONTO";
           matchs.push({
