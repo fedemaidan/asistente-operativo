@@ -3,7 +3,7 @@ const analizarCliente = require("../../../Utiles/Chatgpt/analizarCliente");
 const { formatCurrency } = require("../../../Utiles/Funciones/formatCurrency");
 const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/CurrencyDisplay");
 
-module.exports = async function ElegirCliente(userId, message, sock) {
+module.exports = async function ElegirClienteStep(userId, message, sock) {
   await sock.sendMessage(userId, {
     text: "⏳Analizando mensaje...⏳",
   });
@@ -36,7 +36,7 @@ module.exports = async function ElegirCliente(userId, message, sock) {
   FlowManager.setFlow(
     userId,
     "ENVIOCOMPROBANTE",
-    "ValidacionDatos",
+    "ValidacionDatosStep",
     comprobante
   );
 };

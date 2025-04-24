@@ -5,7 +5,7 @@ const opciones = [
   {
     accion: "Confirmar datos",
     descripcion: `Necesito analizar los datos del usuario. Numero de transferencia, monto, nombre, apellido, destino, CUIT, fecha y hora.
-      Para obtener el destino debes usar el atributo nombre unicamente de una de las siguientes 2 opciones:
+      Para obtener el destino debes usar el atributo nombre unicamente de una de las siguientes 2 opciones o no encontrado:
       [
         {
           "nombre": "ASOCIACION CONSULTURA MUTUAL",
@@ -25,12 +25,9 @@ const opciones = [
       monto:
         "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
       destino:
-        "cuenta de destino. En el caso de que el usuario indique cual es el destino, debes basarte en el nombre, cuit o cbu para determinarlo",
+        "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTURA MUTUAL, ENSHOP SRL o NO ENCONTRADO",
       fecha: "fecha de la transferencia, en formato dd/mm/yyyy",
       hora: "hora de la transferencia",
-      nombre: "nombre de origen",
-      apellido: "apellido de origen",
-      cuit: "cuit de origen",
     },
   },
 ];

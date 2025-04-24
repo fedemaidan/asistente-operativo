@@ -13,13 +13,13 @@ Mensaje del usuario: "${message}"
 Lista de clientes posibles: ${clientesStr}
 
 Reglas:
-1. Identifica el cliente mencionado de la lista proporcionada. Puede estar mencionado de forma exacta o de forma aproximada.
+1. Identifica el cliente mencionado de la lista proporcionada. Puede estar mencionado de forma exacta o de forma aproximada. Si no encontras el cliente con nombre y apellido o el nombre de la empresa pone NO ENCONTRADO.
 2. Identifica la moneda mencionada (ARS, USD Blue, USD Oficial, USD MEP).
 3. Si no se menciona una moneda específicamente, asume que es ARS (Pesos Argentinos).
 
 Responde ÚNICAMENTE con un JSON válido con este formato exacto:
 {
-  "nombre": "NOMBRE DEL CLIENTE DETECTADO",
+  "nombre": "NOMBRE DEL CLIENTE DETECTADO, ESCRITO TAL CUAL COMO ESTA EN EL LISTADO DE CLIENTES",
   "moneda": ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA', 'USD_MEP_VENTA'),
 }
 `;
