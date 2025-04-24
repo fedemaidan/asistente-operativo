@@ -24,8 +24,6 @@ Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 2 dest
   }
 ]
 
-Si el usuario quiere cambiar el atributo cliente, debes marcarlo como "BUSCAR"
-
 ## COMPROBANTE ACTUAL (JSON)
 \`\`\`json
 ${JSON.stringify(comprobante, null, 2)}

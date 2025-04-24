@@ -13,7 +13,7 @@ Mensaje del usuario: "${message}"
 Lista de clientes posibles: ${clientesStr}
 
 Reglas:
-1. Identifica el cliente mencionado de la lista proporcionada. Puede estar mencionado de forma exacta o de forma aproximada. Si no encontras el cliente con nombre y apellido o el nombre de la empresa pone NO ENCONTRADO.
+1. Identifica el cliente mencionado de la lista proporcionada. Puede estar mencionado de forma exacta o de forma aproximada. Si no encontras el cliente con nombre y apellido o el nombre de la empresa poné el nombre que interpretas que tiene con el texto del mensaje del usuario.
 2. Identifica la moneda mencionada (ARS, USD Blue, USD Oficial, USD MEP).
 3. Si no se menciona una moneda específicamente, asume que es ARS (Pesos Argentinos).
 
