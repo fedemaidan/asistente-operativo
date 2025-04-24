@@ -1,4 +1,6 @@
-const parseMovimientos = (arr) =>
+const { getDaysDiff } = require("../HandleDates");
+
+const parseMovimientosBanco = (arr) =>
   arr.map((row) => ({
     sucOrigen: row["__EMPTY"],
     descSucursal: row["__EMPTY_1"],
@@ -9,7 +11,7 @@ const parseMovimientos = (arr) =>
     saldo: row["__EMPTY_6"],
   }));
 
-const parseJsonBancoToInfo = (data) => {
+const parseJsonBancoToMovimiento = (data) => {
   const dataArray = Array.isArray(data) ? data : Object.values(data);
 
   const limiteIndex = dataArray.findIndex((row) =>
@@ -18,33 +20,90 @@ const parseJsonBancoToInfo = (data) => {
     )
   );
 
-  const movimientosDelDia = parseMovimientos(
+  const movimientosDelDia = parseMovimientosBanco(
     dataArray.slice(0, limiteIndex - 1)
   );
-  const ultimosMovimientos = parseMovimientos(dataArray.slice(limiteIndex + 3));
+  const ultimosMovimientos = parseMovimientosBanco(
+    dataArray.slice(limiteIndex + 3)
+  );
 
   return [...movimientosDelDia, ...ultimosMovimientos];
 };
 
-//matchGenerico para banco y financiera ??
+const parseJsonFinancieraToMovimiento = (data) => {
+  const dataArray = Array.isArray(data) ? data : Object.values(data);
+
+  const infoMovimientos = dataArray
+    .filter((value) => value.textoAgrupa === "Ingreso. TT")
+    .map((value) => ({
+      importe: value.credito,
+      fecha: value.diaCrea,
+      hora: value.horaCrea,
+    }));
+
+  return infoMovimientos;
+};
+
 const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
   const matchs = [];
-  for (const comprobante of comprobanteSheet) {
-    for (const movimiento of comprobanteMovimientos) {
-      if (comprobante.numero_comprobante == movimiento.referencia) {
-        matchs.push({
-          comprobante,
-          movimiento,
-        });
-        break;
+
+  // Buscar matchs con movimientos Banco (por id de referencia)
+  if (comprobanteMovimientos[0]?.referencia) {
+    for (const comprobante of comprobanteSheet) {
+      for (const movimiento of comprobanteMovimientos) {
+        if (comprobante.numero_comprobante == movimiento.referencia) {
+          // Para banco, solo marcar como CONFIRMADO
+          comprobante.estado =
+            Math.round(comprobante.montoEnviado) ==
+            Math.round(movimiento.importe)
+              ? "CONFIRMADO"
+              : "REVISAR MONTO";
+          matchs.push({
+            comprobante,
+            movimiento,
+          });
+          break;
+        }
       }
     }
   }
+
+  console.log("COMPROBANTESHEET", comprobanteSheet);
+  console.log("COMPROBANTEMOVIMIENTOS", comprobanteMovimientos);
+  // Buscar matchs con movimientos Financiera (por monto y fecha con diferencia máxima de 7 días)
+  if (comprobanteMovimientos[0]?.fecha) {
+    for (const comprobante of comprobanteSheet) {
+      const montoComprobante = Number(comprobante.montoEnviado);
+      for (const movimiento of comprobanteMovimientos) {
+        const montoMovimiento = Number(movimiento.importe);
+        console.log("MONTOCOMPROBANTE Y MONTOMOVIMIENTO", {
+          montoComprobante,
+          montoMovimiento,
+        });
+        const diffDays = getDaysDiff(comprobante.fecha, movimiento.fecha);
+        if (
+          montoComprobante == montoMovimiento &&
+          diffDays < 7 &&
+          diffDays >= 0
+        ) {
+          comprobante.estado = `CONFIRMADO ${diffDays}`;
+
+          matchs.push({
+            comprobante,
+            movimiento,
+            diffDays,
+          });
+          break;
+        }
+      }
+    }
+  }
+
   return matchs;
 };
 
 module.exports = {
-  parseMovimientos,
-  parseJsonBancoToInfo,
+  parseJsonBancoToMovimiento,
+  parseJsonFinancieraToMovimiento,
   getMatchs,
 };
