@@ -10,16 +10,17 @@ Analiza el siguiente mensaje y detecta qué cliente se menciona y qué moneda se
 
 Mensaje del usuario: "${message}"
 
-Lista de clientes posibles: ${clientesStr}
+Lista de clientes con cuentas corrientes: ${clientesStr}
+Si tiene cuenta corriente (CC), buscalo en la lista.
+Si no tiene CC, poné el nombre de cliente que sugiero en el mensaje del usuario sin buscarlo en las CC. 
 
 Reglas:
-1. Identifica el cliente mencionado de la lista proporcionada. Puede estar mencionado de forma exacta o de forma aproximada. Si no encontras el cliente con nombre y apellido o el nombre de la empresa pone NO ENCONTRADO.
-2. Identifica la moneda mencionada (ARS, USD Blue, USD Oficial, USD MEP).
-3. Si no se menciona una moneda específicamente, asume que es ARS (Pesos Argentinos).
+1. Identifica la moneda mencionada (ARS, USD Blue, USD Oficial, USD MEP).
+2. Si no se menciona una moneda específicamente, asume que es ARS (Pesos Argentinos).
 
 Responde ÚNICAMENTE con un JSON válido con este formato exacto:
 {
-  "nombre": "NOMBRE DEL CLIENTE DETECTADO, ESCRITO TAL CUAL COMO ESTA EN EL LISTADO DE CLIENTES",
+  "nombre": "Si es CC pone el NOMBRE DE LA CUENTA CORRIENTE DETECTADO, ESCRITO TAL CUAL COMO ESTA EN EL LISTADO DE CUENTA CUENTA CORRIENTE, sino poné el nombre del cliente que entendes",
   "moneda": ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA', 'USD_MEP_VENTA'),
 }
 `;

@@ -1,14 +1,22 @@
 const { getByChatGpt4o } = require("../../Utiles/Chatgpt/Base");
 const FlowManager = require("../../FlowControl/FlowManager");
+const { getClientesFromSheet } = require("../GoogleServices/Sheets/cliente");
 
 const ChatModificarConfirmacion = async (message, userId) => {
   const comprobante = FlowManager.userFlows[userId]?.flowData;
+  const clientes = await getClientesFromSheet();
+  const clientesStr = JSON.stringify(clientes);
 
   const prompt = `
 # INSTRUCCIONES PARA ACTUALIZAR COMPROBANTE
 
 ## CONTEXTO
 Eres un sistema de procesamiento de comprobantes bancarios. Debes modificar los datos de un comprobante existente basado en las correcciones proporcionadas por el usuario.
+
+Lista de clientes con cuentas corrientes: ${clientesStr}
+Si tiene cuenta corriente (CC), buscalo en la lista.
+Si no tiene CC, poné el nombre de cliente que sugiero en el mensaje del usuario sin buscarlo en las CC. 
+
 Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 2 destinos posibles:
 
 [
@@ -23,8 +31,6 @@ Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 2 dest
     "cbu": "0720044120000000414890"
   }
 ]
-
-Si el usuario quiere cambiar el atributo cliente, debes marcarlo como "BUSCAR"
 
 ## COMPROBANTE ACTUAL (JSON)
 \`\`\`json
