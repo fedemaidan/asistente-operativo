@@ -10,6 +10,7 @@ module.exports = async function VerificarTipoExcelStep(userId, message, sock) {
       text: "❌ No se pudo procesar el archivo Excel.",
     });
     console.log("❌ No se encontró un documento Excel válido.", error);
+    FlowManager.resetFlow(userId);
     return;
   }
 
@@ -19,8 +20,9 @@ module.exports = async function VerificarTipoExcelStep(userId, message, sock) {
     `Por favor, selecciona una opción:\n\n` +
     `*1.* 🏦 *Reporte Banco*\n` +
     `*2.* 💰 *Reporte Financiera*\n` +
-    `*3.* 🧾 *Reporte Stock*\n\n` +
-    `Responde con el número de la opción que corresponda (1, 2 o 3).`;
+    `*3.* 🧾 *Reporte Stock*\n` +
+    `*4.* ❌ *Cancelar*\n\n` +
+    `Responde con el número de la opción que corresponda (1, 2, 3 o 4).`;
 
   await sock.sendMessage(userId, {
     text: mensaje,

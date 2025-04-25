@@ -64,19 +64,6 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
               },
               cell: {
                 userEnteredFormat: {
-                  backgroundColor: {
-                    red: 0.12,
-                    green: 0.17,
-                    blue: 0.45,
-                  },
-                  textFormat: {
-                    bold: true,
-                    foregroundColor: {
-                      red: 1.0,
-                      green: 1.0,
-                      blue: 1.0,
-                    },
-                  },
                   horizontalAlignment: "CENTER",
                   verticalAlignment: "MIDDLE",
                 },
@@ -248,15 +235,28 @@ async function checkIfSheetExists(sheetId, sheetName) {
 }
 
 async function updateRow(sheetId, values, range, posIdColumn, idValue) {
+  const sheetName = range.split("!")[0];
+  const sheetExists = await checkIfSheetExists(sheetId, sheetName);
+
+  if (!sheetExists) {
+    return { success: false, message: "Sheet does not exist" };
+  }
+
   const readRequest = {
     spreadsheetId: sheetId,
     range: range,
   };
   const response = await sheets.spreadsheets.values.get(readRequest);
+  console.log("RESPONSE", response);
   const rowIdx = response.data.values.findIndex(
     (row) => row[posIdColumn] == idValue
   );
-  const writeRange = `${range.split("!")[0]}!A${rowIdx + rowInit}`;
+
+  if (rowIdx === -1 || rowIdx === undefined) {
+    return { success: false, message: "Row not found" };
+  }
+
+  const writeRange = `${sheetName}!A${rowIdx + rowInit}`;
 
   const writeRequest = {
     spreadsheetId: sheetId,
@@ -265,7 +265,7 @@ async function updateRow(sheetId, values, range, posIdColumn, idValue) {
     resource: { values: [values] },
   };
   await sheets.spreadsheets.values.update(writeRequest);
-  console.log("Row updated.");
+  return { success: true, message: "Row updated successfully" };
 }
 
 async function updateSheetWithBatchDelete(
@@ -358,4 +358,5 @@ module.exports = {
   checkIfSheetExists,
   addRow,
   cloneGoogleSheet,
+  addFormattedHeaders,
 };

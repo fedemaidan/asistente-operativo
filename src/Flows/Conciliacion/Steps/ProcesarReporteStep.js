@@ -1,3 +1,4 @@
+const FlowManager = require("../../../FlowControl/FlowManager");
 const {
   getMatchs,
 } = require("../../../Utiles/Funciones/Excel/excelMovimientos");
@@ -22,6 +23,7 @@ module.exports = async function ProcesarReporteStep(
     await sock.sendMessage(userId, {
       text: "❌ No se encontraron comprobantes que coincidan con las referencias del archivo Excel.",
     });
+    FlowManager.resetFlow();
     return;
   }
 
@@ -39,4 +41,5 @@ module.exports = async function ProcesarReporteStep(
   await sock.sendMessage(userId, {
     text: `✅ Comprobantes actualizados en la hoja de cálculo. Link al Google Sheet: https://docs.google.com/spreadsheets/d/${process.env.GOOGLE_SHEET_ID}/edit?usp=sharing`,
   });
+  FlowManager.resetFlow();
 };

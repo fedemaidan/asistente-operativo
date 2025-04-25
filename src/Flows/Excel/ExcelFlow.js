@@ -18,7 +18,7 @@ const ExcelFlow = {
       if (typeof ExcelSteps[currentStep] === "function") {
         await ExcelSteps[currentStep](userId, message, sock);
       } else {
-        console.log("El step solicitado no existe");
+        console.log("El step solicitado en ExcelFlow no existe");
       }
     } else {
       console.log("Ocurrio un error con los datos");

@@ -24,6 +24,7 @@ module.exports = async function ElegirTipoExcelStep(userId, message, sock) {
     await sock.sendMessage(userId, {
       text: "Cancelando Operacion.",
     });
+    FlowManager.resetFlow(userId);
   } else {
     await sock.sendMessage(userId, { text: "Disculpa, no lo he entendido" });
   }

@@ -1,11 +1,12 @@
 const { analizarIntencion } = require("../../Utiles/Chatgpt/AnalizarIntencion");
 const ComprobanteFlow = require("../Comprobante/ComprobanteFlow");
+const ExcelFlow = require("../Excel/ExcelFlow");
 
 const defaultFlow = {
   async Init(userId, message, sock, messageType) {
     try {
       //si es texto se analiza en cambio si es una imagen o documento o document-caption este ya se encuentra analizado y salta el "Analizar intencion"
-      let result;
+      let result = {};
       await sock.sendMessage(userId, { text: "⏳ Analizando mensaje ⏳" });
 
       if (
@@ -14,6 +15,9 @@ const defaultFlow = {
         messageType == "audio"
       ) {
         result = await analizarIntencion(message, userId);
+      } else if (messageType == "excel") {
+        result.accion = "Excel";
+        result.data = message;
       } else {
         result = message;
       }
@@ -30,6 +34,10 @@ const defaultFlow = {
             text: "No entendi tu mensaje, porfavor repitelo",
           });
           FlowManager.resetFlow(userId);
+          break;
+
+        case "Excel":
+          ExcelFlow.start(userId, result.data, sock);
           break;
 
         case "NoRegistrado":

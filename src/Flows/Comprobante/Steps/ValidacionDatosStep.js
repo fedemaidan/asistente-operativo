@@ -57,5 +57,6 @@ module.exports = async function ValidacionDatosStep(userId, message, sock) {
     FlowManager.resetFlow(userId);
   } else {
     await sock.sendMessage(userId, { text: "Disculpa, no lo he entendido" });
+    FlowManager.resetFlow(userId);
   }
 };
