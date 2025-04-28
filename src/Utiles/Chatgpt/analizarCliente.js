@@ -20,7 +20,7 @@ Reglas:
 
 Responde ÚNICAMENTE con un JSON válido con este formato exacto:
 {
-  "nombre": "Si es CC pone el NOMBRE DE LA CUENTA CORRIENTE DETECTADO, ESCRITO TAL CUAL COMO ESTA EN EL LISTADO DE CUENTA CUENTA CORRIENTE, sino poné el nombre del cliente que entendes",
+  "nombre": "Si es CC pone el NOMBRE DE LA CUENTA CORRIENTE DETECTADO, ESCRITO TAL CUAL COMO ESTA EN EL LISTADO DE CUENTA CUENTA CORRIENTE y escribi al final entre parentesis (CC), sino poné el nombre del cliente que entendes",
   "moneda": ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA', 'USD_MEP_VENTA'),
 }
 `;

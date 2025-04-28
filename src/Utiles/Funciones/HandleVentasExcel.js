@@ -25,7 +25,7 @@ const limpiarDatosVentas = (data) => {
   });
 };
 
-const proyectarStock = (dataStock, dataVentas) => {
+const proyectarStock = (dataStock, dataVentas, dateDiff) => {
   console.log("DATA STOCK", dataStock.slice(0, 5));
 
   const stockProyeccion = [];
@@ -37,18 +37,23 @@ const proyectarStock = (dataStock, dataVentas) => {
     if (!itemVentas) {
       continue;
     }
-    const ventasDiarias = itemVentas.Cantidad / 15;
+    const ventasDiarias = Math.round(itemVentas.Cantidad / dateDiff);
     let diasSinStock = 0;
 
     if (ventasDiarias > 0) {
-      diasSinStock = itemStock.Cantidad / ventasDiarias;
+      diasSinStock = Math.round(itemStock.Cantidad / ventasDiarias);
+    }
+
+    if (itemStock.Cantidad <= 0) {
+      diasSinStock = 0;
     }
 
     const itemStockProyeccion = {
       codigo: itemStock.Codigo,
       descripcion: itemStock.Descripcion,
+      cantidad: itemStock.Cantidad,
       ventas15Dias: itemVentas.Cantidad,
-      ventasProyectadas: itemVentas.Cantidad * 6,
+      ventasProyectadas: ventasDiarias * 90,
       diasSinStock,
     };
     stockProyeccion.push(itemStockProyeccion);

@@ -16,7 +16,7 @@ async function parseExcelToJson(docMessage) {
     return {
       success: true,
       data: jsonData,
-      fileName: docMessage.fileName || "excel.xlsx",
+      fileName: docMessage.title,
     };
   } catch (error) {
     console.error("Error procesando archivo Excel:", error.message);

@@ -1,15 +1,14 @@
 const FlowMapper = require("../../FlowControl/FlowMapper");
 const downloadMedia = require("../Chatgpt/downloadMedia");
 const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
-const ExcelFlow = require("../../Flows/Excel/ExcelFlow");
 const transcribeImage = require("../Chatgpt/transcribeImage");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
-const FlowManager = require("../../FlowControl/FlowManager");
 
 const messageResponder = async (messageType, msg, sock, sender) => {
   switch (messageType) {
     case "text":
     case "text_extended": {
+      await sock.sendMessage(sender, { text: "⏳ Analizando mensaje ⏳" });
       const text =
         msg.message.conversation || msg.message.extendedTextMessage?.text;
       await FlowMapper.handleMessage(sender, text, sock, messageType);

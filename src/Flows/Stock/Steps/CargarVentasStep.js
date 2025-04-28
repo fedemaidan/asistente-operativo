@@ -9,12 +9,14 @@ const {
 const {
   updateProyeccionToSheet,
 } = require("../../../Utiles/GoogleServices/Sheets/proyeccionStock");
+const getDatesFromExcel = require("../../../Utiles/Chatgpt/getDatesFromExcel");
 
 module.exports = async function CargarVentasStep(userId, excelRaw, sock) {
   const { stockArray: stockExcelData } =
     FlowManager.userFlows[userId]?.flowData;
 
-  const { data } = await parseExcelToJson(excelRaw);
+  console.log("EXCEL RAW", excelRaw);
+  const { data, fileName } = await parseExcelToJson(excelRaw);
 
   if (!data || Object.keys(data).length === 0) {
     await sock.sendMessage(userId, {
@@ -24,13 +26,19 @@ module.exports = async function CargarVentasStep(userId, excelRaw, sock) {
     return;
   }
 
-  console.log("stockExcelData", stockExcelData);
+  const { date1, date2, dateDiff } = await getDatesFromExcel(fileName);
+
   const ventasExcelData = limpiarDatosVentas(data);
-  const stockProyeccion = proyectarStock(stockExcelData, ventasExcelData);
+  const stockProyeccion = proyectarStock(
+    stockExcelData,
+    ventasExcelData,
+    dateDiff
+  );
 
-  console.log("STOCK PROYECCION", stockProyeccion.slice(0, 10));
-
-  await updateProyeccionToSheet(stockProyeccion);
+  await updateProyeccionToSheet(
+    stockProyeccion,
+    `Proyección ${date1} al ${date2}`
+  );
 
   FlowManager.resetFlow(userId);
   await sock.sendMessage(userId, {

@@ -12,6 +12,7 @@ function getArrayToSheetGeneral(item) {
   const values = [
     item.codigo,
     item.descripcion,
+    item.cantidad,
     item.ventas15Dias,
     item.ventasProyectadas,
     item.diasSinStock,
@@ -23,35 +24,44 @@ function getTitlesToSheetGeneral() {
   return [
     "Código",
     "Descripción",
+    "Cantidad",
     "Ventas 15 días",
     "Ventas proyectadas (3 meses)",
     "Días para acabar stock",
   ];
 }
 
-async function updateProyeccionToSheet(stockProyeccion) {
-  sheetName = general_range.split("!")[0];
-  const headers = getTitlesToSheetGeneral();
-  const sheetExists = await checkIfSheetExists(
-    GOOGLE_SHEET_ID,
-    general_range.split("!")[0]
-  );
+async function updateProyeccionToSheet(stockProyeccion, sheetName) {
+  try {
+    const headers = getTitlesToSheetGeneral();
+    const sheetExists = await checkIfSheetExists(GOOGLE_SHEET_ID, sheetName);
 
-  if (!sheetExists) {
-    const newSheetId = await createSheet(GOOGLE_SHEET_ID, sheetName);
+    if (!sheetExists) {
+      const newSheetId = await createSheet(GOOGLE_SHEET_ID, sheetName);
 
-    if (newSheetId) {
-      await addFormattedHeaders(
-        GOOGLE_SHEET_ID,
-        sheetName,
-        newSheetId,
-        headers
-      );
+      if (newSheetId) {
+        await addFormattedHeaders(
+          GOOGLE_SHEET_ID,
+          sheetName,
+          newSheetId,
+          headers
+        );
+      }
     }
-  }
 
-  const values = stockProyeccion.map((item) => getArrayToSheetGeneral(item));
-  await updateSheetWithBatchDelete(GOOGLE_SHEET_ID, general_range, values, 0);
+    const values = stockProyeccion.map((item) => getArrayToSheetGeneral(item));
+    await updateSheetWithBatchDelete(
+      GOOGLE_SHEET_ID,
+      `${sheetName}!A2:Z10000`,
+      values,
+      0
+    );
+  } catch (error) {
+    console.error(
+      "Error al actualizar la proyección en la hoja de cálculo:",
+      error
+    );
+  }
 }
 
 module.exports = {

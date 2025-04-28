@@ -7,7 +7,6 @@ const defaultFlow = {
     try {
       //si es texto se analiza en cambio si es una imagen o documento o document-caption este ya se encuentra analizado y salta el "Analizar intencion"
       let result = {};
-      await sock.sendMessage(userId, { text: "⏳ Analizando mensaje ⏳" });
 
       if (
         messageType == "text" ||
@@ -22,7 +21,7 @@ const defaultFlow = {
         result = message;
       }
 
-      console.log(JSON.stringify(result, null, 2));
+      console.log("result", JSON.stringify(result, null, 2));
 
       switch (result.accion) {
         case "Confirmar datos":

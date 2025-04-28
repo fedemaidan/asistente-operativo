@@ -56,6 +56,8 @@ async function addComprobanteToSheet(comprobante) {
   await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function updateComprobanteToSheet(matchs) {
   for (const match of matchs) {
     let values = await getArrayToSheetGeneral(match.comprobante);
@@ -66,6 +68,7 @@ async function updateComprobanteToSheet(matchs) {
       0,
       match.comprobante.numero_comprobante
     );
+    await sleep(1000);
   }
 }
 

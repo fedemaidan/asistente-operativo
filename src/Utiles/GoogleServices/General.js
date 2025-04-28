@@ -66,10 +66,13 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
                 userEnteredFormat: {
                   horizontalAlignment: "CENTER",
                   verticalAlignment: "MIDDLE",
+                  textFormat: {
+                    bold: true,
+                  },
                 },
               },
               fields:
-                "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+                "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment)",
             },
           },
           {
@@ -83,7 +86,6 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
               fields: "gridProperties.frozenRowCount",
             },
           },
-          // Auto-resize columns based on content
           {
             autoResizeDimensions: {
               dimensions: {
@@ -100,14 +102,13 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
 
     await sheets.spreadsheets.batchUpdate(formatRequest);
     console.log(
-      `Headers added and formatted for sheet "${sheetName}" (row 1 only).`
+      `Headers formateados para "${sheetName}" (fila 1 fija, sin color de fondo).`
     );
   } catch (err) {
-    console.error("Failed to add formatted headers:", err);
+    console.error("Error al formatear los headers:", err);
   }
 }
 
-// Simplified createSheet function that only handles sheet creation
 async function createSheet(spreadsheetId, sheetName) {
   try {
     // 1. Create the sheet
