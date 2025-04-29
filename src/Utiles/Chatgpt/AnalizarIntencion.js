@@ -36,12 +36,17 @@ const opciones = [
 const analizarIntencion = async (message, sender) => {
   try {
     const opcionesTxt = JSON.stringify(opciones);
+
+    // Verificar si el mensaje es un objeto y convertirlo a string
+    const messageStr =
+      typeof message === "object" ? JSON.stringify(message) : message;
+
     prompt = `
 Como bot de un sistema de control de gastos, quiero quiero analizar la intención del usuario y ejecutar la acción adecuada para gestionar correctamente las operaciones posibles.
 
 Formato de respuesta: Devuelve únicamente un JSON con los datos cargados, sin incluir explicaciones adicionales.
 
-El usuario dice: "${message}"
+El usuario dice: "${messageStr}"
 
 Tienes estas acciones posibles debes analizar la palabra clave del usuario: ${opcionesTxt}.
 `;
@@ -58,7 +63,7 @@ Tienes estas acciones posibles debes analizar la palabra clave del usuario: ${op
     }
   } catch (error) {
     console.error("Error al analizar la intención:", error.message);
-    return "desconocido"; // Intención predeterminada en caso de error
+    return "desconocido";
   }
 };
 

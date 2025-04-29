@@ -12,5 +12,6 @@ module.exports = async function EnvioComprobanteStep(userId, data, sock) {
     });
   } catch (error) {
     console.error("❌ Error en PrimeraEleccionEntrega:", error);
+    FlowManager.resetFlow(userId);
   }
 };

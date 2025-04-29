@@ -1,4 +1,4 @@
-const general_range = "ComprobanteRAW!A1:Z1000";
+const general_range = "ComprobanteRAW!A1:Z10000";
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const { addRow, updateRow, getRowsValues } = require("../General");
 
@@ -56,6 +56,8 @@ async function addComprobanteToSheet(comprobante) {
   await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function updateComprobanteToSheet(matchs) {
   for (const match of matchs) {
     let values = await getArrayToSheetGeneral(match.comprobante);
@@ -66,6 +68,7 @@ async function updateComprobanteToSheet(matchs) {
       0,
       match.comprobante.numero_comprobante
     );
+    await sleep(1000);
   }
 }
 

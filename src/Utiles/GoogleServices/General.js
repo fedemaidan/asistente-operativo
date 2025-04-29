@@ -64,25 +64,15 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
               },
               cell: {
                 userEnteredFormat: {
-                  backgroundColor: {
-                    red: 0.12,
-                    green: 0.17,
-                    blue: 0.45,
-                  },
-                  textFormat: {
-                    bold: true,
-                    foregroundColor: {
-                      red: 1.0,
-                      green: 1.0,
-                      blue: 1.0,
-                    },
-                  },
                   horizontalAlignment: "CENTER",
                   verticalAlignment: "MIDDLE",
+                  textFormat: {
+                    bold: true,
+                  },
                 },
               },
               fields:
-                "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
+                "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment)",
             },
           },
           {
@@ -96,7 +86,6 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
               fields: "gridProperties.frozenRowCount",
             },
           },
-          // Auto-resize columns based on content
           {
             autoResizeDimensions: {
               dimensions: {
@@ -113,14 +102,13 @@ async function addFormattedHeaders(spreadsheetId, sheetName, sheetId, headers) {
 
     await sheets.spreadsheets.batchUpdate(formatRequest);
     console.log(
-      `Headers added and formatted for sheet "${sheetName}" (row 1 only).`
+      `Headers formateados para "${sheetName}" (fila 1 fija, sin color de fondo).`
     );
   } catch (err) {
-    console.error("Failed to add formatted headers:", err);
+    console.error("Error al formatear los headers:", err);
   }
 }
 
-// Simplified createSheet function that only handles sheet creation
 async function createSheet(spreadsheetId, sheetName) {
   try {
     // 1. Create the sheet
@@ -248,6 +236,13 @@ async function checkIfSheetExists(sheetId, sheetName) {
 }
 
 async function updateRow(sheetId, values, range, posIdColumn, idValue) {
+  const sheetName = range.split("!")[0];
+  const sheetExists = await checkIfSheetExists(sheetId, sheetName);
+
+  if (!sheetExists) {
+    return { success: false, message: "Sheet does not exist" };
+  }
+
   const readRequest = {
     spreadsheetId: sheetId,
     range: range,
@@ -256,7 +251,12 @@ async function updateRow(sheetId, values, range, posIdColumn, idValue) {
   const rowIdx = response.data.values.findIndex(
     (row) => row[posIdColumn] == idValue
   );
-  const writeRange = `${range.split("!")[0]}!A${rowIdx + rowInit}`;
+
+  if (rowIdx === -1 || rowIdx === undefined) {
+    return { success: false, message: "Row not found" };
+  }
+
+  const writeRange = `${sheetName}!A${rowIdx + rowInit}`;
 
   const writeRequest = {
     spreadsheetId: sheetId,
@@ -265,7 +265,7 @@ async function updateRow(sheetId, values, range, posIdColumn, idValue) {
     resource: { values: [values] },
   };
   await sheets.spreadsheets.values.update(writeRequest);
-  console.log("Row updated.");
+  return { success: true, message: "Row updated successfully" };
 }
 
 async function updateSheetWithBatchDelete(
@@ -358,4 +358,5 @@ module.exports = {
   checkIfSheetExists,
   addRow,
   cloneGoogleSheet,
+  addFormattedHeaders,
 };

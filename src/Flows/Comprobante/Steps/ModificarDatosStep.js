@@ -45,5 +45,6 @@ module.exports = async function ModificarDatosStep(userId, message, sock) {
     );
   } catch (error) {
     console.error("❌ Error en ModificarComprobante:", error);
+    FlowManager.resetFlow(userId);
   }
 };

@@ -18,7 +18,7 @@ const ConciliacionFlow = {
       if (typeof ConciliacionSteps[currentStep] === "function") {
         await ConciliacionSteps[currentStep](userId, message, sock);
       } else {
-        console.log("El step solicitadoooo no existe");
+        console.log("El step solicitado en ConciliacionFlow no existe");
       }
     } else {
       console.log("Ocurrio un error con los datos");

@@ -28,6 +28,7 @@ class FlowMapper {
             sock,
             messageType
           );
+          break;
         case "CONCILIACION":
           await ConciliacionFlow.Handle(
             userId,
@@ -36,6 +37,7 @@ class FlowMapper {
             sock,
             messageType
           );
+          break;
         case "STOCK":
           await StockFlow.Handle(
             userId,
@@ -44,6 +46,7 @@ class FlowMapper {
             sock,
             messageType
           );
+          break;
         default:
           await defaultFlow.handle(userId, message, sock, messageType);
       }
@@ -51,7 +54,8 @@ class FlowMapper {
       if (
         messageType === "image" ||
         messageType === "document" ||
-        messageType === "document-caption"
+        messageType === "document-caption" ||
+        messageType === "excel"
       ) {
         FlowManager.setFlow(userId, "INITFLOW");
         await defaultFlow.Init(userId, message, sock, messageType);
