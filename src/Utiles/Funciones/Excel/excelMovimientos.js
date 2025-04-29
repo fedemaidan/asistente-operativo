@@ -20,7 +20,30 @@ const parseMovimientosBanco = (arr) => {
     );
 };
 
-const parseJsonBancoToMovimiento = (data) => {
+const parseMovimientosBancoXls = (arr) => {
+  return arr.map((row) => {
+    const importeStr = row["__EMPTY_6"];
+    let importeFinal = 0;
+    if (importeStr && typeof importeStr === "string") {
+      const importe = importeStr.replace(/\./g, "").replace(",", ".");
+      importeFinal = parseFloat(importe);
+    } else if (importeStr) {
+      const importeFinal = Math.round(Number(importeStr));
+    }
+
+    return {
+      sucOrigen: row["__EMPTY_1"],
+      descSucursal: row["__EMPTY_2"],
+      codOperativo: row["__EMPTY_3"],
+      referencia: row["__EMPTY_4"],
+      concepto: row["__EMPTY_5"],
+      importe: importeFinal,
+      saldo: row["__EMPTY_7"],
+    };
+  });
+};
+
+const parseJsonBancoToMovimiento = (data, fileName) => {
   const dataArray = Array.isArray(data) ? data : Object.values(data);
 
   const limiteIndex = dataArray.findIndex((row) =>
@@ -29,13 +52,26 @@ const parseJsonBancoToMovimiento = (data) => {
     )
   );
 
-  const movimientosDelDia = parseMovimientosBanco(
-    dataArray.slice(0, limiteIndex - 1)
-  );
+  let movimientosDelDia = [];
+  let ultimosMovimientos = [];
 
-  const ultimosMovimientos = parseMovimientosBanco(
-    dataArray.slice(limiteIndex + 3)
-  );
+  if (fileName.endsWith(".xls")) {
+    movimientosDelDia = parseMovimientosBancoXls(
+      dataArray.slice(0, limiteIndex - 1)
+    );
+
+    ultimosMovimientos = parseMovimientosBancoXls(
+      dataArray.slice(limiteIndex + 3)
+    );
+  } else {
+    movimientosDelDia = parseMovimientosBanco(
+      dataArray.slice(0, limiteIndex - 1)
+    );
+
+    ultimosMovimientos = parseMovimientosBanco(
+      dataArray.slice(limiteIndex + 3)
+    );
+  }
 
   const resultado = [...movimientosDelDia, ...ultimosMovimientos];
   return resultado;
@@ -57,54 +93,41 @@ const parseJsonFinancieraToMovimiento = (data) => {
 
 const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
   const matchs = [];
+  const comprobantesFiltrados = comprobanteSheet.filter(
+    (comprobante) => comprobante.estado == "PENDIENTE"
+  );
 
-  // Buscar matchs con movimientos Banco (por id de referencia)
-  if (comprobanteMovimientos[0]?.referencia) {
-    for (const comprobante of comprobanteSheet) {
-      for (const movimiento of comprobanteMovimientos) {
-        if (comprobante.numero_comprobante == movimiento.referencia) {
-          // Para banco, solo marcar como CONFIRMADO
-          comprobante.estado =
-            Math.round(Number(comprobante.montoEnviado)) ==
-            Math.round(Number(movimiento.importe))
-              ? "CONFIRMADO"
-              : "REVISAR MONTO";
-          matchs.push({
-            comprobante,
-            movimiento,
-          });
-          break;
-        }
-      }
-    }
-  }
+  for (const comprobante of comprobantesFiltrados) {
+    for (const movimiento of comprobanteMovimientos) {
+      console.log("comprobante", comprobante, "movimiento", movimiento);
+      let montoComprobante = Math.round(Number(comprobante.montoEnviado));
+      let montoMovimiento = Math.round(Number(movimiento.importe));
 
-  console.log("COMPROBANTESHEET", comprobanteSheet);
-  console.log("COMPROBANTEMOVIMIENTOS", comprobanteMovimientos);
-  // Buscar matchs con movimientos Financiera (por monto y fecha con diferencia máxima de 7 días)
-  if (comprobanteMovimientos[0]?.fecha) {
-    for (const comprobante of comprobanteSheet) {
-      const montoComprobante = Number(comprobante.montoEnviado);
-      for (const movimiento of comprobanteMovimientos) {
-        const montoMovimiento = Number(movimiento.importe);
-        console.log("MONTOCOMPROBANTE Y MONTOMOVIMIENTO", {
-          montoComprobante,
-          montoMovimiento,
+      if (
+        movimiento.referencia &&
+        comprobante.numero_comprobante == movimiento.referencia
+      ) {
+        comprobante.estado =
+          montoComprobante == montoMovimiento ? "CONFIRMADO" : "REVISAR MONTO";
+        matchs.push({
+          comprobante,
+          movimiento,
         });
-        const diffDays = getDaysDiff(comprobante.fecha, movimiento.fecha);
-        if (
-          montoComprobante == montoMovimiento &&
-          diffDays < 7 &&
-          diffDays >= 0
-        ) {
-          comprobante.estado = `CONFIRMADO ${diffDays}`;
+        break;
+      } else if (montoComprobante == montoMovimiento) {
+        // Verificar si existe fecha en el movimiento
+        if (movimiento.fecha) {
+          const diffDays = getDaysDiff(comprobante.fecha, movimiento.fecha);
 
-          matchs.push({
-            comprobante,
-            movimiento,
-            diffDays,
-          });
-          break;
+          if (diffDays < 10 && diffDays >= 0) {
+            comprobante.estado = `CONFIRMADO ${diffDays}`;
+            matchs.push({
+              comprobante,
+              movimiento,
+              diffDays,
+            });
+            break;
+          }
         }
       }
     }

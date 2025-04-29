@@ -26,8 +26,6 @@ const limpiarDatosVentas = (data) => {
 };
 
 const proyectarStock = (dataStock, dataVentas, dateDiff) => {
-  console.log("DATA STOCK", dataStock.slice(0, 5));
-
   const stockProyeccion = [];
   for (const itemStock of dataStock) {
     const itemVentas = dataVentas.find(
@@ -40,23 +38,21 @@ const proyectarStock = (dataStock, dataVentas, dateDiff) => {
     const ventasDiarias = Math.round(itemVentas.Cantidad / dateDiff);
     let diasSinStock = 0;
 
-    if (ventasDiarias > 0) {
-      diasSinStock = Math.round(itemStock.Cantidad / ventasDiarias);
-    }
-
     if (itemStock.Cantidad <= 0) {
       diasSinStock = 0;
+    } else if (ventasDiarias > 0) {
+      diasSinStock = Math.round(itemStock.Cantidad / ventasDiarias);
     }
-
     const itemStockProyeccion = {
       codigo: itemStock.Codigo,
       descripcion: itemStock.Descripcion,
       cantidad: itemStock.Cantidad,
       ventas15Dias: itemVentas.Cantidad,
-      ventasProyectadas: ventasDiarias * 90,
+      ventasProyectadas: Math.round(ventasDiarias * 90),
       diasSinStock,
     };
     stockProyeccion.push(itemStockProyeccion);
+    console.log({ itemStockProyeccion, ventasDiarias, dateDiff });
   }
   return stockProyeccion;
 };

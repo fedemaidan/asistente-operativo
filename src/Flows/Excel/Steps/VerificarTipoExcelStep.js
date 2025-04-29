@@ -4,7 +4,7 @@ const {
 } = require("../../../Utiles/Funciones/Excel/excelHandler");
 
 module.exports = async function VerificarTipoExcelStep(userId, message, sock) {
-  const { data, success, error } = await parseExcelToJson(message);
+  const { data, fileName, success, error } = await parseExcelToJson(message);
   if (!success) {
     await sock.sendMessage(userId, {
       text: "❌ No se pudo procesar el archivo Excel.",
@@ -28,5 +28,8 @@ module.exports = async function VerificarTipoExcelStep(userId, message, sock) {
     text: mensaje,
   });
 
-  FlowManager.setFlow(userId, "EXCEL", "ElegirTipoExcelStep", data);
+  FlowManager.setFlow(userId, "EXCEL", "ElegirTipoExcelStep", {
+    excelJson: data,
+    fileName,
+  });
 };

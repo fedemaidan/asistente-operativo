@@ -3,12 +3,12 @@ const downloadMedia = require("../Chatgpt/downloadMedia");
 const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
 const transcribeImage = require("../Chatgpt/transcribeImage");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
+const FlowManager = require("../../FlowControl/FlowManager");
 
 const messageResponder = async (messageType, msg, sock, sender) => {
   switch (messageType) {
     case "text":
     case "text_extended": {
-      await sock.sendMessage(sender, { text: "⏳ Analizando mensaje ⏳" });
       const text =
         msg.message.conversation || msg.message.extendedTextMessage?.text;
       await FlowMapper.handleMessage(sender, text, sock, messageType);
@@ -103,10 +103,6 @@ const messageResponder = async (messageType, msg, sock, sender) => {
     case "document":
     case "document-caption": {
       try {
-        await sock.sendMessage(sender, {
-          text: "⏳ Analizando documento... ⏳",
-        });
-
         let docMessage =
           msg.message.documentMessage ||
           msg.message.documentWithCaptionMessage?.message?.documentMessage;
@@ -155,6 +151,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
           mimetype.endsWith("spreadsheetml.sheet") ||
           mimetype.endsWith("excel")
         ) {
+          console.log("PRE HANDLE MESSAGE", FlowManager.getFlow(sender));
           await FlowMapper.handleMessage(sender, docMessage, sock, "excel");
         }
       } catch (error) {

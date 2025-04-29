@@ -248,7 +248,6 @@ async function updateRow(sheetId, values, range, posIdColumn, idValue) {
     range: range,
   };
   const response = await sheets.spreadsheets.values.get(readRequest);
-  console.log("RESPONSE", response);
   const rowIdx = response.data.values.findIndex(
     (row) => row[posIdColumn] == idValue
   );

@@ -1,12 +1,19 @@
+const FlowManager = require("../../FlowControl/FlowManager");
 const { analizarIntencion } = require("../../Utiles/Chatgpt/AnalizarIntencion");
 const ComprobanteFlow = require("../Comprobante/ComprobanteFlow");
 const ExcelFlow = require("../Excel/ExcelFlow");
 
 const defaultFlow = {
   async Init(userId, message, sock, messageType) {
+    console.log("MESSAGE TYPE", messageType);
+    console.log("USER FLOW", FlowManager.getFlow(userId));
     try {
       //si es texto se analiza en cambio si es una imagen o documento o document-caption este ya se encuentra analizado y salta el "Analizar intencion"
       let result = {};
+
+      await sock.sendMessage(userId, {
+        text: "⏳ Analizando ... ⏳",
+      });
 
       if (
         messageType == "text" ||

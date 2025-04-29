@@ -22,7 +22,7 @@ module.exports = async function CargarVentasStep(userId, excelRaw, sock) {
     await sock.sendMessage(userId, {
       text: "❌ *Error al procesar el archivo*\n\nEl archivo de ventas parece estar vacío o no tiene el formato esperado.",
     });
-    FlowManager.resetFlow();
+    FlowManager.resetFlow(userId);
     return;
   }
 
