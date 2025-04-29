@@ -1,4 +1,34 @@
 const { getDaysDiff } = require("../HandleDates");
+const dayjs = require("dayjs");
+const customParseFormat = require("dayjs/plugin/customParseFormat");
+dayjs.extend(customParseFormat);
+
+function parseExcelDate(value) {
+  if (!value) return null;
+
+  if (typeof value === "number") {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    return new Date(excelEpoch.getTime() + value * 86400000);
+  }
+
+  if (typeof value === "string") {
+    const formats = [
+      "YYYY-MM-DD",
+      "DD/MM/YYYY",
+      "MM/DD/YYYY",
+      "DD-MM-YYYY",
+      "D MMM YYYY",
+      "MMM D, YYYY",
+      "DD.MM.YYYY",
+    ];
+    for (const format of formats) {
+      const date = dayjs(value, format, true); // true = strict parsing
+      if (date.isValid()) return date.toDate();
+    }
+  }
+
+  return null;
+}
 
 const parseMovimientosBanco = (arr) => {
   return arr
@@ -21,17 +51,22 @@ const parseMovimientosBanco = (arr) => {
 };
 
 const parseMovimientosBancoXls = (arr) => {
+  console.log("XLS ARCHIVO", arr);
+
   return arr.map((row) => {
+    const nuevaFecha = parseExcelDate(row["__EMPTY"]);
     const importeStr = row["__EMPTY_6"];
     let importeFinal = 0;
     if (importeStr && typeof importeStr === "string") {
       const importe = importeStr.replace(/\./g, "").replace(",", ".");
       importeFinal = parseFloat(importe);
     } else if (importeStr) {
-      const importeFinal = Math.round(Number(importeStr));
+      importeFinal = Math.round(Number(importeStr));
     }
 
+    //funcion fecha parse a Date
     return {
+      fecha: nuevaFecha,
       sucOrigen: row["__EMPTY_1"],
       descSucursal: row["__EMPTY_2"],
       codOperativo: row["__EMPTY_3"],
@@ -99,7 +134,6 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
 
   for (const comprobante of comprobantesFiltrados) {
     for (const movimiento of comprobanteMovimientos) {
-      console.log("comprobante", comprobante, "movimiento", movimiento);
       let montoComprobante = Math.round(Number(comprobante.montoEnviado));
       let montoMovimiento = Math.round(Number(movimiento.importe));
 
@@ -107,6 +141,7 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
         movimiento.referencia &&
         comprobante.numero_comprobante == movimiento.referencia
       ) {
+        console.log("MATCH ENCONTRADO", comprobante, movimiento);
         comprobante.estado =
           montoComprobante == montoMovimiento ? "CONFIRMADO" : "REVISAR MONTO";
         matchs.push({
@@ -115,6 +150,7 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
         });
         break;
       } else if (montoComprobante == montoMovimiento) {
+        console.log("MATCH ENCONTRADO", comprobante, movimiento);
         // Verificar si existe fecha en el movimiento
         if (movimiento.fecha) {
           const diffDays = getDaysDiff(comprobante.fecha, movimiento.fecha);
