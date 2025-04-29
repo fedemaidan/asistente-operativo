@@ -1,10 +1,14 @@
 const getDaysDiff = (comprobanteFechaStr, movimientoFechaSerial) => {
-  console.log();
+  console.log("FECHITA", comprobanteFechaStr, movimientoFechaSerial);
   const [day, month, year] = comprobanteFechaStr.split("/").map(Number);
   const comprobanteDate = new Date(year, month - 1, day);
-  const movimientoDate = new Date(
-    (movimientoFechaSerial - 25569) * 86400 * 1000
-  );
+
+  let movimientoDate;
+  if (!typeof movimientoDate == Date) {
+    movimientoDate = new Date((movimientoFechaSerial - 25569) * 86400 * 1000);
+  } else {
+    movimientoDate = movimientoFechaSerial;
+  }
 
   console.log("FECHA MOVIMIENTO", new Date(movimientoDate));
   console.log("FECHA COMPROBANTE", new Date(comprobanteDate));
