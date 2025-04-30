@@ -44,8 +44,9 @@ ${JSON.stringify(comprobante, null, 2)}
 1. Analiza las correcciones solicitadas en el mensaje del usuario
 2. Modifica SOLO los campos mencionados en las correcciones
 3. Mantén intactos todos los demás campos del comprobante original
-4. Si el usuario menciona un nuevo cliente o moneda, actualiza los campos correspondientes. No puedes agregar ningun campo
+4. Si el usuario menciona un nuevo cliente o moneda, actualiza los campos correspondientes. No puedes agregar ningun campo.
 5. El montoEnviado es SIEMPRE en ARS. Si el usuario pide cambiar el monto, se cambia el montoEnviado.
+6. Si el usuario pide cambiar la moneda solo pueden ser las siguientes opciones: ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA', 'USD_MEP_VENTA').
 
 ## FORMATO DE RESPUESTA
 Devuelve SOLO un objeto JSON con el comprobante actualizado, manteniendo exactamente la misma estructura que el comprobante original, pero con los campos corregidos según la solicitud del usuario.

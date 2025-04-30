@@ -25,7 +25,7 @@ function getTitlesToSheetGeneral() {
     "Código",
     "Descripción",
     "Cantidad",
-    "Ventas 15 días",
+    "Ventas período",
     "Ventas proyectadas (3 meses)",
     "Días para acabar stock",
   ];
