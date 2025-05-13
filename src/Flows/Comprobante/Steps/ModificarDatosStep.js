@@ -25,6 +25,7 @@ module.exports = async function ModificarDatosStep(userId, message, sock) {
       `🔹 *Fecha:* ${data.fecha}\n` +
       `🔹 *Hora:* ${data.hora}\n` +
       `🔹 *Cliente*: ${data.cliente}\n` +
+      `🔹 *Cuenta Corriente:* ${data.cuentaCorriente ? "Sí" : "No"}\n` +
       `🔹 *Cuenta de destino:* ${data.destino}\n` +
       `🔹 *Monto:* ${formatCurrency(data.montoEnviado)}\n` +
       `🔹 *Moneda:* ${CURRENCY_DISPLAY[data.moneda]}`;

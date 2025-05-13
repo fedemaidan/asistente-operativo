@@ -14,7 +14,9 @@ module.exports = async function ElegirClienteStep(userId, message, sock) {
     comprobante.numero_comprobante
   }\n🔹 *Fecha:* ${comprobante.fecha}\n🔹 *Hora:* ${
     comprobante.hora
-  }\n🔹 *Cliente*: ${cliente.nombre}\n🔹 *Cuenta de destino:* ${
+  }\n🔹 *Cliente*: ${cliente.nombre}\n🔹 *Cuenta Corriente:* ${
+    cliente.cuentaCorriente ? "Sí" : "No"
+  }\n🔹 *Cuenta de destino:* ${
     comprobante.destino
   }\n🔹 *Monto:* ${formatCurrency(comprobante.monto, "ARS")}\n🔹 *Moneda:* ${
     CURRENCY_DISPLAY[cliente.moneda]
@@ -32,6 +34,7 @@ module.exports = async function ElegirClienteStep(userId, message, sock) {
   comprobante.montoEnviado = parseFloat(comprobante.monto);
   comprobante.cliente = cliente.nombre;
   comprobante.moneda = cliente.moneda;
+  comprobante.cuentaCorriente = cliente.cuentaCorriente;
 
   FlowManager.setFlow(
     userId,
