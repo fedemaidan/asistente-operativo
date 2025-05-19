@@ -9,24 +9,23 @@ const StockFlow = require("../../Stock/StockFlow");
 
 module.exports = async function ElegirTipoExcelStep(userId, message, sock) {
   const { excelJson, fileName } = FlowManager.userFlows[userId].flowData;
-  const data = await opcionElegida(message);
 
-  if (data.data.Eleccion == "1") {
+  if (message == "1") {
     const movimientosExcel = parseJsonBancoToMovimiento(excelJson, fileName);
     ConciliacionFlow.start(userId, movimientosExcel, sock);
-  } else if (data.data.Eleccion == "2") {
+  } else if (message == "2") {
     const movimientosExcel = parseJsonFinancieraToMovimiento(excelJson);
     console.log("MOVIMIENTOS EXCEL FINANCIERA", movimientosExcel);
     ConciliacionFlow.start(userId, movimientosExcel, sock);
-  } else if (data.data.Eleccion == "3") {
+  } else if (message == "3") {
     StockFlow.start(userId, excelJson, sock);
-  } else if (data.data.Eleccion == "4") {
+  } else if (message == "4") {
     await sock.sendMessage(userId, {
-      text: "Cancelando Operacion.",
+      text: "❌ Has cancelado el proceso de confirmación.",
     });
     FlowManager.resetFlow(userId);
   } else {
-    console.log("opcionElegida", opcionElegida);
+    console.log("opcionElegida", message);
     await sock.sendMessage(userId, {
       text: "❓ *Opción no reconocida*\n\nPor favor, seleccione una opción válida respondiendo con un número:\n\n*1.* 🏦 Reporte Banco\n*2.* 💰 Reporte Financiera\n*3.* 🧾 Reporte Stock\n*4.* ❌ Cancelar",
     });

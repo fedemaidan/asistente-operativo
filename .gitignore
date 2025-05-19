@@ -6,3 +6,4 @@ node_modules
 git 
 .vs/
 src/Utiles/downloads
+/auth_info
