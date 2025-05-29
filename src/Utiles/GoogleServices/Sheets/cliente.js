@@ -1,4 +1,4 @@
-const general_range = "ClientesRAW!A1:Z10000";
+const general_range = "ClientesRAW!A2:A10000";
 const GOOGLE_SHEET_CLIENTS_ID = process.env.GOOGLE_SHEET_CLIENTS_ID;
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const { addRow, updateRow, getRowsValues } = require("../General");

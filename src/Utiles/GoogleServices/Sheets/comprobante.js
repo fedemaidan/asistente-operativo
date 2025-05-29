@@ -1,4 +1,4 @@
-const general_range = "ComprobanteRAW!A1:Z10000";
+const general_range = "ComprobanteRAW!A1:U100000";
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const { addRow, updateRow, getRowsValues } = require("../General");
 
@@ -15,6 +15,16 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.tipoDeCambio,
     comprobante.estado,
     comprobante.imagen ?? "",
+    "-",
+    "-",
+    "-",
+    comprobante.moneda === "ARS" ? comprobante.monto : "",
+    comprobante.moneda === "USD BLUE" ? comprobante.monto : "",
+    comprobante.moneda === "USD OFICIAL" ? comprobante.monto : "",
+    comprobante.monto,
+    "ARS", // Siempre se reciben pesos
+    comprobante.montoEnviado,
+    0,
   ];
   return values;
 }
