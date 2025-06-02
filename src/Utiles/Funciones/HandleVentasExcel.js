@@ -1,3 +1,7 @@
+const {
+  getArticulosIgnoradosFromSheet,
+} = require("../GoogleServices/Sheets/proyeccionStock");
+
 const limpiarDatosVentas = (data) => {
   return Object.values(data).map((item) => {
     const itemLimpio = {};
@@ -25,9 +29,22 @@ const limpiarDatosVentas = (data) => {
   });
 };
 
-const proyectarStock = (dataStock, dataVentas, dateDiff) => {
+const proyectarStock = async (dataStock, dataVentas, dateDiff) => {
+  const articulosIgnorados = await getArticulosIgnoradosFromSheet();
+
+  const codigosIgnorados = new Set(
+    articulosIgnorados.map((item) => item.codigo)
+  );
+
   const stockProyeccion = [];
   for (const itemStock of dataStock) {
+    if (codigosIgnorados.has(itemStock.Codigo)) {
+      console.log(
+        `Omitiendo artículo ignorado: ${itemStock.Codigo} - ${itemStock.Descripcion}`
+      );
+      continue;
+    }
+
     const itemVentas = dataVentas.find(
       (item) => item.Codigo === itemStock.Codigo
     );
@@ -43,6 +60,7 @@ const proyectarStock = (dataStock, dataVentas, dateDiff) => {
     } else if (ventasDiarias > 0) {
       diasSinStock = itemStock.Cantidad / ventasDiarias;
     }
+
     const itemStockProyeccion = {
       codigo: itemStock.Codigo,
       descripcion: itemStock.Descripcion,
@@ -52,8 +70,8 @@ const proyectarStock = (dataStock, dataVentas, dateDiff) => {
       diasSinStock: Math.round(diasSinStock),
     };
     stockProyeccion.push(itemStockProyeccion);
-    console.log({ itemStockProyeccion, ventasDiarias, dateDiff });
   }
+  console.log("STOCK PROYECCION 1", stockProyeccion);
   return stockProyeccion;
 };
 

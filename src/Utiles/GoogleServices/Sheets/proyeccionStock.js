@@ -6,6 +6,7 @@ const {
   addFormattedHeaders,
   createSheet,
   addRow,
+  getRowsValues,
 } = require("../General");
 
 function getArrayToSheetGeneral(item) {
@@ -29,6 +30,18 @@ function getTitlesToSheetGeneral() {
     "Ventas proyectadas (3 meses)",
     "Días para acabar stock",
   ];
+}
+
+async function getArticulosIgnoradosFromSheet() {
+  const data = await getRowsValues(
+    GOOGLE_SHEET_ID,
+    "Ignorar Articulos",
+    "A2:A10000"
+  );
+
+  const res = data.map((row) => ({ codigo: row[0], descripcion: row[1] }));
+  console.log("IGNORAR", res);
+  return res;
 }
 
 async function updateProyeccionToSheet(stockProyeccion, sheetName) {
@@ -66,4 +79,5 @@ async function updateProyeccionToSheet(stockProyeccion, sheetName) {
 
 module.exports = {
   updateProyeccionToSheet,
+  getArticulosIgnoradosFromSheet,
 };

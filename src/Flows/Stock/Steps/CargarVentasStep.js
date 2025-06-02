@@ -29,7 +29,7 @@ module.exports = async function CargarVentasStep(userId, excelRaw, sock) {
   const { date1, date2, dateDiff } = await getDatesFromExcel(fileName);
 
   const ventasExcelData = limpiarDatosVentas(data);
-  const stockProyeccion = proyectarStock(
+  const stockProyeccion = await proyectarStock(
     stockExcelData,
     ventasExcelData,
     dateDiff
