@@ -18,6 +18,8 @@ Si tiene cuenta corriente (CC), buscalo en la lista.
 Si no tiene CC, poné el nombre de cliente que sugiero en el mensaje del usuario sin buscarlo en las CC. 
 Si cambia el cliente, debes volver a analizar el atributo cuentaCorriente y ver si es true o false dependiendo si el cliente tiene cuenta corriente o no.
 Si el usuario quiere cambiar la moneda, solo pueden ser las siguientes opciones: ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA').
+Si el usuario menciona que la moneda es pesos, se refiere a ARS.
+Si el usuario menciona que la moneda es dolares, se refiere a USD_BLUE_VENTA.
 
 Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 2 destinos posibles:
 

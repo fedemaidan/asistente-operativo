@@ -6,6 +6,14 @@ const { saveImageToStorage } = require("../Chatgpt/storageHandler");
 const FlowManager = require("../../FlowControl/FlowManager");
 
 const messageResponder = async (messageType, msg, sock, sender) => {
+  // const users = {
+  //   5493876147003: {
+  //     prompt: "Hola, soy el bot de prueba. ¿En qué puedo ayudarte?",
+  //     flow: ComprobanteFlow,
+  //     excelID: "1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z",
+  //   },
+  // };
+
   switch (messageType) {
     case "text":
     case "text_extended": {
