@@ -1,10 +1,12 @@
+const botSingleton = require("../../Utiles/botSingleton");
 const { ExcelSteps } = require("./ExcelSteps");
 
 const ExcelFlow = {
-  async start(userId, data, sock) {
+  async start(userId, data) {
+    const sock = botSingleton.getSock();
     if (userId != null && sock != null) {
       if (typeof ExcelSteps["VerificarTipoExcelStep"] === "function") {
-        await ExcelSteps["VerificarTipoExcelStep"](userId, data, sock);
+        await ExcelSteps["VerificarTipoExcelStep"](userId, data);
       } else {
         console.log("El step solicitado no existe");
       }
@@ -13,10 +15,11 @@ const ExcelFlow = {
     }
   },
 
-  async Handle(userId, message, currentStep, sock, messageType) {
+  async Handle(userId, message, currentStep, messageType) {
+    const sock = botSingleton.getSock();
     if (userId != null && sock != null) {
       if (typeof ExcelSteps[currentStep] === "function") {
-        await ExcelSteps[currentStep](userId, message, sock);
+        await ExcelSteps[currentStep](userId, message);
       } else {
         console.log("El step solicitado en ExcelFlow no existe");
       }

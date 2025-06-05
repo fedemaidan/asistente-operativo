@@ -10,8 +10,10 @@ const {
   updateProyeccionToSheet,
 } = require("../../../Utiles/GoogleServices/Sheets/proyeccionStock");
 const getDatesFromExcel = require("../../../Utiles/Chatgpt/getDatesFromExcel");
+const botSingleton = require("../../../Utiles/botSingleton");
 
-module.exports = async function CargarVentasStep(userId, excelRaw, sock) {
+module.exports = async function CargarVentasStep(userId, excelRaw) {
+  const sock = botSingleton.getSock();
   const { stockArray: stockExcelData } =
     FlowManager.userFlows[userId]?.flowData;
 

@@ -1,4 +1,5 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
+const botSingleton = require("../../../Utiles/botSingleton");
 const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
 const {
   parseJsonBancoToMovimiento,
@@ -7,16 +8,16 @@ const {
 const ConciliacionFlow = require("../../Conciliacion/ConciliacionFlow");
 const StockFlow = require("../../Stock/StockFlow");
 
-module.exports = async function ElegirTipoExcelStep(userId, message, sock) {
+module.exports = async function ElegirTipoExcelStep(userId, message) {
+  const sock = botSingleton.getSock();
   const { excelJson, fileName } = FlowManager.userFlows[userId].flowData;
 
   if (message == "1") {
     const movimientosExcel = parseJsonBancoToMovimiento(excelJson, fileName);
-    ConciliacionFlow.start(userId, movimientosExcel, sock);
+    ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "2") {
     const movimientosExcel = parseJsonFinancieraToMovimiento(excelJson);
-    console.log("MOVIMIENTOS EXCEL FINANCIERA", movimientosExcel);
-    ConciliacionFlow.start(userId, movimientosExcel, sock);
+    ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "3") {
     StockFlow.start(userId, excelJson, sock);
   } else if (message == "4") {

@@ -1,9 +1,11 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
+const botSingleton = require("../../../Utiles/botSingleton");
 const {
   parseExcelToJson,
 } = require("../../../Utiles/Funciones/Excel/excelHandler");
 
-module.exports = async function VerificarTipoExcelStep(userId, message, sock) {
+module.exports = async function VerificarTipoExcelStep(userId, message) {
+  const sock = botSingleton.getSock();
   const { data, fileName, success, error } = await parseExcelToJson(message);
   if (!success) {
     await sock.sendMessage(userId, {

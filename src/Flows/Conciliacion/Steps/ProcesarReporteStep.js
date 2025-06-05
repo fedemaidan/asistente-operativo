@@ -1,4 +1,5 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
+const botSingleton = require("../../../Utiles/botSingleton");
 const {
   getMatchs,
 } = require("../../../Utiles/Funciones/Excel/excelMovimientos");
@@ -9,9 +10,9 @@ const {
 
 module.exports = async function ProcesarReporteStep(
   userId,
-  movimientoBancario,
-  sock
+  movimientoBancario
 ) {
+  const sock = botSingleton.getSock();
   await sock.sendMessage(userId, {
     text: "🔄 Procesando...",
   });

@@ -1,6 +1,8 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
+const botSingleton = require("../../../Utiles/botSingleton");
 
-module.exports = async function CargarStockStep(userId, data, sock) {
+module.exports = async function CargarStockStep(userId, data) {
+  const sock = botSingleton.getSock();
   const stockArray = Array.isArray(data) ? data : Object.values(data);
 
   if (!stockArray || stockArray.length === 0) {

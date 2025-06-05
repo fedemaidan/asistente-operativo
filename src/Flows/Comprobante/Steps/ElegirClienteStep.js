@@ -1,9 +1,13 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
 const analizarCliente = require("../../../Utiles/Chatgpt/analizarCliente");
-const { formatCurrency } = require("../../../Utiles/Funciones/formatCurrency");
-const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/CurrencyDisplay");
+const {
+  formatCurrency,
+} = require("../../../Utiles/Funciones/Moneda/formatCurrency");
+const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDisplay");
+const botSingleton = require("../../../Utiles/botSingleton");
 
-module.exports = async function ElegirClienteStep(userId, message, sock) {
+module.exports = async function ElegirClienteStep(userId, message) {
+  const sock = botSingleton.getSock();
   await sock.sendMessage(userId, {
     text: "⏳Analizando mensaje...⏳",
   });

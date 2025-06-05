@@ -1,19 +1,15 @@
 const FlowManager = require("../../FlowControl/FlowManager");
+const botSingleton = require("../../Utiles/botSingleton");
 const { analizarIntencion } = require("../../Utiles/Chatgpt/AnalizarIntencion");
 const ComprobanteFlow = require("../Comprobante/ComprobanteFlow");
 const ExcelFlow = require("../Excel/ExcelFlow");
 
 const defaultFlow = {
-  async Init(userId, message, sock, messageType) {
-    console.log("MESSAGE TYPE", messageType);
-    console.log("USER FLOW", FlowManager.getFlow(userId));
+  async Init(userId, message, messageType) {
+    const sock = botSingleton.getSock();
     try {
       //si es texto se analiza en cambio si es una imagen o documento o document-caption este ya se encuentra analizado y salta el "Analizar intencion"
       let result = {};
-
-      await sock.sendMessage(userId, {
-        text: "⏳ Analizando ... ⏳",
-      });
 
       if (
         messageType == "text" ||
@@ -32,7 +28,7 @@ const defaultFlow = {
 
       switch (result.accion) {
         case "Confirmar datos":
-          ComprobanteFlow.start(userId, result.data, sock);
+          ComprobanteFlow.start(userId, result.data);
           break;
 
         case "No comprendido":
@@ -43,7 +39,7 @@ const defaultFlow = {
           break;
 
         case "Excel":
-          ExcelFlow.start(userId, result.data, sock);
+          ExcelFlow.start(userId, result.data);
           break;
 
         case "NoRegistrado":
@@ -57,7 +53,7 @@ const defaultFlow = {
     }
   },
 
-  async handle(userId, message, sock) {
+  async handle(userId, message) {
     await sock.sendMessage(userId, {
       text: "No entendi tu mensaje, porfavor repitelo",
     });
