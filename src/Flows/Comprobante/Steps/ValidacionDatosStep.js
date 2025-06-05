@@ -3,14 +3,12 @@ const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
 const {
   addComprobanteToSheet,
 } = require("../../../Utiles/GoogleServices/Sheets/comprobante");
-const {
-  addClienteComprobanteToSheet,
-} = require("../../../Utiles/GoogleServices/Sheets/cliente");
 const DolarService = require("../../../Utiles/Funciones/Moneda/dolarService");
 const botSingleton = require("../../../Utiles/botSingleton");
 
 module.exports = async function ValidacionDatosStep(userId, message) {
   const sock = botSingleton.getSock();
+  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
   const data = await opcionElegida(message);
 
   const comprobante = FlowManager.userFlows[userId].flowData;
@@ -33,7 +31,7 @@ module.exports = async function ValidacionDatosStep(userId, message) {
 
     comprobante.moneda = CURRENCY_DISPLAY[comprobante.moneda];
 
-    await addComprobanteToSheet(comprobante);
+    await addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID);
 
     FlowManager.resetFlow(userId);
     await sock.sendMessage(userId, {

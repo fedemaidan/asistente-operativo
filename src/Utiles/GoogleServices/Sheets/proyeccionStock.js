@@ -1,5 +1,5 @@
 const general_range = "Proyección Stock!A2:Z10000";
-const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
+const botSingleton = require("../../botSingleton");
 const {
   updateSheetWithBatchDelete,
   checkIfSheetExists,
@@ -8,6 +8,8 @@ const {
   addRow,
   getRowsValues,
 } = require("../General");
+
+const users = botSingleton.getUsers();
 
 function getArrayToSheetGeneral(item) {
   const values = [
@@ -32,7 +34,7 @@ function getTitlesToSheetGeneral() {
   ];
 }
 
-async function getArticulosIgnoradosFromSheet() {
+async function getArticulosIgnoradosFromSheet(GOOGLE_SHEET_ID) {
   const data = await getRowsValues(
     GOOGLE_SHEET_ID,
     "Ignorar Articulos",
@@ -44,7 +46,11 @@ async function getArticulosIgnoradosFromSheet() {
   return res;
 }
 
-async function updateProyeccionToSheet(stockProyeccion, sheetName) {
+async function updateProyeccionToSheet(
+  stockProyeccion,
+  sheetName,
+  GOOGLE_SHEET_ID
+) {
   try {
     const headers = getTitlesToSheetGeneral();
     const sheetExists = await checkIfSheetExists(GOOGLE_SHEET_ID, sheetName);

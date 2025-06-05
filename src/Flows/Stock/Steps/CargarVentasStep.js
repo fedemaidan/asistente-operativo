@@ -13,6 +13,7 @@ const getDatesFromExcel = require("../../../Utiles/Chatgpt/getDatesFromExcel");
 const botSingleton = require("../../../Utiles/botSingleton");
 
 module.exports = async function CargarVentasStep(userId, excelRaw) {
+  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
   const sock = botSingleton.getSock();
   const { stockArray: stockExcelData } =
     FlowManager.userFlows[userId]?.flowData;
@@ -34,12 +35,14 @@ module.exports = async function CargarVentasStep(userId, excelRaw) {
   const stockProyeccion = await proyectarStock(
     stockExcelData,
     ventasExcelData,
-    dateDiff
+    dateDiff,
+    GOOGLE_SHEET_ID
   );
 
   await updateProyeccionToSheet(
     stockProyeccion,
-    `Proyección ${date1} al ${date2}`
+    `Proyección ${date1} al ${date2}`,
+    GOOGLE_SHEET_ID
   );
 
   FlowManager.resetFlow(userId);

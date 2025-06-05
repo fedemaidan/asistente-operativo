@@ -24,6 +24,19 @@ class BotSingleton {
   getUsers() {
     return this.users;
   }
+
+  getSheetIdByUserId(userId) {
+    const phoneNumber = userId.split("@")[0];
+    const GOOGLE_SHEET_ID = this.users.get(phoneNumber).googleSheetId;
+
+    if (!GOOGLE_SHEET_ID) {
+      throw new Error(
+        `No se encontró el Google Sheet ID para el usuario: ${userId}`
+      );
+    }
+
+    return GOOGLE_SHEET_ID;
+  }
 }
 
 module.exports = new BotSingleton();
