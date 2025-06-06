@@ -1,0 +1,27 @@
+services:
+
+  db:
+    image: postgres:16
+    container_name: postgredb
+    restart: always
+    environment:
+      POSTGRES_DB: sorby_development
+      POSTGRES_USER: sorby_development
+      POSTGRES_PASSWORD: sorby_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_financiera:/var/lib/postgresql/data
+    networks:
+      sorbydata-static-network:
+        ipv4_address: 10.100.10.6
+
+volumes:
+  postgres_data_financiera:
+
+networks:
+  sorbydata-static-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.100.10.0/24"

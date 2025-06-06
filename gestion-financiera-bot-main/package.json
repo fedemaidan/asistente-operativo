@@ -1,0 +1,32 @@
+{
+  "name": "gestion-financiera-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "",
+  "dependencies": {
+    "@adiwajshing/baileys": "^5.0.0",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "body-parser": "^1.20.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.2",
+    "googleapis": "^144.0.0",
+    "openai": "^4.78.1",
+    "pg": "^8.13.1",
+    "pg-hstore": "^2.3.4",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "sequelize": "^6.37.5"
+  },
+  "devDependencies": {
+    "node-pg-migrate": "^7.9.0",
+    "nodemon": "^3.1.9"
+  }
+}

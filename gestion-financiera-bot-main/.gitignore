@@ -1,0 +1,5 @@
+config/drive_json_key.json
+src/services/firebase/firebaseServiceAccount.js
+auth
+node_modules
+.env

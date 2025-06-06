@@ -1,4 +1,5 @@
 const FlowMapperCelulandia = require("../../FlowControl/FlowMapper");
+const FlowMapperFinanciera = require("../../../gestion-financiera-bot-main/src/services/flowMapper");
 
 const perfilCelulandia = {
   prompts: {
@@ -45,7 +46,17 @@ const perfilCelulandiaDev = {
   googleSheetClientsId: "1-d0df0TZMSBmVd_hxAFXgqnXViGb5v1NKlsGL10kx2I",
 };
 
+const perfilFinanciera = {
+  FlowMapper: FlowMapperFinanciera,
+};
+
+const perfilFinancieraDev = {
+  ...perfilFinanciera,
+};
+
 module.exports = {
   perfilCelulandia,
   perfilCelulandiaDev,
+  perfilFinanciera,
+  perfilFinancieraDev,
 };
