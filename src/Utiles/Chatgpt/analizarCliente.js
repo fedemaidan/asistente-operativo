@@ -1,8 +1,8 @@
 const { getByChatGpt4o } = require("./Base");
 const { getClientesFromSheet } = require("../GoogleServices/Sheets/cliente");
 
-module.exports = async function analizarCliente(message) {
-  const clientes = await getClientesFromSheet();
+module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
+  const clientes = await getClientesFromSheet(GOOGLE_SHEET_ID);
 
   const clientesStr = JSON.stringify(clientes);
   const prompt = `

@@ -6,7 +6,7 @@ const ConciliacionFlow = require("../Flows/Conciliacion/ConciliacionFlow");
 const StockFlow = require("../Flows/Stock/StockFlow");
 
 class FlowMapper {
-  async handleMessage(userId, message, sock, messageType) {
+  async handleMessage(userId, message, messageType) {
     const flow = FlowManager.getFlow(userId);
 
     if (flow) {
@@ -16,7 +16,6 @@ class FlowMapper {
             userId,
             message,
             flow.currentStep,
-            sock,
             messageType
           );
           break;
@@ -25,7 +24,6 @@ class FlowMapper {
             userId,
             message,
             flow.currentStep,
-            sock,
             messageType
           );
           break;
@@ -34,7 +32,6 @@ class FlowMapper {
             userId,
             message,
             flow.currentStep,
-            sock,
             messageType
           );
           break;
@@ -43,12 +40,11 @@ class FlowMapper {
             userId,
             message,
             flow.currentStep,
-            sock,
             messageType
           );
           break;
         default:
-          await defaultFlow.handle(userId, message, sock, messageType);
+          await defaultFlow.handle(userId, message, messageType);
       }
     } else {
       if (
@@ -58,10 +54,10 @@ class FlowMapper {
         messageType === "excel"
       ) {
         FlowManager.setFlow(userId, "INITFLOW");
-        await defaultFlow.Init(userId, message, sock, messageType);
+        await defaultFlow.Init(userId, message, messageType);
       } else {
         FlowManager.setFlow(userId, "INITFLOW");
-        await defaultFlow.Init(userId, message, sock, messageType);
+        await defaultFlow.Init(userId, message, messageType);
       }
     }
   }

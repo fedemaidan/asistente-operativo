@@ -4,22 +4,30 @@ const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
 const transcribeImage = require("../Chatgpt/transcribeImage");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
 const FlowManager = require("../../FlowControl/FlowManager");
+const botSingleton = require("../botSingleton");
 
-const messageResponder = async (messageType, msg, sock, sender) => {
-  // const users = {
-  //   5493876147003: {
-  //     prompt: "Hola, soy el bot de prueba. ¿En qué puedo ayudarte?",
-  //     flow: ComprobanteFlow,
-  //     excelID: "1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z",
-  //   },
-  // };
+const messageResponder = async (messageType, msg, sender) => {
+  //5493876147003@s.whatsapp.net
+  //8767868768@g.us
+  console.log("sender", sender);
+  const phoneNumber = sender.split("@")[0];
+  const sock = botSingleton.getSock();
+  const users = botSingleton.getUsers();
+
+  if (!users.has(phoneNumber)) {
+    console.log(`Usuario ${phoneNumber} no encontrado en el mapa de usuarios.`);
+    return;
+  }
+
+  const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
 
   switch (messageType) {
     case "text":
     case "text_extended": {
       const text =
         msg.message.conversation || msg.message.extendedTextMessage?.text;
-      await FlowMapper.handleMessage(sender, text, sock, messageType);
+      await FlowMapper.handleMessage(sender, text, messageType);
+
       break;
     }
     case "image": {
@@ -37,7 +45,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
 
         const imageUrl = await saveImageToStorage(msg, sender);
 
-        const transcripcion = await transcribeImage(imageUrl);
+        const transcripcion = await transcribeImage(imageUrl, phoneNumber);
 
         if (!transcripcion) {
           await sock.sendMessage(sender, {
@@ -46,14 +54,13 @@ const messageResponder = async (messageType, msg, sock, sender) => {
           return;
         }
 
-        console.log("Esta es la transcripcion", transcripcion);
+        const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
+
         ComprobanteFlow.start(
           sender,
           { ...transcripcion.data, imagen: imageUrl },
           sock
         );
-
-        // Enviar el texto extraído al flujo de procesamiento
       } catch (error) {
         console.error("Error al procesar la imagen:", error);
         await sock.sendMessage(sender, {
@@ -63,16 +70,6 @@ const messageResponder = async (messageType, msg, sock, sender) => {
       break;
     }
     case "video": {
-      const filePath = await downloadMedia(msg.message, "video");
-      if (filePath) {
-        await sock.sendMessage(sender, {
-          text: `He recibido tu video y lo he guardado en: ${filePath}`,
-        });
-      } else {
-        await sock.sendMessage(sender, {
-          text: "No pude guardar el video. Intenta nuevamente.",
-        });
-      }
       break;
     }
     case "audio": {
@@ -94,12 +91,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
 
         console.log("Esta es la transcripcion");
         console.log(transcripcion);
-        await FlowMapper.handleMessage(
-          sender,
-          transcripcion,
-          sock,
-          messageType
-        );
+        await FlowMapper.handleMessage(sender, transcripcion, messageType);
       } catch (error) {
         console.error("Error al procesar el audio:", error);
         await sock.sendMessage(sender, {
@@ -111,6 +103,9 @@ const messageResponder = async (messageType, msg, sock, sender) => {
     case "document":
     case "document-caption": {
       try {
+        await sock.sendMessage(sender, {
+          text: "⏳ Analizando archivo... ⏳",
+        });
         let docMessage =
           msg.message.documentMessage ||
           msg.message.documentWithCaptionMessage?.message?.documentMessage;
@@ -148,7 +143,9 @@ const messageResponder = async (messageType, msg, sock, sender) => {
             return;
           }
 
-          const transcripcion = await transcribeImage(pdfUrl);
+          const transcripcion = await transcribeImage(pdfUrl, phoneNumber);
+
+          const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
 
           ComprobanteFlow.start(
             sender,
@@ -159,8 +156,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
           mimetype.endsWith("spreadsheetml.sheet") ||
           mimetype.endsWith("excel")
         ) {
-          console.log("PRE HANDLE MESSAGE", FlowManager.getFlow(sender));
-          await FlowMapper.handleMessage(sender, docMessage, sock, "excel");
+          await FlowMapper.handleMessage(sender, docMessage, "excel");
         }
       } catch (error) {
         console.error("❌ Error al procesar el documento:", error);

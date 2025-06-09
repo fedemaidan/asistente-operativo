@@ -1,13 +1,18 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
 const analizarCliente = require("../../../Utiles/Chatgpt/analizarCliente");
-const { formatCurrency } = require("../../../Utiles/Funciones/formatCurrency");
-const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/CurrencyDisplay");
+const {
+  formatCurrency,
+} = require("../../../Utiles/Funciones/Moneda/formatCurrency");
+const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDisplay");
+const botSingleton = require("../../../Utiles/botSingleton");
 
-module.exports = async function ElegirClienteStep(userId, message, sock) {
+module.exports = async function ElegirClienteStep(userId, message) {
+  const sock = botSingleton.getSock();
+  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
   await sock.sendMessage(userId, {
     text: "⏳Analizando mensaje...⏳",
   });
-  const cliente = await analizarCliente(message);
+  const cliente = await analizarCliente(message, GOOGLE_SHEET_ID);
   const comprobante = FlowManager.userFlows[userId].flowData.data;
 
   const mensaje = `📌 *Confirmación de Datos* 📌\nPara procesar tu solicitud, necesitamos que confirmes los siguientes datos de la transferencia:\n🔹 *Número de comprobante:* ${

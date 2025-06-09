@@ -1,5 +1,4 @@
 const general_range = "ComprobanteRAW!A1:U100000";
-const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const { addRow, updateRow, getRowsValues } = require("../General");
 
 async function getArrayToSheetGeneral(comprobante) {
@@ -15,7 +14,7 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.tipoDeCambio,
     comprobante.estado,
     comprobante.imagen ?? "",
-    "-",
+    comprobante.usuario,
     "-",
     "-",
     comprobante.moneda === "ARS" ? comprobante.monto : "",
@@ -42,11 +41,12 @@ function getTitlesToSheetGeneral() {
     "Tipo de cambio",
     "Estado",
     "Imagen",
+    "Usuario",
   ];
 }
 
-const parseComprobantes = (arr) =>
-  arr.map((row) => ({
+const parseComprobantes = (arr) => {
+  const comprobantes = arr.map((row) => ({
     numero_comprobante: row[0],
     fecha: row[1],
     hora: row[2],
@@ -58,9 +58,13 @@ const parseComprobantes = (arr) =>
     tipoDeCambio: row[8],
     estado: row[9],
     imagen: row[10],
+    usuario: row[11],
   }));
+  console.log("Comprobantes parseados:", comprobantes);
+  return comprobantes;
+};
 
-async function addComprobanteToSheet(comprobante) {
+async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
   const headers = getTitlesToSheetGeneral();
   const values = await getArrayToSheetGeneral(comprobante);
   await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
@@ -68,7 +72,7 @@ async function addComprobanteToSheet(comprobante) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function updateComprobanteToSheet(matchs) {
+async function updateComprobanteToSheet(matchs, GOOGLE_SHEET_ID) {
   for (const match of matchs) {
     let values = await getArrayToSheetGeneral(match.comprobante);
     await updateRow(
@@ -82,7 +86,7 @@ async function updateComprobanteToSheet(matchs) {
   }
 }
 
-async function getComprobantesFromSheet() {
+async function getComprobantesFromSheet(GOOGLE_SHEET_ID) {
   const dataComprobantes = await getRowsValues(
     GOOGLE_SHEET_ID,
     "ComprobanteRAW",

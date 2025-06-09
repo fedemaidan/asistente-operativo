@@ -1,4 +1,5 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
+const botSingleton = require("../../../Utiles/botSingleton");
 const {
   getMatchs,
 } = require("../../../Utiles/Funciones/Excel/excelMovimientos");
@@ -9,14 +10,15 @@ const {
 
 module.exports = async function ProcesarReporteStep(
   userId,
-  movimientoBancario,
-  sock
+  movimientoBancario
 ) {
+  const sock = botSingleton.getSock();
+  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
   await sock.sendMessage(userId, {
     text: "🔄 Procesando...",
   });
 
-  const comprobantesRAW = await getComprobantesFromSheet();
+  const comprobantesRAW = await getComprobantesFromSheet(GOOGLE_SHEET_ID);
   const matchs = getMatchs(comprobantesRAW, movimientoBancario);
   if (matchs.length === 0) {
     await sock.sendMessage(userId, {
@@ -36,7 +38,7 @@ module.exports = async function ProcesarReporteStep(
     text: mensajeExito,
   });
 
-  await updateComprobanteToSheet(matchs);
+  await updateComprobanteToSheet(matchs, GOOGLE_SHEET_ID);
   await sock.sendMessage(userId, {
     text: `✅ Comprobantes actualizados en la hoja de cálculo. Link al Google Sheet: https://docs.google.com/spreadsheets/d/${process.env.GOOGLE_SHEET_ID}/edit?usp=sharing`,
   });

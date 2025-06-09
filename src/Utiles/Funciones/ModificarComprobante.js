@@ -1,10 +1,12 @@
 const { getByChatGpt4o } = require("../../Utiles/Chatgpt/Base");
 const FlowManager = require("../../FlowControl/FlowManager");
 const { getClientesFromSheet } = require("../GoogleServices/Sheets/cliente");
+const botSingleton = require("../botSingleton");
 
 const ChatModificarConfirmacion = async (message, userId) => {
   const comprobante = FlowManager.userFlows[userId]?.flowData;
-  const clientes = await getClientesFromSheet();
+  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+  const clientes = await getClientesFromSheet(GOOGLE_SHEET_ID);
   const clientesStr = JSON.stringify(clientes);
 
   const prompt = `

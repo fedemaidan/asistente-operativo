@@ -29,8 +29,15 @@ const limpiarDatosVentas = (data) => {
   });
 };
 
-const proyectarStock = async (dataStock, dataVentas, dateDiff) => {
-  const articulosIgnorados = await getArticulosIgnoradosFromSheet();
+const proyectarStock = async (
+  dataStock,
+  dataVentas,
+  dateDiff,
+  GOOGLE_SHEET_ID
+) => {
+  const articulosIgnorados = await getArticulosIgnoradosFromSheet(
+    GOOGLE_SHEET_ID
+  );
 
   const codigosIgnorados = new Set(
     articulosIgnorados.map((item) => item.codigo)

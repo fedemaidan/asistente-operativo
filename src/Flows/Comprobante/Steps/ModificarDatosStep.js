@@ -1,9 +1,13 @@
 const ModificarComprobanteGpt = require("../../../Utiles/Funciones/ModificarComprobante");
 const FlowManager = require("../../../FlowControl/FlowManager");
-const { formatCurrency } = require("../../../Utiles/Funciones/formatCurrency");
-const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/CurrencyDisplay");
+const {
+  formatCurrency,
+} = require("../../../Utiles/Funciones/Moneda/formatCurrency");
+const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDisplay");
+const botSingleton = require("../../../Utiles/botSingleton");
 
-module.exports = async function ModificarDatosStep(userId, message, sock) {
+module.exports = async function ModificarDatosStep(userId, message) {
+  const sock = botSingleton.getSock();
   try {
     await sock.sendMessage(userId, { text: "⏳ Analizando mensaje ⏳" });
 
