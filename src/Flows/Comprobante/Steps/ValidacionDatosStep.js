@@ -30,6 +30,9 @@ module.exports = async function ValidacionDatosStep(userId, message) {
     }
 
     comprobante.moneda = CURRENCY_DISPLAY[comprobante.moneda];
+    comprobante.usuario = botSingleton.getUsuarioByUserId(userId);
+
+    console.log("comprobante", comprobante);
 
     await addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID);
 

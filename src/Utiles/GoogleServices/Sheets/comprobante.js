@@ -14,7 +14,7 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.tipoDeCambio,
     comprobante.estado,
     comprobante.imagen ?? "",
-    "-",
+    comprobante.usuario,
     "-",
     "-",
     comprobante.moneda === "ARS" ? comprobante.monto : "",
@@ -41,11 +41,12 @@ function getTitlesToSheetGeneral() {
     "Tipo de cambio",
     "Estado",
     "Imagen",
+    "Usuario",
   ];
 }
 
-const parseComprobantes = (arr) =>
-  arr.map((row) => ({
+const parseComprobantes = (arr) => {
+  const comprobantes = arr.map((row) => ({
     numero_comprobante: row[0],
     fecha: row[1],
     hora: row[2],
@@ -57,7 +58,11 @@ const parseComprobantes = (arr) =>
     tipoDeCambio: row[8],
     estado: row[9],
     imagen: row[10],
+    usuario: row[11],
   }));
+  console.log("Comprobantes parseados:", comprobantes);
+  return comprobantes;
+};
 
 async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
   const headers = getTitlesToSheetGeneral();

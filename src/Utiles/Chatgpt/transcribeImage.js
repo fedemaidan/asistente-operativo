@@ -4,7 +4,7 @@ const { getByChatgpt4Vision } = require("../Chatgpt/Base");
 async function transcribeImage(imagePath, phoneNumber) {
   const users = botSingleton.getUsers();
   try {
-    prompt = users.get(phoneNumber).prompts.transcribeImage;
+    prompt = users.get(phoneNumber).perfil.prompts.transcribeImage;
 
     // Consultar a OpenAI
     const response = await getByChatgpt4Vision([imagePath], prompt);

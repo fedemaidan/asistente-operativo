@@ -8,6 +8,8 @@ const botSingleton = require("../botSingleton");
 
 const messageResponder = async (messageType, msg, sender) => {
   //5493876147003@s.whatsapp.net
+  //8767868768@g.us
+  console.log("sender", sender);
   const phoneNumber = sender.split("@")[0];
   const sock = botSingleton.getSock();
   const users = botSingleton.getUsers();
@@ -17,7 +19,7 @@ const messageResponder = async (messageType, msg, sender) => {
     return;
   }
 
-  const FlowMapper = users.get(phoneNumber).FlowMapper;
+  const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
 
   switch (messageType) {
     case "text":
@@ -52,10 +54,12 @@ const messageResponder = async (messageType, msg, sender) => {
           return;
         }
 
-        await FlowMapper.handleMessage(
+        const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
+
+        ComprobanteFlow.start(
           sender,
-          { ...transcripcion.data },
-          "text"
+          { ...transcripcion.data, imagen: imageUrl },
+          sock
         );
       } catch (error) {
         console.error("Error al procesar la imagen:", error);
@@ -141,10 +145,12 @@ const messageResponder = async (messageType, msg, sender) => {
 
           const transcripcion = await transcribeImage(pdfUrl, phoneNumber);
 
-          await FlowMapper.handleMessage(
+          const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
+
+          ComprobanteFlow.start(
             sender,
-            { ...transcripcion.data },
-            "text"
+            { ...transcripcion.data, imagen: pdfUrl },
+            sock
           );
         } else if (
           mimetype.endsWith("spreadsheetml.sheet") ||

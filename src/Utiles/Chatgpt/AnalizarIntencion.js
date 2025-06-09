@@ -68,7 +68,3 @@ Tienes estas acciones posibles debes analizar la palabra clave del usuario: ${op
 };
 
 module.exports = { analizarIntencion };
-
-/*
-        esto se logra mediante hojas de ruta sin embargo cada usuario cuenta con flujos diferentes.
-*/

@@ -27,7 +27,7 @@ class BotSingleton {
 
   getSheetIdByUserId(userId) {
     const phoneNumber = userId.split("@")[0];
-    const GOOGLE_SHEET_ID = this.users.get(phoneNumber).googleSheetId;
+    const GOOGLE_SHEET_ID = this.users.get(phoneNumber).perfil.googleSheetId;
 
     if (!GOOGLE_SHEET_ID) {
       throw new Error(
@@ -36,6 +36,13 @@ class BotSingleton {
     }
 
     return GOOGLE_SHEET_ID;
+  }
+
+  getUsuarioByUserId(userId) {
+    const phoneNumber = userId.split("@")[0];
+    const usuario = this.users.get(phoneNumber).nombre;
+
+    return usuario;
   }
 }
 

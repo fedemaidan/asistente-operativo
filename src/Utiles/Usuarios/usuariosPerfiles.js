@@ -1,5 +1,6 @@
 const FlowMapperCelulandia = require("../../FlowControl/FlowMapper");
 const FlowMapperFinanciera = require("../../../gestion-financiera-bot-main/src/services/flowMapper");
+const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
 
 const perfilCelulandia = {
   prompts: {
@@ -38,12 +39,13 @@ Para obtener el destino debes usar el atributo nombre unicamente de una de las s
   googleSheetId: "1WMf3LxI5FPd_eQBvQbDJO99uosVjZBxL9RdQSBvTU-Y",
   googleSheetClientsId: "1WMf3LxI5FPd_eQBvQbDJO99uosVjZBxL9RdQSBvTU-Y",
   FlowMapper: FlowMapperCelulandia,
+  ComprobanteFlow: ComprobanteFlow,
 };
 
 const perfilCelulandiaDev = {
   ...perfilCelulandia,
-  googleSheetId: "1-d0df0TZMSBmVd_hxAFXgqnXViGb5v1NKlsGL10kx2I",
-  googleSheetClientsId: "1-d0df0TZMSBmVd_hxAFXgqnXViGb5v1NKlsGL10kx2I",
+  googleSheetId: "16V0PzVv9MNckA8jpHbrdpmev3gmj5T-dn5cOWqhiBBE",
+  googleSheetClientsId: "16V0PzVv9MNckA8jpHbrdpmev3gmj5T-dn5cOWqhiBBE",
 };
 
 const perfilFinanciera = {
@@ -52,6 +54,7 @@ const perfilFinanciera = {
 
 const perfilFinancieraDev = {
   ...perfilFinanciera,
+  googleSheetId: "1EJkvviTTRyxZNyVRyaqenKnGYNSUTSbHu0pwSxVtY7Q",
 };
 
 module.exports = {
