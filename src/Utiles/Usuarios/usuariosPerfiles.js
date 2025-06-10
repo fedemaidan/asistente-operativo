@@ -24,6 +24,10 @@ Para obtener el destino debes usar el atributo nombre unicamente de una de las s
   }
 ]
 
+Aclaracion: 
+  1. Los números deben interpretarse según el formato argentino (miles con punto, decimales con coma). Si no contienen decimales, trátalos como enteros.
+  2. Los números de dinero o impuestos deben ser float para que los pueda interpretar mi app en node.
+
     {
         accion: "Confirmar datos",
         data:
