@@ -157,7 +157,7 @@ const crearOperacionFlow = {
   },
 
   async handle(userId, message, step, sock, messageType) {
-    const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+    const SHEET_ID = botSingleton.getSheetIdByUserId(userId);
     //if (messageType !== 'text' || messageType !== 'text_extended') {
     const esTexto =
       messageType !== "text" ? messageType !== "text_extended" : false;

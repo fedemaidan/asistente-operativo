@@ -60,7 +60,6 @@ const parseComprobantes = (arr) => {
     imagen: row[10],
     usuario: row[11],
   }));
-  console.log("Comprobantes parseados:", comprobantes);
   return comprobantes;
 };
 
