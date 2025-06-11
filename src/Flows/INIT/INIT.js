@@ -20,6 +20,9 @@ const defaultFlow = {
       } else if (messageType == "excel") {
         result.accion = "Excel";
         result.data = message;
+      } else if (messageType == "csv") {
+        result.accion = "Excel";
+        result.data = message;
       } else {
         result = message;
       }

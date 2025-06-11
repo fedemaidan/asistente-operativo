@@ -1,6 +1,5 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
 const botSingleton = require("../../../Utiles/botSingleton");
-const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
 const {
   parseJsonBancoToMovimiento,
   parseJsonFinancieraToMovimiento,

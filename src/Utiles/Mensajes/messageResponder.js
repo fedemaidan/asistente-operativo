@@ -5,6 +5,8 @@ const transcribeImage = require("../Chatgpt/transcribeImage");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
 const FlowManager = require("../../FlowControl/FlowManager");
 const botSingleton = require("../botSingleton");
+const { parseCsvToJson } = require("../Funciones/Csv/csvHandler");
+const { parseExcelToJson } = require("../Funciones/Excel/excelHandler");
 
 const messageResponder = async (messageType, msg, sender) => {
   //5493876147003@s.whatsapp.net
@@ -20,7 +22,7 @@ const messageResponder = async (messageType, msg, sender) => {
   }
 
   const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
-
+  console.log("MessageType", messageType);
   switch (messageType) {
     case "text":
     case "text_extended": {
@@ -45,22 +47,26 @@ const messageResponder = async (messageType, msg, sender) => {
 
         const imageUrl = await saveImageToStorage(msg, sender);
 
-        const transcripcion = await transcribeImage(imageUrl, phoneNumber);
+        if (users.get(phoneNumber).perfil.name === "celulandia") {
+          const transcripcion = await transcribeImage(imageUrl, phoneNumber);
 
-        if (!transcripcion) {
-          await sock.sendMessage(sender, {
-            text: "⚠️ No pude extraer texto de la imagen.",
-          });
-          return;
+          if (!transcripcion) {
+            await sock.sendMessage(sender, {
+              text: "⚠️ No pude extraer texto de la imagen.",
+            });
+            return;
+          }
+
+          const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
+          ComprobanteFlow.start(
+            sender,
+            { ...transcripcion.data, imagen: imageUrl },
+            sock
+          );
+        } else if (users.get(phoneNumber).perfil.name === "financiera") {
+          const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
+          await FlowMapper.handleMessage(sender, msg, messageType);
         }
-
-        const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
-
-        ComprobanteFlow.start(
-          sender,
-          { ...transcripcion.data, imagen: imageUrl },
-          sock
-        );
       } catch (error) {
         console.error("Error al procesar la imagen:", error);
         await sock.sendMessage(sender, {
@@ -143,20 +149,57 @@ const messageResponder = async (messageType, msg, sender) => {
             return;
           }
 
-          const transcripcion = await transcribeImage(pdfUrl, phoneNumber);
+          if (users.get(phoneNumber).perfil.name === "celulandia") {
+            const transcripcion = await transcribeImage(pdfUrl, phoneNumber);
+            const ComprobanteFlow =
+              users.get(phoneNumber).perfil.ComprobanteFlow;
 
-          const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
-
-          ComprobanteFlow.start(
-            sender,
-            { ...transcripcion.data, imagen: pdfUrl },
-            sock
-          );
+            ComprobanteFlow.start(
+              sender,
+              { ...transcripcion.data, imagen: pdfUrl },
+              sock
+            );
+          } else if (users.get(phoneNumber).perfil.name === "financiera") {
+            const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
+            await FlowMapper.handleMessage(sender, msg, messageType);
+          }
         } else if (
           mimetype.endsWith("spreadsheetml.sheet") ||
           mimetype.endsWith("excel")
         ) {
-          await FlowMapper.handleMessage(sender, docMessage, "excel");
+          const { data, fileName, success, error } = await parseExcelToJson(
+            docMessage
+          );
+          console.log("parseExcelToJson", data);
+
+          if (!success) {
+            await sock.sendMessage(sender, {
+              text: "❌ No se pudo procesar el archivo Excel.",
+            });
+            console.error("❌ No se pudo procesar el archivo Excel.", error);
+            return;
+          }
+
+          await FlowMapper.handleMessage(
+            sender,
+            { data, fileName, type: "Excel" },
+            "excel"
+          );
+        } else if (mimetype.endsWith("csv")) {
+          const result = await parseCsvToJson(docMessage);
+          console.log("ParseCsvToJson", result);
+          if (!result.success) {
+            await sock.sendMessage(sender, {
+              text: "❌ No se pudo procesar el archivo CSV.",
+            });
+            return;
+          }
+
+          await FlowMapper.handleMessage(
+            sender,
+            { data: result.data, fileName: "csv", type: "CSV" },
+            "csv"
+          );
         }
       } catch (error) {
         console.error("❌ Error al procesar el documento:", error);

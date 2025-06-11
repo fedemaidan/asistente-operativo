@@ -51,7 +51,8 @@ class FlowMapper {
         messageType === "image" ||
         messageType === "document" ||
         messageType === "document-caption" ||
-        messageType === "excel"
+        messageType === "excel" ||
+        messageType === "csv"
       ) {
         FlowManager.setFlow(userId, "INITFLOW");
         await defaultFlow.Init(userId, message, messageType);
