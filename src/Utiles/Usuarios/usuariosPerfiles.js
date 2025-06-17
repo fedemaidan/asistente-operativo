@@ -27,6 +27,7 @@ Para obtener el destino debes usar el atributo nombre unicamente de una de las s
 Aclaracion: 
   1. Los números deben interpretarse según el formato argentino (miles con punto, decimales con coma). Si no contienen decimales, trátalos como enteros.
   2. Los números de dinero o impuestos deben ser float para que los pueda interpretar mi app en node.
+  3. La fecha y hora aveces puede estar escrita de forma natural, por ejemplo: "17 de junio de 2025". En ese caso, devolve la fecha en formato dd/mm/yyyy.
 
     {
         accion: "Confirmar datos",
@@ -49,8 +50,8 @@ Aclaracion:
 
 const perfilCelulandiaDev = {
   ...perfilCelulandia,
-  googleSheetId: "1co2qs_KnXmtFGHFaQzT8JN98ZQxyXp5DBe3m5y4y3aM",
-  googleSheetClientsId: "1co2qs_KnXmtFGHFaQzT8JN98ZQxyXp5DBe3m5y4y3aM",
+  googleSheetId: "1JqdxGC0V39WPDaPDFMt4LaxFYf-JMJCNxqtKkJ4qew4",
+  googleSheetClientsId: "1JqdxGC0V39WPDaPDFMt4LaxFYf-JMJCNxqtKkJ4qew4",
 };
 
 const perfilFinanciera = {

@@ -1,4 +1,4 @@
-const general_range = "ClientesRAW!A2:A10000";
+const general_range = "ClientesRAW!A2:C10000";
 const { addRow, updateRow, getRowsValues } = require("../General");
 
 function getTitlesToSheetGeneral() {
@@ -30,6 +30,17 @@ async function getArrayToSheetGeneral(cliente) {
     cliente.imagen ?? "",
   ];
   return values;
+}
+
+async function parseClientes(arr) {
+  const clientes = arr.map((row) => ({
+    nombre: row[0],
+    descuento: row[1],
+    ccActivas: row[2]
+      ? row[2].split(", ").filter((cc) => cc.trim() !== "")
+      : [],
+  }));
+  return clientes;
 }
 
 async function getClientesFromSheet(GOOGLE_SHEET_ID) {

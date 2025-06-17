@@ -63,6 +63,11 @@ const parseComprobantes = (arr) => {
   return comprobantes;
 };
 
+const formatearCuentasCorrientes = (ccActivas) => {
+  if (!ccActivas) return [];
+  return ccActivas.split(", ").filter((cc) => cc.trim() !== "");
+};
+
 async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
   const headers = getTitlesToSheetGeneral();
   const values = await getArrayToSheetGeneral(comprobante);
@@ -85,15 +90,76 @@ async function updateComprobanteToSheet(matchs, GOOGLE_SHEET_ID) {
   }
 }
 
+async function getUltimosComprobantesFromSheet(GOOGLE_SHEET_ID) {
+  const dataComprobantes = await getRowsValues(
+    GOOGLE_SHEET_ID,
+    "ComprobanteRAW",
+    "A480:M100000"
+  );
+  return dataComprobantes;
+}
+
 async function getComprobantesFromSheet(GOOGLE_SHEET_ID) {
   const dataComprobantes = await getRowsValues(
     GOOGLE_SHEET_ID,
     "ComprobanteRAW",
-    "A2:M1000"
+    "A2:M100000"
   );
   const comprobantesRAW = parseComprobantes(dataComprobantes);
 
   return comprobantesRAW;
+}
+
+async function esDuplicado(comprobante, GOOGLE_SHEET_ID) {
+  try {
+    const ultimosComprobantes = await getUltimosComprobantesFromSheet(
+      GOOGLE_SHEET_ID
+    );
+    const comprobantesParsed = parseComprobantes(ultimosComprobantes);
+    console.log("comprobantesParsed", comprobantesParsed);
+
+    const normalizarMonto = (monto) => {
+      if (typeof monto === "string") {
+        return parseFloat(monto.replace("$", "").replace(/\./g, ""));
+      }
+      return monto;
+    };
+
+    const duplicadoExacto = comprobantesParsed.find(
+      (c) =>
+        c.numero_comprobante === comprobante.numero_comprobante &&
+        c.fecha === comprobante.fecha &&
+        c.hora === comprobante.hora &&
+        normalizarMonto(c.montoEnviado) ===
+          normalizarMonto(comprobante.montoEnviado)
+    );
+
+    if (duplicadoExacto) {
+      return { status: "DUPLICADO" };
+    }
+    console.log("comprobanteEnviado", comprobante);
+    const posibleDuplicado = comprobantesParsed.find(
+      (c) =>
+        (normalizarMonto(c.monto) === normalizarMonto(comprobante.monto) &&
+          c.fecha === comprobante.fecha &&
+          c.hora === comprobante.hora) ||
+        (c.numero_comprobante === comprobante.numero_comprobante &&
+          normalizarMonto(c.montoEnviado) ===
+            normalizarMonto(comprobante.montoEnviado))
+    );
+
+    if (posibleDuplicado) {
+      return {
+        status: "POSIBLE DUPLICADO",
+        comprobante: posibleDuplicado,
+      };
+    }
+
+    return { status: "NO DUPLICADO" };
+  } catch (error) {
+    console.error("Error al verificar duplicados:", error);
+    return "NO DUPLICADO"; // En caso de error, permitimos continuar
+  }
 }
 
 module.exports = {
@@ -101,4 +167,7 @@ module.exports = {
   updateComprobanteToSheet,
   parseComprobantes,
   getComprobantesFromSheet,
+  getUltimosComprobantesFromSheet,
+  esDuplicado,
+  formatearCuentasCorrientes,
 };
