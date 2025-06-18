@@ -23,7 +23,7 @@ Si el usuario quiere cambiar la moneda, solo pueden ser las siguientes opciones:
 Si el usuario menciona que la moneda es pesos, se refiere a ARS.
 Si el usuario menciona que la moneda es dolares, se refiere a USD_BLUE_VENTA.
 
-Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 2 destinos posibles:
+Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 4 destinos posibles:
 
 [
   {
@@ -35,6 +35,11 @@ Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 2 dest
     "nombre": "ENSHOP SRL",
     "cuit": "30-71519047-4",
     "cbu": "0720044120000000414890"
+  },
+  {
+    "nombre": "EZE",
+  }, {
+    "nombre": "NICO"
   }
 ]
 
