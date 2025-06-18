@@ -44,9 +44,8 @@ async function parseClientes(arr) {
 }
 
 async function getClientesFromSheet(GOOGLE_SHEET_ID) {
-  const data = await getRowsValues(GOOGLE_SHEET_ID, "ClientesRAW", "A2:A1000");
-  res = data.map((row) => row[0]);
-  return res;
+  const data = await getRowsValues(GOOGLE_SHEET_ID, "ClientesRAW", "A2:C1000");
+  return parseClientes(data);
 }
 
 async function addClienteComprobanteToSheet(cliente, GOOGLE_SHEET_ID) {

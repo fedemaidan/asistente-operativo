@@ -7,7 +7,7 @@ const ChatModificarConfirmacion = async (message, userId) => {
   const comprobante = FlowManager.userFlows[userId]?.flowData;
   const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
   const clientes = await getClientesFromSheet(GOOGLE_SHEET_ID);
-  const clientesStr = JSON.stringify(clientes);
+  const clientesStr = JSON.stringify(clientes.map((cliente) => cliente.nombre));
 
   const prompt = `
 # INSTRUCCIONES PARA ACTUALIZAR COMPROBANTE

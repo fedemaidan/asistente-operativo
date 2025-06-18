@@ -15,6 +15,22 @@ module.exports = async function ElegirClienteStep(userId, message) {
   const cliente = await analizarCliente(message, GOOGLE_SHEET_ID);
   const comprobante = FlowManager.userFlows[userId].flowData.data;
 
+  console.log("respuesta-prompt", cliente);
+
+  if (cliente.error) {
+    await sock.sendMessage(userId, {
+      text: `❌ *Error: moneda no válida*\n\nEl cliente seleccionado no tiene una cuenta corriente activa con la moneda *${
+        CURRENCY_DISPLAY[cliente.moneda]
+      }*.\n\n📋 *Cuentas corrientes disponibles:*\n${cliente.ccActivas
+        .map((cc) => `• ${cc}`)
+        .join(
+          "\n"
+        )}\n\n🔄 *Por favor, vuelve a enviar el comprobante seleccionando una de las cuentas corrientes activas del cliente.*`,
+    });
+    FlowManager.resetFlow(userId);
+    return;
+  }
+
   const mensaje = `📌 *Confirmación de Datos* 📌\nPara procesar tu solicitud, necesitamos que confirmes los siguientes datos de la transferencia:\n🔹 *Número de comprobante:* ${
     comprobante.numero_comprobante
   }\n🔹 *Fecha:* ${comprobante.fecha}\n🔹 *Hora:* ${
