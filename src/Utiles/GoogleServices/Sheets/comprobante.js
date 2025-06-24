@@ -94,7 +94,7 @@ async function getUltimosComprobantesFromSheet(GOOGLE_SHEET_ID) {
   const dataComprobantes = await getRowsValues(
     GOOGLE_SHEET_ID,
     "ComprobanteRAW",
-    "A2:M100000"
+    "A480:M100000"
   );
   return dataComprobantes;
 }

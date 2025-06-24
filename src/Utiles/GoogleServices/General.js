@@ -174,16 +174,10 @@ async function addRow(sheetId, values, range, headers = null) {
       },
     };
 
-    const response = await sheets.spreadsheets.values.append(request);
-
-    if (response.status !== 200) {
-      throw new Error(`Error adding row: Status ${response.status}`);
-    }
-
-    console.log("Row added.", response);
+    await sheets.spreadsheets.values.append(request);
+    console.log("Row added.");
   } catch (err) {
     console.error("Failed to add row:", err);
-    throw err;
   }
 }
 
