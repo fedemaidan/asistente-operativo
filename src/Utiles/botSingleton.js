@@ -1,3 +1,5 @@
+const baileysAutoReporter = require("baileys-status-reporter");
+
 class BotSingleton {
   constructor() {
     if (!BotSingleton.instance) {
@@ -10,6 +12,33 @@ class BotSingleton {
   }
   async setSock(sockInstance) {
     this.sock = sockInstance;
+
+    baileysAutoReporter.startAutoReport(
+      this.sock,
+      "asistente-operativo",
+      "http://localhost:4000/api/reportar"
+    );
+
+    // Escucha mensajes entrantes
+    this.sock.ev.on("messages.upsert", async (message) => {
+      const getMessageType = require("./Mensajes/GetType");
+      const messageResponder = require("./Mensajes/messageResponder");
+      const msg = message.messages[0];
+      if (!msg.message || msg.key.fromMe) return;
+
+      const sender = msg.key.remoteJid;
+
+      // Identificar el tipo de mensaje
+      const messageType = getMessageType(msg.message);
+
+      // Delegar manejo al messageResponder
+      await messageResponder(messageType, msg, sender);
+    });
+
+    setInterval(
+      async () => await this.sock.sendPresenceUpdate("available"),
+      10 * 60 * 1000
+    );
   }
 
   // Obtiene la instancia del sock
