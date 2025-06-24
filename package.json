@@ -12,6 +12,7 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^6.17.16",
     "axios": "^1.8.4",
+    "baileys-status-reporter": "^1.0.8",
     "csv-parser": "^3.2.0",
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
