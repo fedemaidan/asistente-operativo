@@ -31,7 +31,6 @@ module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
     "ccActivas": "array de cuentas corrientes activas del cliente seleccionado, si no tiene CC, poné un array vacio."
     }
     `;
-  console.log("nuevo-prompt", clientesStr);
 
   try {
     const response = await getByChatGpt4o(prompt);

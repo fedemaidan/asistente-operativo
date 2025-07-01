@@ -1,5 +1,5 @@
 const general_range = "ComprobanteRAW!A1:U100000";
-const { addRow, updateRow, getRowsValues } = require("../General");
+const { addRow, updateRow, getRowsValues, getLastRow } = require("../General");
 
 async function getArrayToSheetGeneral(comprobante) {
   const values = [
@@ -24,6 +24,9 @@ async function getArrayToSheetGeneral(comprobante) {
     "ARS", // Siempre se reciben pesos
     comprobante.montoEnviado,
     0,
+    "-",
+    comprobante.destino,
+    comprobante.id ?? "-",
   ];
   return values;
 }
@@ -68,10 +71,52 @@ const formatearCuentasCorrientes = (ccActivas) => {
   return ccActivas.split(", ").filter((cc) => cc.trim() !== "");
 };
 
+async function getNextId(GOOGLE_SHEET_ID) {
+  try {
+    const lastRow = await getLastRow(GOOGLE_SHEET_ID, "ComprobanteRAW");
+    console.log("lastRow", lastRow);
+
+    if (lastRow <= 1) {
+      return "C1";
+    }
+
+    const lastRowData = await getRowsValues(
+      GOOGLE_SHEET_ID,
+      "ComprobanteRAW",
+      `X${lastRow}:X${lastRow}`
+    );
+    console.log("lastRowData", lastRowData);
+
+    const lastId = lastRowData[0][0];
+    const lastIdNumber = lastId.split("C")[1];
+
+    const lastNumber = parseInt(lastIdNumber);
+    const nextNumber = lastNumber + 1;
+
+    const nextId = `C${nextNumber}`;
+
+    return nextId;
+  } catch (error) {
+    console.error("Error al obtener el siguiente ID:", error);
+    throw error;
+  }
+}
+
 async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
-  const headers = getTitlesToSheetGeneral();
-  const values = await getArrayToSheetGeneral(comprobante);
-  await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
+  try {
+    const nextId = await getNextId(GOOGLE_SHEET_ID);
+    comprobante.id = nextId;
+
+    const headers = getTitlesToSheetGeneral();
+    const values = await getArrayToSheetGeneral(comprobante);
+    await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
+
+    console.log(`Comprobante agregado con ID: ${nextId}`);
+    return nextId;
+  } catch (error) {
+    console.error("Error al agregar comprobante:", error);
+    throw error;
+  }
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -116,7 +161,6 @@ async function esDuplicado(comprobante, GOOGLE_SHEET_ID) {
       GOOGLE_SHEET_ID
     );
     const comprobantesParsed = parseComprobantes(ultimosComprobantes);
-    console.log("comprobantesParsed", comprobantesParsed);
 
     const normalizarMonto = (monto) => {
       if (typeof monto === "string") {
@@ -170,4 +214,5 @@ module.exports = {
   getUltimosComprobantesFromSheet,
   esDuplicado,
   formatearCuentasCorrientes,
+  getNextId,
 };

@@ -154,7 +154,6 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
     for (const movimiento of comprobanteMovimientos) {
       let montoComprobante = Math.round(Number(comprobante.montoEnviado));
       let montoMovimiento = Math.round(Number(movimiento.importe));
-
       if (
         movimiento.referencia &&
         comprobante.numero_comprobante == movimiento.referencia

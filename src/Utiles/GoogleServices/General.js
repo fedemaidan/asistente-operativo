@@ -359,4 +359,5 @@ module.exports = {
   addRow,
   cloneGoogleSheet,
   addFormattedHeaders,
+  getLastRow,
 };

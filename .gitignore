@@ -7,3 +7,4 @@ git
 .vs/
 src/Utiles/downloads
 /auth_info
+DS_Store
