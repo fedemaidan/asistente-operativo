@@ -4,6 +4,7 @@ const customParseFormat = require("dayjs/plugin/customParseFormat");
 dayjs.extend(customParseFormat);
 
 function parseExcelDate(value) {
+  console.log("valueExcelDate", value);
   if (!value) return null;
 
   if (typeof value === "number") {
@@ -13,9 +14,11 @@ function parseExcelDate(value) {
 
   if (typeof value === "string") {
     const formats = [
-      "YYYY-MM-DD",
       "DD/MM/YYYY",
+      "D/M/YYYY",
       "MM/DD/YYYY",
+      "M/D/YYYY",
+      "YYYY-MM-DD",
       "DD-MM-YYYY",
       "D MMM YYYY",
       "MMM D, YYYY",
@@ -65,21 +68,39 @@ const parseMovimientosBanco = (arr) => {
     );
 };
 
+function parseImporte(importe) {
+  if (typeof importe === "number") {
+    // Si el número es menor a 1000 y tiene decimales largos, probablemente es un error de parseo
+    const str = importe.toString();
+    if (importe < 1000 && str.includes(".")) {
+      // Intenta reconstruir el número como si fuera miles
+      // Ejemplo: 162.27273 -> 162272.73
+      const partes = str.split(".");
+      if (partes.length === 2 && partes[1].length > 2) {
+        return parseFloat(
+          partes[0] + partes[1].slice(0, 3) + "." + partes[1].slice(3)
+        );
+      }
+    }
+    return importe;
+  }
+  if (typeof importe === "string") {
+    let limpio = importe.replace(/\./g, "").replace(",", ".");
+    let valor = parseFloat(limpio);
+    return isNaN(valor) ? 0 : valor;
+  }
+  return 0;
+}
+
 const parseMovimientosBancoXls = (arr) => {
   console.log("XLS ARCHIVO", arr);
 
   return arr.map((row) => {
     const nuevaFecha = parseExcelDate(row["__EMPTY"]);
     const importeStr = row["__EMPTY_6"];
-    let importeFinal = 0;
-    if (importeStr && typeof importeStr === "string") {
-      const importe = importeStr.replace(/\./g, "").replace(",", ".");
-      importeFinal = parseFloat(importe);
-    } else if (importeStr) {
-      importeFinal = Math.round(Number(importeStr));
-    }
-
-    //funcion fecha parse a Date
+    const saldoStr = row["__EMPTY_7"];
+    const importeFinal = parseImporte(importeStr);
+    const saldoFinal = saldoStr ? parseImporte(saldoStr) : saldoStr;
     return {
       fecha: nuevaFecha,
       sucOrigen: row["__EMPTY_1"],
@@ -88,7 +109,7 @@ const parseMovimientosBancoXls = (arr) => {
       referencia: row["__EMPTY_4"],
       concepto: row["__EMPTY_5"],
       importe: importeFinal,
-      saldo: row["__EMPTY_7"],
+      saldo: saldoFinal,
     };
   });
 };
@@ -148,8 +169,9 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
   );
 
   const comprobantesParseados = parseComprobantesJson(comprobantesFiltrados);
-  console.log("comprobanteMovimientos", comprobanteMovimientos);
   console.log("comprobantesParseados", comprobantesParseados);
+  console.log("comprobanteMovimientos", comprobanteMovimientos);
+
   for (const comprobante of comprobantesParseados) {
     for (const movimiento of comprobanteMovimientos) {
       let montoComprobante = Math.round(Number(comprobante.montoEnviado));
@@ -159,7 +181,9 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
         comprobante.numero_comprobante == movimiento.referencia
       ) {
         comprobante.estado =
-          montoComprobante == montoMovimiento ? "CONFIRMADO" : "REVISAR MONTO";
+          montoComprobante == montoMovimiento
+            ? "CONFIRMADO REF"
+            : "REVISAR MONTO";
         matchs.push({
           comprobante,
           movimiento,
@@ -169,7 +193,9 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
         // Verificar si existe fecha en el movimiento
         if (movimiento.fecha) {
           const diffDays = getDaysDiff(comprobante.fecha, movimiento.fecha);
-
+          console.log("diffDays", diffDays);
+          console.log("comprobanteMatch", comprobante);
+          console.log("movimientoMatch", movimiento);
           if (diffDays < 10 && diffDays >= 0) {
             comprobante.estado = `CONFIRMADO ${diffDays}`;
             matchs.push({
