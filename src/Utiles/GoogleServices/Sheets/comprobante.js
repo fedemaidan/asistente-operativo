@@ -1,4 +1,4 @@
-const general_range = "ComprobanteRAW!A1:X100000";
+const general_range = "ComprobanteRAW!A1:W100000";
 const { addRow, updateRow, getRowsValues, getLastRow } = require("../General");
 
 async function getArrayToSheetGeneral(comprobante) {
@@ -26,7 +26,6 @@ async function getArrayToSheetGeneral(comprobante) {
     0,
     "-",
     comprobante.destino,
-    comprobante.id ?? "-",
   ];
   return values;
 }
@@ -62,7 +61,6 @@ const parseComprobantes = (arr) => {
     estado: row[9],
     imagen: row[10],
     usuario: row[11],
-    id: row[23],
   }));
   return comprobantes;
 };
