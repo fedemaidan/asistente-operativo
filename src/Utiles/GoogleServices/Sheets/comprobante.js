@@ -103,15 +103,16 @@ async function getNextId(GOOGLE_SHEET_ID) {
 
 async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
   try {
-    const nextId = await getNextId(GOOGLE_SHEET_ID);
-    comprobante.id = nextId;
+    // const nextId = await getNextId(GOOGLE_SHEET_ID);
+    comprobante.id = "";
 
     const headers = getTitlesToSheetGeneral();
     const values = await getArrayToSheetGeneral(comprobante);
     await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
 
-    console.log(`Comprobante agregado con ID: ${nextId}`);
-    return nextId;
+    // console.log(`Comprobante agregado con ID: ${nextId}`);
+    // return nextId;
+    return "";
   } catch (error) {
     console.error("Error al agregar comprobante:", error);
     throw error;
