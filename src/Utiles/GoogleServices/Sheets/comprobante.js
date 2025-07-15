@@ -1,5 +1,12 @@
-const general_range = "ComprobanteRAW!A1:W100000";
+const general_range = "ComprobanteRAW!A1:X100000";
 const { addRow, updateRow, getRowsValues, getLastRow } = require("../General");
+const { randomUUID } = require("crypto");
+
+function generarUUIDConTimestamp() {
+  const uuid = randomUUID();
+  const timestamp = Date.now();
+  return `${uuid}-${timestamp}`;
+}
 
 async function getArrayToSheetGeneral(comprobante) {
   const values = [
@@ -26,6 +33,7 @@ async function getArrayToSheetGeneral(comprobante) {
     0,
     "-",
     comprobante.destino,
+    comprobante.id,
   ];
   return values;
 }
@@ -61,6 +69,7 @@ const parseComprobantes = (arr) => {
     estado: row[9],
     imagen: row[10],
     usuario: row[11],
+    id: row[23],
   }));
   return comprobantes;
 };
@@ -103,8 +112,8 @@ async function getNextId(GOOGLE_SHEET_ID) {
 
 async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
   try {
-    // const nextId = await getNextId(GOOGLE_SHEET_ID);
-    comprobante.id = "";
+    const nextId = await generarUUIDConTimestamp();
+    comprobante.id = nextId;
 
     const headers = getTitlesToSheetGeneral();
     const values = await getArrayToSheetGeneral(comprobante);
