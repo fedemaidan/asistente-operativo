@@ -14,10 +14,19 @@ const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDispl
 module.exports = async function ValidacionDatosStep(userId, message) {
   const sock = botSingleton.getSock();
   const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
-  const data = await opcionElegida(message);
   const comprobante = FlowManager.userFlows[userId].flowData;
 
-  if (data.data.Eleccion == "1") {
+  const usuarios = botSingleton.getUsuarioByUserId(userId);
+  const opcionCorregir =
+    usuarios.length === 1 ? "2" : (usuarios.length + 1).toString();
+  const opcionCancelar =
+    usuarios.length === 1 ? "3" : (usuarios.length + 2).toString();
+
+  const opcionUsuario = parseInt(message);
+  const esOpcionUsuario =
+    opcionUsuario >= 1 && opcionUsuario <= usuarios.length;
+
+  if (esOpcionUsuario) {
     await sock.sendMessage(userId, { text: "🔄 Procesando..." });
 
     if (comprobante.moneda !== "ARS") {
@@ -30,7 +39,7 @@ module.exports = async function ValidacionDatosStep(userId, message) {
     }
 
     comprobante.moneda = CURRENCY_DISPLAY[comprobante.moneda];
-    comprobante.usuario = botSingleton.getUsuarioByUserId(userId);
+    comprobante.usuario = usuarios[opcionUsuario - 1];
 
     const duplicado = await esDuplicado(comprobante, GOOGLE_SHEET_ID);
     console.log("esDuplicado", duplicado);
@@ -58,7 +67,7 @@ module.exports = async function ValidacionDatosStep(userId, message) {
         comprobante
       );
     }
-  } else if (data.data.Eleccion == "2") {
+  } else if (message === opcionCorregir) {
     await sock.sendMessage(userId, {
       text: "✏️ Por favor, revisa los datos y dinos donde esta el error.\n\nEjemplo: El monto es incorrecto, debería ser $10.000 en lugar de $9.500.",
     });
@@ -68,7 +77,7 @@ module.exports = async function ValidacionDatosStep(userId, message) {
       "ModificarDatosStep",
       comprobante
     );
-  } else if (data.data.Eleccion == "3") {
+  } else if (message === opcionCancelar) {
     await sock.sendMessage(userId, {
       text: "❌ Has cancelado el proceso de confirmación.",
     });
