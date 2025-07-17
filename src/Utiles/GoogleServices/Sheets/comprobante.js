@@ -13,7 +13,7 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.numero_comprobante,
     comprobante.fecha,
     comprobante.hora,
-    comprobante.cliente,
+    comprobante.cliente.toUpperCase(),
     comprobante.destino,
     comprobante.montoEnviado,
     comprobante.monto,

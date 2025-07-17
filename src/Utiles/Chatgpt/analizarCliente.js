@@ -36,6 +36,10 @@ module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
     const response = await getByChatGpt4o(prompt);
     const responseData = JSON.parse(response);
 
+    if (responseData.nombre) {
+      responseData.nombre = responseData.nombre.toUpperCase();
+    }
+
     return responseData;
   } catch (error) {
     console.error("Error al analizar cliente:", error);

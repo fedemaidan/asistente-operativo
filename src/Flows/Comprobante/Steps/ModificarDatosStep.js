@@ -12,6 +12,7 @@ module.exports = async function ModificarDatosStep(userId, message) {
     await sock.sendMessage(userId, { text: "⏳ Analizando mensaje ⏳" });
 
     const data = await ModificarComprobanteGpt(message, userId);
+    data.cliente = data.cliente.toUpperCase();
 
     if (!data) {
       await sock.sendMessage(userId, {
