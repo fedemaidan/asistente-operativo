@@ -41,7 +41,7 @@ const connectToWhatsApp = async () => {
   });
 
   // Maneja eventos de actualización de la conexión
-  sock.ev.on("connection.update", (update) => {
+  sock.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
@@ -53,7 +53,10 @@ const connectToWhatsApp = async () => {
       // Si la desconexión no es por error 401 (autenticación), se reconecta
       const shouldReconnect = lastDisconnect.error?.output?.statusCode !== 401;
       console.log("Connection closed. Reconnecting...", shouldReconnect);
-      if (shouldReconnect) connectToWhatsApp();
+      // IMPORTANTE: cerrá el socket anterior
+          if (sock?.ws?.close) sock.ws.close();
+          // Esperá la reconexión antes de seguir
+          return await connectToWhatsApp();
     } else if (connection === "open") {
       console.log("✅ Connected to WhatsApp");
     }
