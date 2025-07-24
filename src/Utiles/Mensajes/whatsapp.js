@@ -72,7 +72,7 @@ const connectToWhatsApp = async () => {
     } else if (connection === 'open') {
       console.log('✅ Connected to WhatsApp');
     }
-    
+  });    
 
   // Guarda las credenciales cada vez que se actualizan
   sock.ev.on("creds.update", saveCreds);
