@@ -49,18 +49,30 @@ const connectToWhatsApp = async () => {
       console.log("QR actualizado. Escanea en: http://localhost:3000/qr");
     }
 
-    if (connection === "close") {
-      // Si la desconexión no es por error 401 (autenticación), se reconecta
-      const shouldReconnect = lastDisconnect.error?.output?.statusCode !== 401;
-      console.log("Connection closed. Reconnecting...", shouldReconnect);
-      // IMPORTANTE: cerrá el socket anterior
-          if (sock?.ws?.close) sock.ws.close();
-          // Esperá la reconexión antes de seguir
+    if (connection === 'close') {
+      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== 401;
+      console.log('🔌 Connection closed. Should reconnect:', shouldReconnect);
+    
+      try {
+        if (shouldReconnect) {
+          if (sock?.ws?.readyState !== 3) {
+            sock?.ws?.close(); // Cerrá si aún no estaba cerrado
+          }
+    
+          // Esperar 2 segundos antes de reconectar para evitar spam de reconexión
+          await new Promise(resolve => setTimeout(resolve, 2000));
+    
           return await connectToWhatsApp();
-    } else if (connection === "open") {
-      console.log("✅ Connected to WhatsApp");
+        } else {
+          console.log('❌ Sesión inválida. Borrá auth_info y escaneá un nuevo QR.');
+        }
+      } catch (err) {
+        console.error('❌ Error al intentar reconectar:', err);
+      }
+    } else if (connection === 'open') {
+      console.log('✅ Connected to WhatsApp');
     }
-  });
+    
 
   // Guarda las credenciales cada vez que se actualizan
   sock.ev.on("creds.update", saveCreds);
