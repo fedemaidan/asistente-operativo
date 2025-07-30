@@ -1,6 +1,7 @@
 const connectToWhatsApp = require("./src/Utiles/Mensajes/whatsapp");
-// const getMessageType = require("./src/Utiles/Mensajes/GetType");
-// const messageResponder = require("./src/Utiles/Mensajes/messageResponder");
+const express = require("express");
+const cors = require("cors");
+const { default: connectToMongoDB } = require("./src/DBConnection");
 
 const startBot = async () => {
   const sock = await connectToWhatsApp();
@@ -9,4 +10,16 @@ const startBot = async () => {
   setInterval(() => console.log("Keep-alive"), 5 * 60 * 1000);
 };
 
-startBot();
+const startApi = async () => {
+  const app = express();
+  app.use(cors());
+  app.use(express.json());
+
+  app.listen(3000, async () => {
+    await connectToMongoDB();
+    console.log("API running on port 3000");
+  });
+};
+
+//startBot();
+startApi();

@@ -13,12 +13,14 @@ const express = require("express");
 const botSingleton = require("../botSingleton");
 const users = require("../Usuarios/usuariosMap");
 const app = express();
+const PORT = 3002;
 
 // Variable para almacenar el último QR generado (si se requiere)
 let latestQR = null;
 
 // Ruta para mostrar el QR en un navegador
 app.get("/qr", (req, res) => {
+  console.log("QR requested");
   if (!latestQR) {
     return res.send("QR no generado aún. Espera...");
   }
@@ -69,8 +71,8 @@ const connectToWhatsApp = async () => {
   return sock;
 };
 
-app.listen(3002, () =>
-  console.log("Servidor corriendo en http://localhost:3000/qr")
+app.listen(PORT, () =>
+  console.log(`Servidor corriendo en http://localhost:${PORT}/qr`)
 );
 
 // Exporta la función para conectar a WhatsApp
