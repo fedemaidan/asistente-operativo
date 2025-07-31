@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const cajaSchema = new mongoose.Schema({
   nombre: {
@@ -8,4 +8,4 @@ const cajaSchema = new mongoose.Schema({
 });
 
 const Caja = mongoose.model("Caja", cajaSchema);
-export default Caja;
+module.exports = Caja;

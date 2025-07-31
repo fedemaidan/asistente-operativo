@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const cuentaPendienteSchema = new mongoose.Schema({
   descripcion: {
@@ -38,3 +38,9 @@ const cuentaPendienteSchema = new mongoose.Schema({
     required: true,
   },
 });
+
+const CuentaPendiente = mongoose.model(
+  "CuentaPendiente",
+  cuentaPendienteSchema
+);
+module.exports = CuentaPendiente;

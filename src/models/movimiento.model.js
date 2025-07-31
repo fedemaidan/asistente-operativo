@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const movimientosSchema = new mongoose.Schema({
   type: {
@@ -79,4 +79,4 @@ const movimientosSchema = new mongoose.Schema({
 });
 
 const Movimiento = mongoose.model("Movimiento", movimientosSchema);
-export default Movimiento;
+module.exports = Movimiento;
