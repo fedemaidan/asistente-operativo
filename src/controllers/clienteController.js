@@ -67,27 +67,6 @@ class ClienteController extends BaseController {
       return { success: false, error: error.message };
     }
   }
-
-  // Obtener estadísticas de clientes
-  async getEstadisticas() {
-    try {
-      const totalClientes = await this.model.countDocuments();
-      const clientesConDescuento = await this.model.countDocuments({
-        descuento: { $gt: 0 },
-      });
-
-      return {
-        success: true,
-        data: {
-          totalClientes,
-          clientesConDescuento,
-          clientesSinDescuento: totalClientes - clientesConDescuento,
-        },
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
 }
 
 module.exports = new ClienteController();

@@ -18,18 +18,18 @@ const movimientosSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  clienteId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Cliente",
+    default: null,
+  },
   cliente: {
-    id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Cliente",
-      required: true,
-    },
     nombre: { type: String, required: true },
-    descuento: { type: Number, required: true },
+    descuento: { type: Number, default: 0 },
     ccActivas: {
       type: [String],
       enum: ["ARS", "USD_BLUE", "USD_OFICIAL"],
-      required: true,
+      default: null,
     },
   },
   cuentaCorriente: {
@@ -37,14 +37,20 @@ const movimientosSchema = new mongoose.Schema({
     enum: ["ARS", "USD_BLUE", "USD_OFICIAL"],
     required: true,
   },
-  total: {
-    type: Number,
+  moneda: {
+    type: String,
+    enum: ["ARS", "USD"],
     required: true,
+  },
+  total: {
+    ars: { type: Number, required: true },
+    usdOficial: { type: Number, required: true },
+    usdBlue: { type: Number, required: true },
   },
   caja: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Caja",
-    required: true,
+    default: null,
   },
   urlImagen: {
     type: String,
@@ -56,14 +62,17 @@ const movimientosSchema = new mongoose.Schema({
       "transferencia",
       "deposito",
       "cheque",
+      "efectivo",
       "facturaA",
       "facturaB",
       "facturaC",
     ],
+    required: true,
   },
   estado: {
     type: String,
     enum: ["PENDIENTE", "CONFIRMADO", "CONFIRMAR MONTO", "COBRADO"],
+    default: "PENDIENTE",
   },
   fechaCobro: {
     type: Date,
@@ -71,6 +80,7 @@ const movimientosSchema = new mongoose.Schema({
   },
   userPhone: {
     type: String,
+    default: null,
   },
   nombreUsuario: {
     type: String,

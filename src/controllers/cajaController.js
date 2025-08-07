@@ -18,7 +18,8 @@ class CajaController extends BaseController {
         return { success: false, error: "Ya existe una caja con ese nombre" };
       }
 
-      return await this.create(cajaData);
+      const caja = await this.create(cajaData);
+      return { success: true, data: caja };
     } catch (error) {
       return { success: false, error: error.message };
     }

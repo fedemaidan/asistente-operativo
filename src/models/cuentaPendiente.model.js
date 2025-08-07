@@ -23,9 +23,15 @@ const cuentaPendienteSchema = new mongoose.Schema({
     type: Number,
     default: 1,
   },
+  subTotal: {
+    ars: { type: Number, required: true },
+    usdOficial: { type: Number, required: true },
+    usdBlue: { type: Number, required: true },
+  },
   montoTotal: {
-    type: Number,
-    required: true,
+    ars: { type: Number, required: true },
+    usdOficial: { type: Number, required: true },
+    usdBlue: { type: Number, required: true },
   },
   moneda: {
     type: String,

@@ -3,9 +3,9 @@ const express = require("express");
 const cors = require("cors");
 const connectToMongoDB = require("./src/DBConnection");
 
-const indexRoutes = require("./src/routes/index.js");
+const indexRoutes = require("./src/routes/index.routes.js");
 
-PORT = 3000;
+PORT = 3004;
 
 const startBot = async () => {
   const sock = await connectToWhatsApp();
@@ -29,5 +29,5 @@ const startApi = async () => {
   });
 };
 
-//startBot();
+startBot();
 startApi();

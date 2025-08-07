@@ -8,6 +8,15 @@ const clienteSchema = new mongoose.Schema({
   descuento: {
     type: Number,
     default: 0,
+    min: 0,
+    max: 1,
+    validate: {
+      validator: function (v) {
+        return v >= 0 && v <= 1;
+      },
+      message:
+        "El descuento debe estar entre 0 y 1 (ej: 0.05 = 5%, 0.15 = 15%)",
+    },
   },
   ccActivas: {
     type: [String],

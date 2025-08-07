@@ -2,34 +2,33 @@ const BaseController = require("./baseController");
 const Movimiento = require("../models/movimiento.model.js");
 const Cliente = require("../models/cliente.model.js");
 const Caja = require("../models/caja.model.js");
+const DolarService = require("../services/monedasService/dolarService.js");
 
 class MovimientoController extends BaseController {
   constructor() {
     super(Movimiento);
   }
 
-  async createMovimiento(movimientoData) {
+  async createMovimiento(movimientoData, montoEnviado) {
+    console.log(movimientoData);
+    console.log(montoEnviado);
     try {
-      if (movimientoData.total <= 0) {
-        return { success: false, error: "El total debe ser mayor que 0" };
+      const cotizaciones = await DolarService.obtenerValoresDolar();
+      if (movimientoData.moneda === "ARS") {
+        movimientoData.total = {
+          ars: montoEnviado,
+          usdOficial: montoEnviado / cotizaciones.oficial.venta,
+          usdBlue: montoEnviado / cotizaciones.blue.venta,
+        };
+      } else {
+        movimientoData.total = {
+          ars: montoEnviado * cotizaciones.oficial.venta,
+          usdOficial: montoEnviado,
+          usdBlue: montoEnviado,
+        };
       }
-
-      if (movimientoData.cliente) {
-        const cliente = await Cliente.findById(movimientoData.cliente);
-        if (!cliente) {
-          return { success: false, error: "Cliente no encontrado" };
-        }
-      }
-
-      // Validar que la caja existe
-      if (movimientoData.caja) {
-        const caja = await Caja.findById(movimientoData.caja);
-        if (!caja) {
-          return { success: false, error: "Caja no encontrada" };
-        }
-      }
-
-      return await this.create(movimientoData);
+      const movimiento = await this.create(movimientoData);
+      return { success: true, data: movimiento };
     } catch (error) {
       return { success: false, error: error.message };
     }

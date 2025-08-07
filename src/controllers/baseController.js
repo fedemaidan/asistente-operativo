@@ -17,7 +17,21 @@ class BaseController {
 
   async getAll(query = {}, populate = "") {
     try {
-      const documents = await this.model.find(query).populate(populate);
+      let queryBuilder = this.model.find(query);
+
+      // Solo hacer populate si se proporciona un valor válido
+      if (populate && populate.trim() !== "") {
+        const populateFields = populate.split(",").map((field) => field.trim());
+        populateFields.forEach((field) => {
+          // Configurar populate para manejar campos null
+          queryBuilder = queryBuilder.populate({
+            path: field,
+            options: { strictPopulate: false },
+          });
+        });
+      }
+
+      const documents = await queryBuilder;
       return { success: true, data: documents };
     } catch (error) {
       return { success: false, error: error.message };
@@ -26,7 +40,21 @@ class BaseController {
 
   async getById(id, populate = "") {
     try {
-      const document = await this.model.findById(id).populate(populate);
+      let queryBuilder = this.model.findById(id);
+
+      // Solo hacer populate si se proporciona un valor válido
+      if (populate && populate.trim() !== "") {
+        const populateFields = populate.split(",").map((field) => field.trim());
+        populateFields.forEach((field) => {
+          // Configurar populate para manejar campos null
+          queryBuilder = queryBuilder.populate({
+            path: field,
+            options: { strictPopulate: false },
+          });
+        });
+      }
+
+      const document = await queryBuilder;
       if (!document) {
         return { success: false, error: "Documento no encontrado" };
       }
