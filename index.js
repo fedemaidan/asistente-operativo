@@ -1,12 +1,33 @@
 const connectToWhatsApp = require("./src/Utiles/Mensajes/whatsapp");
-// const getMessageType = require("./src/Utiles/Mensajes/GetType");
-// const messageResponder = require("./src/Utiles/Mensajes/messageResponder");
+const express = require("express");
+const cors = require("cors");
+const connectToMongoDB = require("./src/DBConnection");
+
+const indexRoutes = require("./src/routes/index.routes.js");
+
+PORT = 3004;
 
 const startBot = async () => {
   const sock = await connectToWhatsApp();
 
-  // Ejemplo de keep-alive
   setInterval(() => console.log("Keep-alive"), 5 * 60 * 1000);
 };
 
+const startApi = async () => {
+  const app = express();
+  app.use(cors());
+  app.use(express.json());
+
+  app.use("/api", indexRoutes);
+  app.get("/", (req, res) => {
+    res.json({ message: "API Bot Fundas funcionando correctamente" });
+  });
+
+  app.listen(PORT, async () => {
+    await connectToMongoDB();
+    console.log(`API running on port ${PORT}`);
+  });
+};
+
 startBot();
+startApi();

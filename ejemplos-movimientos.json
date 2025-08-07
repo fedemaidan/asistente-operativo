@@ -1,0 +1,65 @@
+[
+  {
+    "movimiento": {
+      "type": "INGRESO",
+      "numeroFactura": "FAC-2024-001",
+      "fechaFactura": "2024-01-15T10:30:00.000Z",
+      "cliente": {
+        "nombre": "AGGIO",
+        "ccActivas": ["ARS", "USD_BLUE"],
+        "descuento": 0.05
+      },
+      "cuentaCorriente": "ARS",
+      "moneda": "ARS",
+      "tipoFactura": "transferencia",
+      "caja": "689464da2cbf7fe0d4105369",
+      "urlImagen": "https://ejemplo.com/imagen1.jpg",
+      "estado": "PENDIENTE",
+      "userPhone": "5491112345678",
+      "nombreUsuario": "Juan Pérez"
+    },
+    "montoEnviado": 150000
+  },
+  {
+    "movimiento": {
+      "type": "EGRESO",
+      "numeroFactura": "FAC-2024-002",
+      "fechaFactura": "2024-01-16T14:45:00.000Z",
+      "cliente": {
+        "nombre": "EMI CORDOBA",
+        "ccActivas": ["ARS", "USD_BLUE"],
+        "descuento": 0
+      },
+      "cuentaCorriente": "USD_BLUE",
+      "moneda": "USD",
+      "tipoFactura": "efectivo",
+      "caja": "689464eb2cbf7fe0d410536c",
+      "urlImagen": "https://ejemplo.com/imagen2.jpg",
+      "estado": "CONFIRMADO",
+      "userPhone": "5491187654321",
+      "nombreUsuario": "María García"
+    },
+    "montoEnviado": 500
+  },
+  {
+    "movimiento": {
+      "type": "INGRESO",
+      "numeroFactura": "FAC-2024-003",
+      "fechaFactura": "2024-01-17T09:15:00.000Z",
+      "cliente": {
+        "nombre": "FABRICIO JUJUY",
+        "ccActivas": ["ARS"],
+        "descuento": 0.1
+      },
+      "cuentaCorriente": "ARS",
+      "moneda": "ARS",
+      "tipoFactura": "cheque",
+      "caja": "689464da2cbf7fe0d4105369",
+      "urlImagen": "https://ejemplo.com/imagen3.jpg",
+      "estado": "PENDIENTE",
+      "userPhone": "5491134567890",
+      "nombreUsuario": "Carlos López"
+    },
+    "montoEnviado": 75000
+  }
+]
