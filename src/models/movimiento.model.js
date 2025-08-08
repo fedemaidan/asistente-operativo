@@ -8,11 +8,11 @@ const movimientosSchema = new mongoose.Schema({
   },
   numeroFactura: {
     type: String,
-    required: true,
+    default: null,
   },
   fechaFactura: {
     type: Date,
-    required: true,
+    default: null,
   },
   fechaCreacion: {
     type: Date,
@@ -28,13 +28,13 @@ const movimientosSchema = new mongoose.Schema({
     descuento: { type: Number, default: 0 },
     ccActivas: {
       type: [String],
-      enum: ["ARS", "USD_BLUE", "USD_OFICIAL"],
+      enum: ["ARS", "USD BLUE", "USD OFICIAL"],
       default: null,
     },
   },
   cuentaCorriente: {
     type: String,
-    enum: ["ARS", "USD_BLUE", "USD_OFICIAL"],
+    enum: ["ARS", "USD BLUE", "USD OFICIAL"],
     required: true,
   },
   moneda: {
@@ -86,6 +86,50 @@ const movimientosSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  tipoDeCambio: {
+    type: Number,
+    required: true,
+  },
+  logs: [
+    {
+      campo: {
+        type: String,
+        enum: [
+          "tipoDeCambio",
+          "estado",
+          "caja",
+          "cliente",
+          "cuentaCorriente",
+          "moneda",
+          "tipoFactura",
+          "urlImagen",
+          "numeroFactura",
+          "fechaFactura",
+          "fechaCreacion",
+          "userPhone",
+          "nombreUsuario",
+        ],
+        required: true,
+      },
+      valorAnterior: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true,
+      },
+      valorNuevo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true,
+      },
+      fechaActualizacion: {
+        type: Date,
+        default: Date.now,
+      },
+      usuario: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Usuario",
+        required: true,
+      },
+    },
+  ],
 });
 
 const Movimiento = mongoose.model("Movimiento", movimientosSchema);

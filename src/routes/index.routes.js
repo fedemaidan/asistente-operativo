@@ -12,7 +12,11 @@ router.use("/clientes", clientesRouter);
 
 router.get("/dolar", async (req, res) => {
   const dolar = await DolarService.obtenerValoresDolar();
-  res.json(dolar);
+  res.json({
+    ultimaActualizacion: dolar.ultima_actualizacion,
+    oficial: dolar.oficial.venta,
+    blue: dolar.blue.venta,
+  });
 });
 
 router.delete("/reset-db", async (req, res) => {

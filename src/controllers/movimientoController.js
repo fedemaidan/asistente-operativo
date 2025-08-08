@@ -8,10 +8,10 @@ class MovimientoController extends BaseController {
   constructor() {
     super(Movimiento);
   }
-
   async createMovimiento(movimientoData, montoEnviado) {
     console.log(movimientoData);
     console.log(montoEnviado);
+
     try {
       const cotizaciones = await DolarService.obtenerValoresDolar();
       if (movimientoData.moneda === "ARS") {
@@ -20,7 +20,7 @@ class MovimientoController extends BaseController {
           usdOficial: montoEnviado / cotizaciones.oficial.venta,
           usdBlue: montoEnviado / cotizaciones.blue.venta,
         };
-      } else {
+      } else if (movimientoData.moneda === "USD") {
         movimientoData.total = {
           ars: montoEnviado * cotizaciones.oficial.venta,
           usdOficial: montoEnviado,
@@ -28,7 +28,7 @@ class MovimientoController extends BaseController {
         };
       }
       const movimiento = await this.create(movimientoData);
-      return { success: true, data: movimiento };
+      return movimiento;
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -64,7 +64,7 @@ class MovimientoController extends BaseController {
   async getByCliente(clienteId) {
     try {
       const movimientos = await this.model
-        .find({ cliente: clienteId })
+        .find({ clienteId: clienteId })
         .populate("cliente")
         .populate("caja")
         .sort({ fechaFactura: -1 });
@@ -74,7 +74,6 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // Obtener movimientos por caja
   async getByCaja(cajaId) {
     try {
       const movimientos = await this.model
@@ -88,7 +87,6 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // Obtener movimientos por tipo (ingreso/egreso)
   async getByType(type) {
     try {
       const movimientos = await this.model
@@ -102,7 +100,6 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // Obtener movimientos por rango de fechas
   async getByFechaRange(fechaInicio, fechaFin) {
     try {
       const movimientos = await this.model
@@ -121,7 +118,62 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // Calcular total de movimientos por tipo
+  async getClientesTotales() {
+    try {
+      const clientes = await Cliente.find({});
+
+      const movimientos = await this.model.find({}).populate("cliente");
+
+      const clientesTotales = clientes.map((cliente) => {
+        const movimientosCliente = movimientos.filter(
+          (mov) =>
+            mov.clienteId && mov.clienteId.toString() === cliente._id.toString()
+        );
+
+        let totalARS = 0;
+        let totalUSDBlue = 0;
+        let totalUSDOficial = 0;
+
+        movimientosCliente.forEach((mov) => {
+          if (mov.cuentaCorriente === "ARS") {
+            if (mov.type === "INGRESO") {
+              totalARS += mov.total?.ars || 0;
+            } else {
+              totalARS -= mov.total?.ars || 0;
+            }
+          } else if (mov.cuentaCorriente === "USD BLUE") {
+            if (mov.type === "INGRESO") {
+              totalUSDBlue += mov.total?.usdBlue || 0;
+            } else {
+              totalUSDBlue -= mov.total?.usdBlue || 0;
+            }
+          } else if (mov.cuentaCorriente === "USD OFICIAL") {
+            if (mov.type === "INGRESO") {
+              totalUSDOficial += mov.total?.usdOficial || 0;
+            } else {
+              totalUSDOficial -= mov.total?.usdOficial || 0;
+            }
+          }
+        });
+
+        return {
+          _id: cliente._id,
+          cliente: cliente.nombre,
+          ARS: totalARS,
+          "USD BLUE": totalUSDBlue,
+          "USD OFICIAL": totalUSDOficial,
+        };
+      });
+
+      // Ordenar por nombre de cliente
+      clientesTotales.sort((a, b) => a.cliente.localeCompare(b.cliente));
+
+      return { success: true, data: clientesTotales };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   async getTotalByType(type) {
     try {
       const result = await this.model.aggregate([
@@ -135,7 +187,6 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // Obtener estadísticas de movimientos
   async getEstadisticas() {
     try {
       const totalMovimientos = await this.model.countDocuments();

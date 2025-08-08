@@ -46,11 +46,9 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/clientes-totales", async (req, res) => {
   try {
-    const { id } = req.params;
-    const { populate } = req.query;
-    const result = await movimientoController.getById(id, populate || "");
+    const result = await movimientoController.getClientesTotales();
     res.json(result);
   } catch (error) {
     res.status(500).json({
@@ -108,6 +106,21 @@ router.get("/fecha/:fechaInicio/:fechaFin", async (req, res) => {
 router.get("/estadisticas", async (req, res) => {
   try {
     const result = await movimientoController.getEstadisticas();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/movimientos/:id - Obtener movimiento por ID (DEBE IR DESPUÉS DE LAS RUTAS ESPECÍFICAS)
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { populate } = req.query;
+    const result = await movimientoController.getById(id, populate || "");
     res.json(result);
   } catch (error) {
     res.status(500).json({

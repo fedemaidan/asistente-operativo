@@ -30,11 +30,54 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.get("/:id/logs", async (req, res) => {
+  try {
+    const result = await clienteController.getLogs(req.params.id);
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener los logs del cliente",
+      message: error.message,
+    });
+  }
+});
+
+router.get("/nombre/:nombre", async (req, res) => {
+  try {
+    const result = await clienteController.getByNombre(req.params.nombre);
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener el cliente por nombre",
+      message: error.message,
+    });
+  }
+});
+
+router.get("/cuenta/:cuenta", async (req, res) => {
+  try {
+    const result = await clienteController.getByCuentaActiva(req.params.cuenta);
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener clientes por cuenta activa",
+      message: error.message,
+    });
+  }
+});
+
 router.post("/", async (req, res) => {
-  const { nombre, descuento, ccActivas } = req.body;
+  const { nombre, descuento, ccActivas, usuario } = req.body;
 
   if (!nombre) {
     return res.status(400).json({ error: "El nombre es requerido" });
+  }
+
+  if (!usuario) {
+    return res.status(400).json({ error: "El usuario es requerido" });
   }
 
   try {
@@ -42,6 +85,7 @@ router.post("/", async (req, res) => {
       nombre,
       descuento,
       ccActivas,
+      usuario,
     });
 
     if (!cliente.success) {
@@ -53,6 +97,89 @@ router.post("/", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Error al crear el cliente",
+      message: error.message,
+    });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  const { nombre, descuento, ccActivas, usuario } = req.body;
+
+  if (!nombre) {
+    return res.status(400).json({ error: "El nombre es requerido" });
+  }
+
+  if (!usuario) {
+    return res.status(400).json({ error: "El usuario es requerido" });
+  }
+
+  try {
+    const cliente = await clienteController.updateCliente(req.params.id, {
+      nombre,
+      descuento,
+      ccActivas,
+      usuario, // Se usa solo para los logs, no se actualiza en el cliente
+    });
+
+    if (!cliente.success) {
+      return res.status(400).json({ error: cliente.error });
+    }
+
+    return res.json(cliente);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al actualizar el cliente",
+      message: error.message,
+    });
+  }
+});
+
+router.patch("/:id/cuentas", async (req, res) => {
+  const { ccActivas, usuario } = req.body;
+
+  if (!ccActivas || !Array.isArray(ccActivas)) {
+    return res.status(400).json({ error: "ccActivas debe ser un array" });
+  }
+
+  if (!usuario) {
+    return res.status(400).json({ error: "El usuario es requerido" });
+  }
+
+  try {
+    const cliente = await clienteController.updateCuentasActivas(
+      req.params.id,
+      ccActivas,
+      usuario
+    );
+
+    if (!cliente.success) {
+      return res.status(400).json({ error: cliente.error });
+    }
+
+    return res.json(cliente);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al actualizar las cuentas activas",
+      message: error.message,
+    });
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const result = await clienteController.delete(req.params.id);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al eliminar el cliente",
       message: error.message,
     });
   }

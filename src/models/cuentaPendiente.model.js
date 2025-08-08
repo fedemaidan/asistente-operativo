@@ -40,7 +40,7 @@ const cuentaPendienteSchema = new mongoose.Schema({
   },
   cc: {
     type: String,
-    enum: ["ARS", "USD_BLUE", "USD_OFICIAL"],
+    enum: ["ARS", "USD BLUE", "USD OFICIAL"],
     required: true,
   },
 });
