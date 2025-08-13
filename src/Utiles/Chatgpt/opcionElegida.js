@@ -1,16 +1,14 @@
-const { getByChatGpt4o } = require("../Chatgpt/Base");
+const { getByChatGpt4o } = require("./Base");
 
-const opcion =
-{
-    accion: "Confirmar",
-    data:
-    {
-        Eleccion: "El interpreta como 1 para Si, continuar, acepto, (Emoji manito arriba) etc, 2 para no, detener, para, No (emoji manito abajo) etc,3 para cancelar la operacon, cancelar, detener, para, no sigas."
-    }
-}
+const opcion = {
+  accion: "Confirmar",
+  data: {
+    Eleccion:
+      "El interpreta como 1 para Si, continuar, acepto, (Emoji manito arriba) etc, 2 para no, detener, para, No (emoji manito abajo) etc,3 para cancelar la operacon, cancelar, detener, para, no sigas.",
+  },
+};
 async function opcionElegida(mensajeCliente) {
-
-    prompt = `
+  prompt = `
 Como bot de un sistema de control de stock, quiero identificar la intención del usuario y ejecutar la acción adecuada para gestionar correctamente la confirmación o cancelación de pedidos.
 
 Formato de respuesta: Devuelve exclusivamente un JSON modificando los datos dependiendo de la interpretación, sin incluir texto adicional.
@@ -27,14 +25,13 @@ Formato de respuesta esperado (EXCLUSIVAMENTE JSON, sin texto adicional):
 ${JSON.stringify(opcion, null, 2)}
 `;
 
-    const response = await getByChatGpt4o(prompt);
-    const respuesta = JSON.parse(response);
+  const response = await getByChatGpt4o(prompt);
+  const respuesta = JSON.parse(response);
 
-    if (respuesta.hasOwnProperty('json_data')) {
-        return respuesta.json_data
-    }
-    else {
-        return respuesta
-    }
+  if (respuesta.hasOwnProperty("json_data")) {
+    return respuesta.json_data;
+  } else {
+    return respuesta;
+  }
 }
 module.exports = opcionElegida;

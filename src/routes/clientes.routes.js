@@ -30,6 +30,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.get("/:id/cuenta-corriente", async (req, res) => {});
+
 router.get("/:id/logs", async (req, res) => {
   try {
     const result = await clienteController.getLogs(req.params.id);

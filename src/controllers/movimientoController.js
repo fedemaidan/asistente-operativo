@@ -1,4 +1,4 @@
-const BaseController = require("./baseController");
+const BaseController = require("./baseController.js");
 const Movimiento = require("../models/movimiento.model.js");
 const Cliente = require("../models/cliente.model.js");
 const Caja = require("../models/caja.model.js");
@@ -14,7 +14,13 @@ class MovimientoController extends BaseController {
 
     try {
       const cotizaciones = await DolarService.obtenerValoresDolar();
-      if (movimientoData.moneda === "ARS") {
+      if (movimientoData.type === "EGRESO") {
+        movimientoData.total = {
+          ars: montoEnviado,
+          usdOficial: montoEnviado,
+          usdBlue: montoEnviado,
+        };
+      } else if (movimientoData.moneda === "ARS") {
         movimientoData.total = {
           ars: montoEnviado,
           usdOficial: montoEnviado / cotizaciones.oficial.venta,
@@ -27,7 +33,9 @@ class MovimientoController extends BaseController {
           usdBlue: montoEnviado,
         };
       }
+
       const movimiento = await this.create(movimientoData);
+      //Pegar google sheet
       return movimiento;
     } catch (error) {
       return { success: false, error: error.message };
@@ -54,7 +62,14 @@ class MovimientoController extends BaseController {
         }
       }
 
-      return await this.update(id, movimientoData);
+      const { nombreUsuario, ...datosMovimiento } = movimientoData;
+
+      const updateData = {
+        ...datosMovimiento,
+        nombreUsuario: nombreUsuario,
+      };
+
+      return await this.update(id, updateData);
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -206,6 +221,18 @@ class MovimientoController extends BaseController {
           movimientosPorTipo,
         },
       };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getLogs(id) {
+    try {
+      const movimiento = await this.model.findById(id).select("logs");
+      if (!movimiento) {
+        return { success: false, error: "Movimiento no encontrado" };
+      }
+      return { success: true, data: movimiento.logs };
     } catch (error) {
       return { success: false, error: error.message };
     }

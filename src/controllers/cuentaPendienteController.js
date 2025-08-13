@@ -10,11 +10,27 @@ class CuentaPendienteController extends BaseController {
   async createCuentaPendiente(cuentaData) {
     try {
       // Validar que el monto sea mayor que 0
-      if (cuentaData.montoTotal <= 0) {
-        return { success: false, error: "El monto total debe ser mayor que 0" };
+      if (cuentaData.montoTotal && cuentaData.montoTotal.ars >= 0) {
+        return { success: false, error: "El monto total debe ser menor que 0" };
       }
 
       return await this.create(cuentaData);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Actualizar cuenta pendiente con usuario para logs
+  async updateCuentaPendiente(id, cuentaData) {
+    try {
+      const { usuario, ...datosCuenta } = cuentaData;
+
+      const updateData = {
+        ...datosCuenta,
+        usuario: usuario,
+      };
+
+      return await this.update(id, updateData);
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -95,6 +111,19 @@ class CuentaPendienteController extends BaseController {
           totalUSD: totalUSD.data,
         },
       };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Obtener logs de una cuenta pendiente
+  async getLogs(id) {
+    try {
+      const cuenta = await this.model.findById(id).select("logs");
+      if (!cuenta) {
+        return { success: false, error: "Cuenta pendiente no encontrada" };
+      }
+      return { success: true, data: cuenta.logs };
     } catch (error) {
       return { success: false, error: error.message };
     }

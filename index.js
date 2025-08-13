@@ -1,10 +1,10 @@
 const {
   connectToWhatsApp,
   router: whatsappRouter,
-} = require("./src/Utiles/Mensajes/whatsapp");
+} = require("./src/Utiles/Mensajes/whatsapp.js");
 const express = require("express");
 const cors = require("cors");
-const connectToMongoDB = require("./src/DBConnection");
+const connectToMongoDB = require("./src/DBConnection.js");
 
 const indexRoutes = require("./src/routes/index.routes.js");
 

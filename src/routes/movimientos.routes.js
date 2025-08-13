@@ -21,6 +21,16 @@ router.post("/", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
+  const { nombreUsuario } = req.body;
+
+  console.log("req.body", req.body);
+
+  if (!nombreUsuario) {
+    return res
+      .status(400)
+      .json({ error: "El nombreUsuario es requerido para los logs" });
+  }
+
   try {
     const { id } = req.params;
     const result = await movimientoController.updateMovimiento(id, req.body);
@@ -35,8 +45,20 @@ router.put("/:id", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { populate } = req.query;
-    const result = await movimientoController.getAll({}, populate || "");
+    const { populate, type } = req.query;
+
+    const filters = {};
+    if (type) filters.type = type;
+
+    const options = {
+      filter: filters,
+    };
+
+    const result = await movimientoController.getAll(
+      {},
+      populate || "",
+      options
+    );
     res.json(result);
   } catch (error) {
     res.status(500).json({
@@ -71,7 +93,6 @@ router.get("/cliente/:clienteId", async (req, res) => {
   }
 });
 
-// GET /api/movimientos/tipo/:type - Obtener movimientos por tipo
 router.get("/tipo/:type", async (req, res) => {
   try {
     const { type } = req.params;
@@ -85,7 +106,6 @@ router.get("/tipo/:type", async (req, res) => {
   }
 });
 
-// GET /api/movimientos/fecha/:fechaInicio/:fechaFin - Obtener movimientos por rango de fechas
 router.get("/fecha/:fechaInicio/:fechaFin", async (req, res) => {
   try {
     const { fechaInicio, fechaFin } = req.params;
@@ -102,7 +122,6 @@ router.get("/fecha/:fechaInicio/:fechaFin", async (req, res) => {
   }
 });
 
-// GET /api/movimientos/estadisticas - Obtener estadísticas de movimientos
 router.get("/estadisticas", async (req, res) => {
   try {
     const result = await movimientoController.getEstadisticas();
@@ -115,7 +134,20 @@ router.get("/estadisticas", async (req, res) => {
   }
 });
 
-// GET /api/movimientos/:id - Obtener movimiento por ID (DEBE IR DESPUÉS DE LAS RUTAS ESPECÍFICAS)
+router.get("/:id/logs", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await movimientoController.getLogs(id);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener los logs del movimiento",
+      message: error.message,
+    });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -130,7 +162,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/movimientos/:id - Eliminar un movimiento
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;

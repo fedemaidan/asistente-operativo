@@ -1,4 +1,4 @@
-const { getByChatGpt4o } = require("../../Utiles/Chatgpt/Base");
+const { getByChatGpt4o } = require("../Chatgpt/Base");
 const FlowManager = require("../../FlowControl/FlowManager");
 const { getClientesFromSheet } = require("../GoogleServices/Sheets/cliente");
 const botSingleton = require("../botSingleton");

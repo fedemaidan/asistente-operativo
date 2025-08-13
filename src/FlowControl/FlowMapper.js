@@ -1,4 +1,4 @@
-const FlowManager = require("../FlowControl/FlowManager");
+const FlowManager = require("./FlowManager");
 const defaultFlow = require("../Flows/INIT/INIT");
 const ComprobanteFlow = require("../Flows/Comprobante/ComprobanteFlow");
 const ExcelFlow = require("../Flows/Excel/ExcelFlow");

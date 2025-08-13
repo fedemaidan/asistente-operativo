@@ -15,9 +15,15 @@ class BaseController {
     }
   }
 
-  async getAll(query = {}, populate = "") {
+  async getAll(query = {}, populate = "", options = {}) {
     try {
-      let queryBuilder = this.model.find(query);
+      const filter = { ...query, ...options.filter };
+
+      let queryBuilder = this.model.find(filter);
+
+      if (options.sort) {
+        queryBuilder = queryBuilder.sort(options.sort);
+      }
 
       // Solo hacer populate si se proporciona un valor válido
       if (populate && populate.trim() !== "") {
@@ -66,10 +72,14 @@ class BaseController {
 
   async update(id, data) {
     try {
-      const updatedDocument = await this.model.findByIdAndUpdate(id, data, {
-        new: true,
-        runValidators: true,
-      });
+      const updatedDocument = await this.model.findOneAndUpdate(
+        { _id: id },
+        data,
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
       if (!updatedDocument) {
         return { success: false, error: "Documento no encontrado" };
       }

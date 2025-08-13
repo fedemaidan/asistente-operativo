@@ -15,6 +15,10 @@ const cuentaPendienteSchema = new mongoose.Schema({
     default: Date.now,
     required: true,
   },
+  horaCreacion: {
+    type: String,
+    default: Date.now,
+  },
   proveedorOCliente: {
     type: String,
     required: true,
@@ -43,8 +47,236 @@ const cuentaPendienteSchema = new mongoose.Schema({
     enum: ["ARS", "USD BLUE", "USD OFICIAL"],
     required: true,
   },
+  usuario: {
+    type: String,
+    required: true,
+  },
+  logs: [
+    {
+      campo: {
+        type: String,
+        enum: [
+          "descripcion",
+          "fechaCuenta",
+          "proveedorOCliente",
+          "descuentoAplicado",
+          "subTotal",
+          "montoTotal",
+          "moneda",
+          "cc",
+          "usuario",
+        ],
+        required: true,
+      },
+      valorAnterior: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true,
+      },
+      valorNuevo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true,
+      },
+      fechaActualizacion: {
+        type: Date,
+        default: Date.now,
+      },
+      usuario: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
 });
 
+// Middleware pre-save para registrar logs automáticamente
+cuentaPendienteSchema.pre("save", function (next) {
+  console.log("CuentaPendiente save middleware");
+  if (this.isNew) {
+    // Si es un nuevo documento, no hay logs que registrar
+    return next();
+  }
+
+  const modifiedPaths = this.modifiedPaths();
+  if (modifiedPaths.length === 0) {
+    return next();
+  }
+
+  this.constructor
+    .findById(this._id)
+    .then((originalDoc) => {
+      if (!originalDoc) {
+        return next();
+      }
+
+      const logsToAdd = [];
+
+      modifiedPaths.forEach((path) => {
+        if (
+          [
+            "descripcion",
+            "fechaCuenta",
+            "proveedorOCliente",
+            "descuentoAplicado",
+            "subTotal",
+            "montoTotal",
+            "moneda",
+            "cc",
+            "usuario",
+          ].includes(path)
+        ) {
+          const valorAnterior = originalDoc[path];
+          const valorNuevo = this[path];
+
+          // Solo agregar log si el valor realmente cambió
+          if (JSON.stringify(valorAnterior) !== JSON.stringify(valorNuevo)) {
+            logsToAdd.push({
+              campo: path,
+              valorAnterior: valorAnterior,
+              valorNuevo: valorNuevo,
+              fechaActualizacion: new Date(),
+              usuario: this.usuario || "Sistema",
+            });
+          }
+        }
+      });
+
+      // Agregar los logs al array
+      if (logsToAdd.length > 0) {
+        this.logs.push(...logsToAdd);
+      }
+
+      next();
+    })
+    .catch(next);
+});
+
+// Middleware pre-findOneAndUpdate para registrar logs en actualizaciones
+cuentaPendienteSchema.pre("findOneAndUpdate", function (next) {
+  console.log("CuentaPendiente findOneAndUpdate middleware ejecutándose");
+  const update = this.getUpdate();
+  const modifiedFields = Object.keys(update);
+
+  if (modifiedFields.length === 0) {
+    return next();
+  }
+
+  // Obtener el documento original
+  this.model
+    .findOne(this.getQuery())
+    .then((originalDoc) => {
+      if (!originalDoc) {
+        return next();
+      }
+
+      const logsToAdd = [];
+
+      modifiedFields.forEach((field) => {
+        if (
+          [
+            "descripcion",
+            "fechaCuenta",
+            "proveedorOCliente",
+            "descuentoAplicado",
+            "subTotal",
+            "montoTotal",
+            "moneda",
+            "cc",
+            "usuario",
+          ].includes(field)
+        ) {
+          const valorAnterior = originalDoc[field];
+          const valorNuevo = update[field];
+
+          // Solo agregar log si el valor realmente cambió
+          if (JSON.stringify(valorAnterior) !== JSON.stringify(valorNuevo)) {
+            logsToAdd.push({
+              campo: field,
+              valorAnterior: valorAnterior,
+              valorNuevo: valorNuevo,
+              fechaActualizacion: new Date(),
+              usuario: update.usuario || originalDoc.usuario || "Sistema",
+            });
+          }
+        }
+      });
+
+      // Agregar los logs al update
+      if (logsToAdd.length > 0) {
+        if (!update.$push) {
+          update.$push = {};
+        }
+        update.$push.logs = { $each: logsToAdd };
+      }
+
+      next();
+    })
+    .catch(next);
+});
+
+// Middleware específico para findByIdAndUpdate
+cuentaPendienteSchema.pre("findByIdAndUpdate", function (next) {
+  console.log("CuentaPendiente findByIdAndUpdate middleware ejecutándose");
+  const update = this.getUpdate();
+  const modifiedFields = Object.keys(update);
+
+  if (modifiedFields.length === 0) {
+    return next();
+  }
+
+  // Obtener el documento original
+  this.model
+    .findById(this.getQuery()._id || this.getQuery())
+    .then((originalDoc) => {
+      if (!originalDoc) {
+        return next();
+      }
+
+      const logsToAdd = [];
+
+      modifiedFields.forEach((field) => {
+        if (
+          [
+            "descripcion",
+            "fechaCuenta",
+            "proveedorOCliente",
+            "descuentoAplicado",
+            "subTotal",
+            "montoTotal",
+            "moneda",
+            "cc",
+            "usuario",
+          ].includes(field)
+        ) {
+          const valorAnterior = originalDoc[field];
+          const valorNuevo = update[field];
+
+          // Solo agregar log si el valor realmente cambió
+          if (JSON.stringify(valorAnterior) !== JSON.stringify(valorNuevo)) {
+            logsToAdd.push({
+              campo: field,
+              valorAnterior: valorAnterior,
+              valorNuevo: valorNuevo,
+              fechaActualizacion: new Date(),
+              usuario: update.usuario || originalDoc.usuario || "Sistema",
+            });
+          }
+        }
+      });
+
+      // Agregar los logs al update
+      if (logsToAdd.length > 0) {
+        if (!update.$push) {
+          update.$push = {};
+        }
+        update.$push.logs = { $each: logsToAdd };
+      }
+
+      next();
+    })
+    .catch(next);
+});
+
+// Compilar el modelo DESPUÉS de definir middlewares
 const CuentaPendiente = mongoose.model(
   "CuentaPendiente",
   cuentaPendienteSchema

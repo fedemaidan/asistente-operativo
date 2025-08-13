@@ -2,8 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { downloadMediaMessage } = require("@whiskeysockets/baileys");
-const { admin } = require("../Chatgpt/firebaseUtils"); // Configuración de Firebase Admin
-const { convertPdfToJpeg } = require("../Chatgpt/convertPdfToJpeg");
+const { admin } = require("./firebaseUtils"); // Configuración de Firebase Admin
+const { convertPdfToJpeg } = require("./convertPdfToJpeg");
 const XLSX = require("xlsx");
 
 async function saveFileToStorage(buffer, fileName, filePath, mimeType) {

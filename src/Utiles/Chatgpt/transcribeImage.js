@@ -1,5 +1,5 @@
 const botSingleton = require("../botSingleton");
-const { getByChatgpt4Vision } = require("../Chatgpt/Base");
+const { getByChatgpt4Vision } = require("./Base");
 
 async function transcribeImage(imagePath, phoneNumber) {
   const users = botSingleton.getUsers();
