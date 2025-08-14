@@ -9,6 +9,7 @@ class CuentaPendienteController extends BaseController {
   // Crear cuenta pendiente con validaciones específicas
   async createCuentaPendiente(cuentaData) {
     try {
+      console.log("cuentaData", cuentaData);
       // Validar que el monto sea mayor que 0
       if (cuentaData.montoTotal && cuentaData.montoTotal.ars >= 0) {
         return { success: false, error: "El monto total debe ser menor que 0" };

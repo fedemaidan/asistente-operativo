@@ -20,6 +20,7 @@ const clienteSchema = new mongoose.Schema(
       },
     },
     ccActivas: {
+      required: true,
       type: [String],
       enum: ["ARS", "USD BLUE", "USD OFICIAL"],
       default: ["ARS"],

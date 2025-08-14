@@ -3,12 +3,16 @@ const Movimiento = require("../models/movimiento.model.js");
 const Cliente = require("../models/cliente.model.js");
 const Caja = require("../models/caja.model.js");
 const DolarService = require("../services/monedasService/dolarService.js");
+const {
+  addMovimientoToSheet,
+} = require("../Utiles/GoogleServices/Sheets/comprobante.js");
+const CuentaPendienteController = require("./cuentaPendienteController.js");
 
 class MovimientoController extends BaseController {
   constructor() {
     super(Movimiento);
   }
-  async createMovimiento(movimientoData, montoEnviado) {
+  async createMovimiento(movimientoData, montoEnviado, saveToSheet = true) {
     console.log(movimientoData);
     console.log(montoEnviado);
 
@@ -33,9 +37,17 @@ class MovimientoController extends BaseController {
           usdBlue: montoEnviado,
         };
       }
-
       const movimiento = await this.create(movimientoData);
-      //Pegar google sheet
+
+      if (movimiento?.success && movimiento?.data?._id) {
+        const populated = await this.model
+          .findById(movimiento.data._id)
+          .populate("caja");
+        if (saveToSheet) {
+          await addMovimientoToSheet(populated, process.env.GOOGLE_SHEET_ID);
+        }
+      }
+
       return movimiento;
     } catch (error) {
       return { success: false, error: error.message };
@@ -139,6 +151,29 @@ class MovimientoController extends BaseController {
 
       const movimientos = await this.model.find({}).populate("cliente");
 
+      const cuentasResp =
+        await CuentaPendienteController.getByProveedorOCliente("");
+      const cuentasPendientes = cuentasResp?.success ? cuentasResp.data : [];
+      const pendientesPorCliente = cuentasPendientes.reduce((acc, cuenta) => {
+        const nombre = (cuenta.proveedorOCliente || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+        if (!acc[nombre]) {
+          acc[nombre] = { ars: 0, usdBlue: 0, usdOficial: 0 };
+        }
+        const cc = cuenta.cc;
+        const monto = cuenta.montoTotal || {};
+        if (cc === "ARS") {
+          acc[nombre].ars += Number(monto.ars || 0);
+        } else if (cc === "USD BLUE") {
+          acc[nombre].usdBlue += Number(monto.usdBlue || 0);
+        } else if (cc === "USD OFICIAL") {
+          acc[nombre].usdOficial += Number(monto.usdOficial || 0);
+        }
+        return acc;
+      }, {});
+
       const clientesTotales = clientes.map((cliente) => {
         const movimientosCliente = movimientos.filter(
           (mov) =>
@@ -170,6 +205,19 @@ class MovimientoController extends BaseController {
             }
           }
         });
+
+        const nombreNormalizado = (cliente.nombre || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+        const pendientes = pendientesPorCliente[nombreNormalizado] || {
+          ars: 0,
+          usdBlue: 0,
+          usdOficial: 0,
+        };
+        totalARS += pendientes.ars || 0;
+        totalUSDBlue += pendientes.usdBlue || 0;
+        totalUSDOficial += pendientes.usdOficial || 0;
 
         return {
           _id: cliente._id,

@@ -1,4 +1,9 @@
 const general_range = "ComprobanteRAW!A1:X100000";
+const cajaController = require("../../../controllers/cajaController");
+const clienteController = require("../../../controllers/clienteController");
+const {
+  createMovimiento,
+} = require("../../../controllers/movimientoController");
 const { addRow, updateRow, getRowsValues, getLastRow } = require("../General");
 const { randomUUID } = require("crypto");
 
@@ -9,6 +14,9 @@ function generarUUIDConTimestamp() {
 }
 
 async function getArrayToSheetGeneral(comprobante) {
+  if (comprobante.cliente === "sandra cavagnaro") {
+    console.log("comprobante", comprobante);
+  }
   const values = [
     comprobante.numero_comprobante,
     comprobante.fecha,
@@ -36,6 +44,60 @@ async function getArrayToSheetGeneral(comprobante) {
     comprobante.id,
   ];
   return values;
+}
+
+function getArrayFromMongoToSheet(movimiento) {
+  const fecha = new Date(movimiento.fechaCreacion);
+  let montoEnviado;
+
+  switch (movimiento.moneda) {
+    case "ARS":
+      montoEnviado = movimiento.total.ars;
+      break;
+    case "USD BLUE":
+      montoEnviado = movimiento.total.usdBlue;
+      break;
+    case "USD OFICIAL":
+      montoEnviado = movimiento.total.usdOficial;
+  }
+
+  let montoCC;
+  switch (movimiento.cuentaCorriente) {
+    case "ARS":
+      montoCC = movimiento.total.ars;
+      break;
+    case "USD BLUE":
+      montoCC = movimiento.total.usdBlue;
+      break;
+    case "USD OFICIAL":
+      montoCC = movimiento.total.usdOficial;
+  }
+  return [
+    movimiento.numeroFactura,
+    fecha.toISOString().split("T")[0],
+    fecha.toTimeString().split(" ")[0],
+    movimiento.cliente.nombre.toUpperCase(),
+    movimiento.caja.nombre,
+    montoEnviado,
+    montoCC,
+    movimiento.cuentaCorriente,
+    movimiento.tipoDeCambio,
+    movimiento.estado,
+    movimiento.imagen ?? "",
+    movimiento.nombreUsuario,
+    "-",
+    "-",
+    movimiento.cuentaCorriente === "ARS" ? montoCC : "",
+    movimiento.cuentaCorriente === "USD BLUE" ? montoCC : "",
+    movimiento.cuentaCorriente === "USD OFICIAL" ? montoCC : "",
+    montoEnviado,
+    movimiento.moneda,
+    movimiento.moneda === "ARS" ? montoEnviado : "",
+    movimiento.moneda === "USD" ? montoEnviado : "",
+    "",
+    movimiento.caja.nombre,
+    movimiento._id,
+  ];
 }
 
 function getTitlesToSheetGeneral() {
@@ -69,6 +131,7 @@ const parseComprobantes = (arr) => {
     estado: row[9],
     imagen: row[10],
     usuario: row[11],
+    monedaDePago: row[18],
     id: row[23],
   }));
   return comprobantes;
@@ -110,6 +173,12 @@ async function getNextId(GOOGLE_SHEET_ID) {
   }
 }
 
+async function addMovimientoToSheet(movimiento, GOOGLE_SHEET_ID) {
+  const headers = getTitlesToSheetGeneral();
+  const values = await getArrayFromMongoToSheet(movimiento);
+  await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
+}
+
 async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
   try {
     const nextId = await generarUUIDConTimestamp();
@@ -118,14 +187,59 @@ async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
     const headers = getTitlesToSheetGeneral();
     const values = await getArrayToSheetGeneral(comprobante);
     await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
-
-    // console.log(`Comprobante agregado con ID: ${nextId}`);
-    // return nextId;
-    return "";
+    const result = await addComprobanteToMongo(comprobante);
+    return result;
   } catch (error) {
     console.error("Error al agregar comprobante:", error);
     throw error;
   }
+}
+
+async function addComprobanteToMongo(comprobante) {
+  const [dia, mes, año] = comprobante.fecha.split("/");
+  console.log("comprobante", comprobante);
+
+  const caja = await cajaController.getByNombre(comprobante.destino);
+  const cliente = await clienteController.getByNombre(comprobante.cliente);
+
+  const fechaFactura = new Date(año, mes - 1, dia);
+  const movimientoDataToController = {
+    type: "INGRESO",
+    numeroFactura: comprobante.numero_comprobante,
+    fechaFactura: fechaFactura,
+    clienteId: cliente.success ? cliente.data._id : comprobante.cliente,
+    cliente: {
+      nombre: comprobante.cliente,
+      ccActivas: cliente.success ? cliente.data.ccActivas : [],
+      descuento: cliente.success ? cliente.data.descuento : 0,
+    },
+    cuentaCorriente: comprobante.moneda,
+    moneda: "ARS",
+    tipoFactura: comprobante.destino === "CHEQUE" ? "cheque" : "transferencia",
+    total: {
+      ars: "",
+      usdOficial: "",
+      usdBlue: "",
+    },
+    caja: caja?.data?._id,
+    urlImagen: comprobante.imagen,
+    estado: "PENDIENTE",
+    nombreUsuario: comprobante.usuario,
+    tipoDeCambio: comprobante.tipoDeCambio,
+  };
+  const montoEnviadoToController = comprobante.montoEnviado;
+  const result = await createMovimiento(
+    movimientoDataToController,
+    montoEnviadoToController
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+  throw new Error(
+    "Error al agregar comprobante a la base de datos",
+    result.error
+  );
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -157,7 +271,7 @@ async function getComprobantesFromSheet(GOOGLE_SHEET_ID) {
   const dataComprobantes = await getRowsValues(
     GOOGLE_SHEET_ID,
     "ComprobanteRAW",
-    "A2:M100000"
+    "A2:X100000"
   );
   const comprobantesRAW = parseComprobantes(dataComprobantes);
 
@@ -224,4 +338,5 @@ module.exports = {
   esDuplicado,
   formatearCuentasCorrientes,
   getNextId,
+  addMovimientoToSheet,
 };
