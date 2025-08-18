@@ -45,10 +45,24 @@ router.put("/:id", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { populate, type, limit = 20, offset = 0, sortField = "fechaFactura", sortDirection = "desc" } = req.query;
+    const {
+      populate,
+      type,
+      limit = 20,
+      offset = 0,
+      sortField = "fechaFactura",
+      sortDirection = "desc",
+      clienteNombre,
+    } = req.query;
 
     const filters = {};
     if (type) filters.type = type;
+    if (clienteNombre) {
+      filters["cliente.nombre"] = {
+        $regex: clienteNombre,
+        $options: "i", // case insensitive
+      };
+    }
 
     const sort = {};
     if (sortField) {
@@ -60,7 +74,7 @@ router.get("/", async (req, res) => {
       populate,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      sort
+      sort,
     };
 
     const result = await movimientoController.getAllPaginado(options);
@@ -72,7 +86,6 @@ router.get("/", async (req, res) => {
     });
   }
 });
-
 
 router.get("/clientes-totales", async (req, res) => {
   try {

@@ -6,6 +6,10 @@ const cajaController = require("../../../controllers/cajaController");
 const movimientoController = require("../../../controllers/movimientoController");
 require("../../../DBConnection");
 
+const parseNombreToUpperCase = (nombre) => {
+  return nombre.toUpperCase().replace(/ /g, "_");
+};
+
 async function ensureCajasBase() {
   const cajasNecesarias = [
     "ENSHOP SRL",
@@ -61,7 +65,9 @@ async function migrarComprobantesDesdeGoogleSheets(
 
     for (const comp of comprobantes) {
       try {
-        const clienteResp = await clienteController.getByNombre(comp.cliente);
+        const clienteResp = await clienteController.getByNombre(
+          parseNombreToUpperCase(comp.cliente)
+        );
 
         const cajaResp = await cajaController.getByNombre(comp.destino);
         const cajaId = cajaResp && cajaResp.success ? cajaResp.data._id : null;
@@ -83,7 +89,7 @@ async function migrarComprobantesDesdeGoogleSheets(
           fechaFactura: fechaFactura,
           clienteId: clienteResp.success ? clienteResp.data._id : null,
           cliente: {
-            nombre: comp.cliente,
+            nombre: parseNombreToUpperCase(comp.cliente),
             ccActivas: clienteResp.success ? clienteResp.data.ccActivas : [],
             descuento: clienteResp.success ? clienteResp.data.descuento : 0,
           },
@@ -151,4 +157,7 @@ async function migrarComprobantesDesdeGoogleSheets(
   }
 }
 
-module.exports = migrarComprobantesDesdeGoogleSheets;
+module.exports = {
+  migrarComprobantesDesdeGoogleSheets,
+  parseNombreToUpperCase,
+};

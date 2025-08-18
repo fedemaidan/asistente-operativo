@@ -87,7 +87,6 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // Obtener movimientos por cliente
   async getByCliente(clienteId) {
     try {
       const movimientos = await this.model
@@ -180,9 +179,22 @@ class MovimientoController extends BaseController {
             mov.clienteId && mov.clienteId.toString() === cliente._id.toString()
         );
 
+        const cuentasPendientesCliente = cuentasPendientes.filter((cuenta) => {
+          const nombreCuenta = (cuenta.proveedorOCliente || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          const nombreCliente = (cliente.nombre || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          return nombreCuenta === nombreCliente;
+        });
+
         let totalARS = 0;
         let totalUSDBlue = 0;
         let totalUSDOficial = 0;
+        let fechaUltimoMovimiento = null;
 
         movimientosCliente.forEach((mov) => {
           if (mov.cuentaCorriente === "ARS") {
@@ -203,6 +215,23 @@ class MovimientoController extends BaseController {
             } else {
               totalUSDOficial -= mov.total?.usdOficial || 0;
             }
+          }
+
+          if (
+            !fechaUltimoMovimiento ||
+            mov.fechaCreacion > fechaUltimoMovimiento
+          ) {
+            fechaUltimoMovimiento = mov.fechaCreacion;
+          }
+        });
+
+        cuentasPendientesCliente.forEach((cuenta) => {
+          const fechaCuenta = cuenta.fechaCuenta || cuenta.fechaCreacion;
+          if (
+            fechaCuenta &&
+            (!fechaUltimoMovimiento || fechaCuenta > fechaUltimoMovimiento)
+          ) {
+            fechaUltimoMovimiento = fechaCuenta;
           }
         });
 
@@ -225,10 +254,10 @@ class MovimientoController extends BaseController {
           ARS: totalARS,
           "USD BLUE": totalUSDBlue,
           "USD OFICIAL": totalUSDOficial,
+          fechaUltimoMovimiento: fechaUltimoMovimiento,
         };
       });
 
-      // Ordenar por nombre de cliente
       clientesTotales.sort((a, b) => a.cliente.localeCompare(b.cliente));
 
       return { success: true, data: clientesTotales };

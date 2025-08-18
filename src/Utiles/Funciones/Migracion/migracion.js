@@ -1,6 +1,9 @@
 const migrarClientesDesdeGoogleSheets = require("./migracionClientes");
-const migrarComprobantesDesdeGoogleSheets = require("./migracionComprobantes");
+const {
+  migrarComprobantesDesdeGoogleSheets,
+} = require("./migracionComprobantes");
 const migrarEntregasDesdeGoogleSheets = require("./migracionEntregas");
+const migrarPagosDesdeGoogleSheets = require("./migracionPagos");
 
 async function ejecutarMigracion(_req, res) {
   try {
@@ -14,11 +17,16 @@ async function ejecutarMigracion(_req, res) {
       process.env.GOOGLE_SHEET_ID
     );
 
+    const resultadoPagos = await migrarPagosDesdeGoogleSheets(
+      process.env.GOOGLE_SHEET_ID
+    );
+
     res.json({
       success: true,
       message: "🏁 Proceso de migración finalizado",
       comprobantes: resultadoComprobantes,
       entregas: resultadoEntregas,
+      pagos: resultadoPagos,
     });
   } catch (error) {
     res.status(500).json({

@@ -1,6 +1,7 @@
 const { getEntregasFromSheet } = require("../../GoogleServices/Sheets/entrega");
 const cuentaPendienteController = require("../../../controllers/cuentaPendienteController");
 require("../../../DBConnection");
+const { parseNombreToUpperCase } = require("./migracionComprobantes");
 
 function parseFechaDDMMYYYYToDate(fecha) {
   if (!fecha || typeof fecha !== "string") return null;
@@ -36,7 +37,7 @@ async function migrarEntregasDesdeGoogleSheets(
           descripcion: entrega.descripcion || "",
           fechaCuenta: fechaCuenta,
           fechaCreacion: new Date(),
-          proveedorOCliente: entrega.proveedorOCliente,
+          proveedorOCliente: parseNombreToUpperCase(entrega.proveedorOCliente),
           descuentoAplicado: entrega.descuentoAplicado,
           subTotal: entrega.subTotal,
           montoTotal: entrega.montoTotal,
@@ -44,6 +45,7 @@ async function migrarEntregasDesdeGoogleSheets(
           cc: entrega.cc,
           tipoDeCambio: Number(entrega.tipoDeCambio) || 1,
           usuario: entrega.usuario || "Sistema",
+          empresaId: "celulandia",
         };
 
         console.log(

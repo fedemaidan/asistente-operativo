@@ -1,6 +1,7 @@
 const clienteController = require("../../../controllers/clienteController");
 const { getClientesFromSheet } = require("../../GoogleServices/Sheets/cliente");
 require("../../../DBConnection");
+const { parseNombreToUpperCase } = require("./migracionComprobantes");
 
 async function migrarClientesDesdeGoogleSheets() {
   console.log("🚀 Iniciando migración de clientes desde Google Sheets...");
@@ -26,7 +27,7 @@ async function migrarClientesDesdeGoogleSheets() {
 
         // Preparar datos del cliente para MongoDB
         const clienteData = {
-          nombre: clienteSheet.nombre.trim(),
+          nombre: parseNombreToUpperCase(clienteSheet.nombre.trim()),
           descuento: parseFloat(clienteSheet.descuento) || 0,
           ccActivas:
             clienteSheet.ccActivas && clienteSheet.ccActivas.length > 0
