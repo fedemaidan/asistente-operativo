@@ -45,20 +45,19 @@ router.put("/:id", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { populate, type } = req.query;
+    const { populate, type, limit = 20, offset = 0 } = req.query;
 
     const filters = {};
     if (type) filters.type = type;
 
     const options = {
       filter: filters,
+      populate,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
     };
 
-    const result = await movimientoController.getAll(
-      {},
-      populate || "",
-      options
-    );
+    const result = await movimientoController.getAllPaginado(options);
     res.json(result);
   } catch (error) {
     res.status(500).json({
@@ -67,6 +66,7 @@ router.get("/", async (req, res) => {
     });
   }
 });
+
 
 router.get("/clientes-totales", async (req, res) => {
   try {
