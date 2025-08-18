@@ -7,7 +7,7 @@ const movimientoController = require("../../../controllers/movimientoController"
 require("../../../DBConnection");
 
 const parseNombreToUpperCase = (nombre) => {
-  return nombre.toUpperCase().replace(/ /g, "_");
+  return nombre;
 };
 
 async function ensureCajasBase() {

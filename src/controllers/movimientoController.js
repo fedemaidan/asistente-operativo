@@ -3,9 +3,6 @@ const Movimiento = require("../models/movimiento.model.js");
 const Cliente = require("../models/cliente.model.js");
 const Caja = require("../models/caja.model.js");
 const DolarService = require("../services/monedasService/dolarService.js");
-const {
-  addMovimientoToSheet,
-} = require("../Utiles/GoogleServices/Sheets/comprobante.js");
 const CuentaPendienteController = require("./cuentaPendienteController.js");
 
 class MovimientoController extends BaseController {
@@ -44,7 +41,7 @@ class MovimientoController extends BaseController {
           .findById(movimiento.data._id)
           .populate("caja");
         if (saveToSheet) {
-          await addMovimientoToSheet(populated, process.env.GOOGLE_SHEET_ID);
+          console.log("TODO");
         }
       }
 

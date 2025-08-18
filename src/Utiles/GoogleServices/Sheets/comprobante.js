@@ -1,9 +1,7 @@
 const general_range = "ComprobanteRAW!A1:X100000";
 const cajaController = require("../../../controllers/cajaController");
 const clienteController = require("../../../controllers/clienteController");
-const {
-  createMovimiento,
-} = require("../../../controllers/movimientoController");
+const MovimientoController = require("../../../controllers/movimientoController");
 const { addRow, updateRow, getRowsValues, getLastRow } = require("../General");
 const { randomUUID } = require("crypto");
 
@@ -202,14 +200,21 @@ async function addComprobanteToMongo(comprobante) {
   const caja = await cajaController.getByNombre(comprobante.destino);
   const cliente = await clienteController.getByNombre(comprobante.cliente);
 
+  console.log("clienteResponse", cliente);
+
+  const clienteParsed = {
+    ...cliente.data,
+    nombre: cliente.data.nombre,
+  };
+
   const fechaFactura = new Date(año, mes - 1, dia);
   const movimientoDataToController = {
     type: "INGRESO",
     numeroFactura: comprobante.numero_comprobante,
     fechaFactura: fechaFactura,
-    clienteId: cliente.success ? cliente.data._id : comprobante.cliente,
+    clienteId: cliente.success ? cliente.data._id : null,
     cliente: {
-      nombre: comprobante.cliente,
+      nombre: clienteParsed?.nombre || comprobante.cliente,
       ccActivas: cliente.success ? cliente.data.ccActivas : [],
       descuento: cliente.success ? cliente.data.descuento : 0,
     },
@@ -226,13 +231,17 @@ async function addComprobanteToMongo(comprobante) {
     estado: "PENDIENTE",
     nombreUsuario: comprobante.usuario,
     tipoDeCambio: comprobante.tipoDeCambio,
+    empresaId: "celulandia",
   };
   const montoEnviadoToController = comprobante.montoEnviado;
-  const result = await createMovimiento(
+  console.log("movimientoDataToController", movimientoDataToController);
+  console.log("montoEnviadoToController", montoEnviadoToController);
+  const result = await MovimientoController.createMovimiento(
     movimientoDataToController,
     montoEnviadoToController
   );
 
+  console.log("result", result);
   if (result.success) {
     return result.data;
   }
