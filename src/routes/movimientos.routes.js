@@ -45,16 +45,22 @@ router.put("/:id", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { populate, type, limit = 20, offset = 0 } = req.query;
+    const { populate, type, limit = 20, offset = 0, sortField = "fechaFactura", sortDirection = "desc" } = req.query;
 
     const filters = {};
     if (type) filters.type = type;
+
+    const sort = {};
+    if (sortField) {
+      sort[sortField] = sortDirection === "asc" ? 1 : -1;
+    }
 
     const options = {
       filter: filters,
       populate,
       limit: parseInt(limit),
       offset: parseInt(offset),
+      sort
     };
 
     const result = await movimientoController.getAllPaginado(options);
