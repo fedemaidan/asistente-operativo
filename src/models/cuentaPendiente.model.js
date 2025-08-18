@@ -47,6 +47,10 @@ const cuentaPendienteSchema = new mongoose.Schema({
     enum: ["ARS", "USD BLUE", "USD OFICIAL"],
     required: true,
   },
+  tipoDeCambio: {
+    type: Number,
+    required: true,
+  },
   usuario: {
     type: String,
     required: true,
@@ -81,6 +85,10 @@ const cuentaPendienteSchema = new mongoose.Schema({
         default: Date.now,
       },
       usuario: {
+        type: String,
+        required: true,
+      },
+      empresaId: {
         type: String,
         required: true,
       },

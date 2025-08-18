@@ -4,6 +4,7 @@ const { getClientesFromSheet } = require("../GoogleServices/Sheets/cliente");
 module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
   const clientes = await getClientesFromSheet(GOOGLE_SHEET_ID);
   const clientesStr = JSON.stringify(clientes);
+  console.log(clientesStr);
   const prompt = `
   Analiza el siguiente mensaje y detecta qué cliente se menciona y qué moneda se está utilizando.
   
@@ -28,7 +29,8 @@ module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
     "cuentaCorriente": "dame true o false dependiendo si el cliente tiene cuenta corriente o no",
     "moneda": ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA'). Es la moneda seleccionada por el cliente,
     "error": (true o false),
-    "ccActivas": "array de cuentas corrientes activas del cliente seleccionado, si no tiene CC, poné un array vacio."
+    "ccActivas": "array de cuentas corrientes activas del cliente seleccionado, si no tiene CC, poné un array vacio.",
+    "descuento": descuento del cliente seleccionado, si no tiene CC, pone 0
     }
     `;
 

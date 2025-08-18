@@ -3,12 +3,13 @@ const Movimiento = require("../models/movimiento.model.js");
 const Cliente = require("../models/cliente.model.js");
 const Caja = require("../models/caja.model.js");
 const DolarService = require("../services/monedasService/dolarService.js");
+const CuentaPendienteController = require("./cuentaPendienteController.js");
 
 class MovimientoController extends BaseController {
   constructor() {
     super(Movimiento);
   }
-  async createMovimiento(movimientoData, montoEnviado) {
+  async createMovimiento(movimientoData, montoEnviado, saveToSheet = true) {
     console.log(movimientoData);
     console.log(montoEnviado);
 
@@ -33,9 +34,17 @@ class MovimientoController extends BaseController {
           usdBlue: montoEnviado,
         };
       }
-
       const movimiento = await this.create(movimientoData);
-      //Pegar google sheet
+
+      if (movimiento?.success && movimiento?.data?._id) {
+        const populated = await this.model
+          .findById(movimiento.data._id)
+          .populate("caja");
+        if (saveToSheet) {
+          console.log("TODO");
+        }
+      }
+
       return movimiento;
     } catch (error) {
       return { success: false, error: error.message };
@@ -75,7 +84,6 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // Obtener movimientos por cliente
   async getByCliente(clienteId) {
     try {
       const movimientos = await this.model
@@ -139,15 +147,51 @@ class MovimientoController extends BaseController {
 
       const movimientos = await this.model.find({}).populate("cliente");
 
+      const cuentasResp =
+        await CuentaPendienteController.getByProveedorOCliente("");
+      const cuentasPendientes = cuentasResp?.success ? cuentasResp.data : [];
+      const pendientesPorCliente = cuentasPendientes.reduce((acc, cuenta) => {
+        const nombre = (cuenta.proveedorOCliente || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+        if (!acc[nombre]) {
+          acc[nombre] = { ars: 0, usdBlue: 0, usdOficial: 0 };
+        }
+        const cc = cuenta.cc;
+        const monto = cuenta.montoTotal || {};
+        if (cc === "ARS") {
+          acc[nombre].ars += Number(monto.ars || 0);
+        } else if (cc === "USD BLUE") {
+          acc[nombre].usdBlue += Number(monto.usdBlue || 0);
+        } else if (cc === "USD OFICIAL") {
+          acc[nombre].usdOficial += Number(monto.usdOficial || 0);
+        }
+        return acc;
+      }, {});
+
       const clientesTotales = clientes.map((cliente) => {
         const movimientosCliente = movimientos.filter(
           (mov) =>
             mov.clienteId && mov.clienteId.toString() === cliente._id.toString()
         );
 
+        const cuentasPendientesCliente = cuentasPendientes.filter((cuenta) => {
+          const nombreCuenta = (cuenta.proveedorOCliente || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          const nombreCliente = (cliente.nombre || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          return nombreCuenta === nombreCliente;
+        });
+
         let totalARS = 0;
         let totalUSDBlue = 0;
         let totalUSDOficial = 0;
+        let fechaUltimoMovimiento = null;
 
         movimientosCliente.forEach((mov) => {
           if (mov.cuentaCorriente === "ARS") {
@@ -169,7 +213,37 @@ class MovimientoController extends BaseController {
               totalUSDOficial -= mov.total?.usdOficial || 0;
             }
           }
+
+          if (
+            !fechaUltimoMovimiento ||
+            mov.fechaCreacion > fechaUltimoMovimiento
+          ) {
+            fechaUltimoMovimiento = mov.fechaCreacion;
+          }
         });
+
+        cuentasPendientesCliente.forEach((cuenta) => {
+          const fechaCuenta = cuenta.fechaCuenta || cuenta.fechaCreacion;
+          if (
+            fechaCuenta &&
+            (!fechaUltimoMovimiento || fechaCuenta > fechaUltimoMovimiento)
+          ) {
+            fechaUltimoMovimiento = fechaCuenta;
+          }
+        });
+
+        const nombreNormalizado = (cliente.nombre || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+        const pendientes = pendientesPorCliente[nombreNormalizado] || {
+          ars: 0,
+          usdBlue: 0,
+          usdOficial: 0,
+        };
+        totalARS += pendientes.ars || 0;
+        totalUSDBlue += pendientes.usdBlue || 0;
+        totalUSDOficial += pendientes.usdOficial || 0;
 
         return {
           _id: cliente._id,
@@ -177,10 +251,10 @@ class MovimientoController extends BaseController {
           ARS: totalARS,
           "USD BLUE": totalUSDBlue,
           "USD OFICIAL": totalUSDOficial,
+          fechaUltimoMovimiento: fechaUltimoMovimiento,
         };
       });
 
-      // Ordenar por nombre de cliente
       clientesTotales.sort((a, b) => a.cliente.localeCompare(b.cliente));
 
       return { success: true, data: clientesTotales };

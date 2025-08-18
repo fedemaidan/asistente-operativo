@@ -73,6 +73,8 @@ module.exports = async function ElegirClienteStep(userId, message) {
   comprobante.cliente = cliente.nombre;
   comprobante.moneda = cliente.moneda;
   comprobante.cuentaCorriente = cliente.cuentaCorriente;
+  comprobante.ccActivas = cliente.ccActivas;
+  comprobante.descuento = cliente.descuento;
 
   FlowManager.setFlow(
     userId,

@@ -5,6 +5,9 @@ const clientesRouter = require("./clientes.routes.js");
 const cuentasPendientesRouter = require("./cuentasPendientes.routes.js");
 const mongoose = require("mongoose");
 const DolarService = require("../services/monedasService/dolarService.js");
+const {
+  ejecutarMigracion,
+} = require("../Utiles/Funciones/Migracion/migracion.js");
 const router = express.Router();
 
 router.use("/movimientos", movimientosRouter);
@@ -29,5 +32,7 @@ router.delete("/reset-db", async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+router.get("/migracion", ejecutarMigracion);
 
 module.exports = router;

@@ -6,6 +6,10 @@ const movimientosSchema = new mongoose.Schema({
     enum: ["INGRESO", "EGRESO"],
     required: true,
   },
+  empresaId: {
+    type: String,
+    required: true,
+  },
   numeroFactura: {
     type: String,
     default: null,
@@ -71,7 +75,7 @@ const movimientosSchema = new mongoose.Schema({
   },
   estado: {
     type: String,
-    enum: ["PENDIENTE", "CONFIRMADO", "CONFIRMAR MONTO", "COBRADO"],
+    enum: ["PENDIENTE", "CONFIRMADO", "REVISAR MONTO", "COBRADO"],
     default: "PENDIENTE",
   },
   fechaCobro: {
