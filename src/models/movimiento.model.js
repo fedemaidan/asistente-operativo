@@ -75,7 +75,13 @@ const movimientosSchema = new mongoose.Schema({
   },
   estado: {
     type: String,
-    enum: ["PENDIENTE", "CONFIRMADO", "REVISAR MONTO", "COBRADO"],
+    enum: [
+      "PENDIENTE",
+      "CONFIRMADO",
+      "REVISAR MONTO",
+      "PENDIENTE A COBRAR",
+      "COBRADO",
+    ],
     default: "PENDIENTE",
   },
   fechaCobro: {

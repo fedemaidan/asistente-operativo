@@ -10,8 +10,8 @@ class MovimientoController extends BaseController {
     super(Movimiento);
   }
   async createMovimiento(movimientoData, montoEnviado, saveToSheet = true) {
-    console.log(movimientoData);
-    console.log(montoEnviado);
+    console.log("movimientoData", movimientoData);
+    console.log("montoEnviado", montoEnviado);
 
     try {
       const cotizaciones = await DolarService.obtenerValoresDolar();
@@ -191,7 +191,7 @@ class MovimientoController extends BaseController {
         let totalARS = 0;
         let totalUSDBlue = 0;
         let totalUSDOficial = 0;
-        let fechaUltimoMovimiento = null;
+        let fechaUltimoPago = null;
 
         movimientosCliente.forEach((mov) => {
           if (mov.cuentaCorriente === "ARS") {
@@ -214,21 +214,10 @@ class MovimientoController extends BaseController {
             }
           }
 
-          if (
-            !fechaUltimoMovimiento ||
-            mov.fechaCreacion > fechaUltimoMovimiento
-          ) {
-            fechaUltimoMovimiento = mov.fechaCreacion;
-          }
-        });
-
-        cuentasPendientesCliente.forEach((cuenta) => {
-          const fechaCuenta = cuenta.fechaCuenta || cuenta.fechaCreacion;
-          if (
-            fechaCuenta &&
-            (!fechaUltimoMovimiento || fechaCuenta > fechaUltimoMovimiento)
-          ) {
-            fechaUltimoMovimiento = fechaCuenta;
+          if (mov.type === "INGRESO") {
+            if (!fechaUltimoPago || mov.fechaCreacion > fechaUltimoPago) {
+              fechaUltimoPago = mov.fechaCreacion;
+            }
           }
         });
 
@@ -251,7 +240,7 @@ class MovimientoController extends BaseController {
           ARS: totalARS,
           "USD BLUE": totalUSDBlue,
           "USD OFICIAL": totalUSDOficial,
-          fechaUltimoMovimiento: fechaUltimoMovimiento,
+          fechaUltimoPago: fechaUltimoPago,
         };
       });
 

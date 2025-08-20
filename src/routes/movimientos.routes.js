@@ -1,5 +1,6 @@
 const express = require("express");
 const movimientoController = require("../controllers/movimientoController");
+const Caja = require("../models/caja.model");
 
 const router = express.Router();
 
@@ -53,6 +54,8 @@ router.get("/", async (req, res) => {
       sortField = "fechaFactura",
       sortDirection = "desc",
       clienteNombre,
+      tipoFactura,
+      cajaNombre,
     } = req.query;
 
     const filters = {};
@@ -62,6 +65,18 @@ router.get("/", async (req, res) => {
         $regex: clienteNombre,
         $options: "i", // case insensitive
       };
+    }
+
+    if (tipoFactura) filters.tipoFactura = tipoFactura;
+
+    if (cajaNombre) {
+      const cajaDoc = await Caja.findOne({ nombre: cajaNombre });
+      if (cajaDoc?._id) {
+        filters.caja = cajaDoc._id;
+      } else {
+        // Si no existe la caja, forzamos a no devolver resultados
+        filters.caja = null;
+      }
     }
 
     const sort = {};
