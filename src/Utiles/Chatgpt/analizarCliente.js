@@ -4,7 +4,6 @@ const { getClientesFromSheet } = require("../GoogleServices/Sheets/cliente");
 module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
   const clientes = await getClientesFromSheet(GOOGLE_SHEET_ID);
   const clientesStr = JSON.stringify(clientes);
-  console.log(clientesStr);
   const prompt = `
   Analiza el siguiente mensaje y detecta qué cliente se menciona y qué moneda se está utilizando.
   

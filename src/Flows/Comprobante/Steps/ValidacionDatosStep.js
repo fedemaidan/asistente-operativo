@@ -42,7 +42,6 @@ module.exports = async function ValidacionDatosStep(userId, message) {
     comprobante.usuario = usuarios[opcionUsuario - 1];
 
     const duplicado = await esDuplicado(comprobante, GOOGLE_SHEET_ID);
-    console.log("esDuplicado", duplicado);
 
     if (duplicado.status === "NO DUPLICADO") {
       await addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID);

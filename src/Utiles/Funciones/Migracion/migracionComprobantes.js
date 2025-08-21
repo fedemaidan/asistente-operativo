@@ -102,7 +102,7 @@ async function migrarComprobantesDesdeGoogleSheets(
             ? "CONFIRMADO"
             : comp.estado || "PENDIENTE",
           nombreUsuario: comp.usuario || "Sistema",
-          tipoDeCambio: Number(comp.tipoDeCambio) || 0,
+          tipoDeCambio: Number(comp.tipoDeCambio) || 1,
           empresaId: "celulandia",
         };
 

@@ -13,23 +13,48 @@ class MovimientoController extends BaseController {
     console.log("movimientoData", movimientoData);
     console.log("montoEnviado", montoEnviado);
 
+    const { type, moneda, cuentaCorriente } = movimientoData;
+    let tipoDeCambio = movimientoData.tipoDeCambio || null;
+
     try {
       const cotizaciones = await DolarService.obtenerValoresDolar();
-      if (movimientoData.type === "EGRESO") {
+      const { blue, oficial } = cotizaciones;
+
+      if (!movimientoData.tipoDeCambio) {
+        if (
+          (moneda === "ARS" && cuentaCorriente === "ARS") ||
+          (moneda === "USD" && cuentaCorriente === "USD BLUE") ||
+          (moneda === "USD" && cuentaCorriente === "USD OFICIAL")
+        ) {
+          tipoDeCambio = 1;
+        } else if (moneda === "ARS" && cuentaCorriente === "USD BLUE") {
+          tipoDeCambio = blue.venta;
+        } else if (moneda === "ARS" && cuentaCorriente === "USD OFICIAL") {
+          tipoDeCambio = oficial.venta;
+        } else if (moneda === "USD" && cuentaCorriente === "ARS") {
+          tipoDeCambio = blue.venta;
+        } else {
+          tipoDeCambio = 1;
+        }
+      }
+
+      movimientoData.tipoDeCambio = tipoDeCambio;
+
+      if (type === "EGRESO") {
         movimientoData.total = {
           ars: montoEnviado,
           usdOficial: montoEnviado,
           usdBlue: montoEnviado,
         };
-      } else if (movimientoData.moneda === "ARS") {
+      } else if (moneda === "ARS") {
         movimientoData.total = {
           ars: montoEnviado,
-          usdOficial: montoEnviado / cotizaciones.oficial.venta,
-          usdBlue: montoEnviado / cotizaciones.blue.venta,
+          usdOficial: montoEnviado / oficial.venta,
+          usdBlue: montoEnviado / blue.venta,
         };
-      } else if (movimientoData.moneda === "USD") {
+      } else if (moneda === "USD") {
         movimientoData.total = {
-          ars: montoEnviado * cotizaciones.oficial.venta,
+          ars: montoEnviado * blue.venta,
           usdOficial: montoEnviado,
           usdBlue: montoEnviado,
         };

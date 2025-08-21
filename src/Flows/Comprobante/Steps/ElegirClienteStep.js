@@ -15,8 +15,6 @@ module.exports = async function ElegirClienteStep(userId, message) {
   const cliente = await analizarCliente(message, GOOGLE_SHEET_ID);
   const comprobante = FlowManager.userFlows[userId].flowData.data;
 
-  console.log("respuesta-prompt", cliente);
-
   if (cliente.error) {
     await sock.sendMessage(userId, {
       text: `❌ *Error: moneda no válida*\n\nEl cliente seleccionado no tiene una cuenta corriente activa con la moneda *${

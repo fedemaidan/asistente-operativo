@@ -195,16 +195,13 @@ async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
 
 async function addComprobanteToMongo(comprobante) {
   const [dia, mes, año] = comprobante.fecha.split("/");
-  console.log("comprobante", comprobante);
 
   const caja = await cajaController.getByNombre(comprobante.destino);
   const cliente = await clienteController.getByNombre(comprobante.cliente);
 
-  console.log("clienteResponse", cliente);
-
   const clienteParsed = {
     ...cliente.data,
-    nombre: cliente.data.nombre,
+    nombre: cliente?.data?.nombre || comprobante.cliente,
   };
 
   const fechaFactura = new Date(año, mes - 1, dia);
@@ -221,27 +218,19 @@ async function addComprobanteToMongo(comprobante) {
     cuentaCorriente: comprobante.moneda,
     moneda: "ARS",
     tipoFactura: comprobante.destino === "CHEQUE" ? "cheque" : "transferencia",
-    total: {
-      ars: "",
-      usdOficial: "",
-      usdBlue: "",
-    },
     caja: caja?.data?._id,
     urlImagen: comprobante.imagen,
     estado: "PENDIENTE",
     nombreUsuario: comprobante.usuario,
-    tipoDeCambio: comprobante.tipoDeCambio,
     empresaId: "celulandia",
+    tipoDeCambio: Number(comprobante.tipoDeCambio) || null,
   };
   const montoEnviadoToController = comprobante.montoEnviado;
-  console.log("movimientoDataToController", movimientoDataToController);
-  console.log("montoEnviadoToController", montoEnviadoToController);
   const result = await MovimientoController.createMovimiento(
     movimientoDataToController,
     montoEnviadoToController
   );
 
-  console.log("result", result);
   if (result.success) {
     return result.data;
   }
