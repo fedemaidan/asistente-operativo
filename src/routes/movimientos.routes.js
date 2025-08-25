@@ -56,6 +56,7 @@ router.get("/", async (req, res) => {
       clienteNombre,
       tipoFactura,
       cajaNombre,
+      estado,
     } = req.query;
 
     const filters = {};
@@ -66,6 +67,7 @@ router.get("/", async (req, res) => {
         $options: "i", // case insensitive
       };
     }
+    if (estado) filters.estado = estado;
 
     if (tipoFactura) filters.tipoFactura = tipoFactura;
 
@@ -81,7 +83,8 @@ router.get("/", async (req, res) => {
 
     const sort = {};
     if (sortField) {
-      sort[sortField] = sortDirection === "asc" ? 1 : -1;
+      const realSortField = sortField === "cuentaDestino" ? "caja" : sortField;
+      sort[realSortField] = sortDirection === "asc" ? 1 : -1;
     }
 
     const options = {
@@ -156,15 +159,29 @@ router.get("/fecha/:fechaInicio/:fechaFin", async (req, res) => {
   }
 });
 
-router.get("/estadisticas", async (req, res) => {
+router.get("/arqueo/diario", async (req, res) => {
   try {
-    const result = await movimientoController.getEstadisticas();
+    const { type, cajaNombre, moneda } = req.query;
+
+    const filters = {};
+    if (type) filters.type = type;
+    if (moneda) filters.moneda = moneda;
+
+    if (cajaNombre) {
+      const cajaDoc = await Caja.findOne({ nombre: cajaNombre });
+      if (cajaDoc?._id) {
+        filters.caja = cajaDoc._id;
+      } else {
+        filters.caja = null;
+      }
+    }
+
+    const result = await movimientoController.getArqueoDiario({
+      filter: filters,
+    });
     res.json(result);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -207,6 +224,12 @@ router.delete("/:id", async (req, res) => {
       error: error.message,
     });
   }
+});
+
+router.post("/confirmar", async (req, res) => {
+  const { ids, usuario } = req.body;
+  const result = await movimientoController.actualizarEstados(ids, usuario);
+  res.json(result);
 });
 
 module.exports = router;

@@ -29,6 +29,8 @@ const parsePagos = (arr) => {
     },
     usuario: row[11],
     tipoDeCambio: row[8],
+    fecha: row[1],
+    hora: row[2],
   }));
 
   return pagos;

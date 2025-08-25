@@ -13,7 +13,7 @@ No incluyas explicaciones adicionales ni texto extra. Solo el JSON.
 Para obtener el destino debes usar el atributo nombre unicamente de una de las siguientes 2 opciones o no encontrado:
 [
   {
-    "nombre": "ASOCIACION CONSULTURA MUTUAL",
+    "nombre": "ASOCIACION CONSULTORA MUTUAL",
     "cuit": "30-71108832-2",
     "cvu": "0000252500000001000054"
   },
@@ -35,7 +35,7 @@ Aclaracion:
         {
             numero_comprobante: "numero de comprobante de la transferencia",
             monto: "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
-            destino: "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTURA MUTUAL, ENSHOP SRL o NO ENCONTRADO",            
+            destino: "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL o NO ENCONTRADO",            
             fecha: "Es la fecha del comprobante o de transferencia. Formato dd/mm/yyyy. Si no la encuentras, devolve -",  
             hora: "Es la hora del comprobante o de transferencia. Formato hh:mm 24hs. Si no la encuentras, devolve -",
         }

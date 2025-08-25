@@ -4,10 +4,42 @@ const cajaController = require("../../../controllers/cajaController");
 require("../../../DBConnection");
 
 function parseFechaDDMMYYYYToDate(fecha) {
-  if (!fecha || typeof fecha !== "string") return null;
+  if (!fecha || typeof fecha !== "string") {
+    console.log(`❌ Fecha inválida o no string: ${fecha}`);
+    return null;
+  }
   const [dia, mes, anio] = fecha.split("/");
-  if (!dia || !mes || !anio) return null;
-  return new Date(anio, Number(mes) - 1, Number(dia));
+  if (!dia || !mes || !anio) {
+    console.log(
+      `❌ No se pudo parsear fecha: ${fecha} -> [${dia}, ${mes}, ${anio}]`
+    );
+    return null;
+  }
+
+  // Crear fecha con año, mes-1 (porque Date usa 0-11), día
+  const fechaParseada = new Date(Number(anio), Number(mes) - 1, Number(dia));
+  console.log(`✅ Fecha parseada: ${fecha} -> ${fechaParseada.toISOString()}`);
+  return fechaParseada;
+}
+
+function buildDateWithTime(baseDate, timeHHMM) {
+  if (!baseDate || isNaN(baseDate.getTime())) {
+    console.log(`❌ Fecha base inválida: ${baseDate}`);
+    return new Date(); // Fallback a fecha actual
+  }
+
+  const horaStr = (timeHHMM || "00:00").toString().trim();
+  console.log(`🕐 Procesando hora: "${horaStr}"`);
+
+  // Manejar formato "H:MM" (sin cero inicial)
+  const [horas, minutos] = horaStr.split(":").map((num) => parseInt(num) || 0);
+  console.log(`🕐 Horas: ${horas}, Minutos: ${minutos}`);
+
+  const fechaCompleta = new Date(baseDate);
+  fechaCompleta.setHours(horas, minutos, 0, 0);
+
+  console.log(`✅ Fecha completa: ${fechaCompleta.toISOString()}`);
+  return fechaCompleta;
 }
 
 async function migrarPagosDesdeGoogleSheets(
@@ -38,15 +70,24 @@ async function migrarPagosDesdeGoogleSheets(
           } catch (_) {}
         }
 
+        console.log(`\n📊 Procesando pago:`, {
+          fecha: pago.fecha,
+          hora: pago.hora,
+          concepto: (pago.total && pago.total.concepto) || "sin concepto",
+        });
+
         const cuentaCorriente =
           pago.moneda === "USD" ? "USD BLUE" : pago.moneda;
         const moneda = cuentaCorriente === "ARS" ? "ARS" : "USD";
+
+        const fechaBase = parseFechaDDMMYYYYToDate(pago.fecha);
+        const fechaFactura = buildDateWithTime(fechaBase, pago.hora);
 
         const movimientoData = {
           type: pago.type || "EGRESO",
           empresaId: pago.empresaId || "celulandia",
           numeroFactura: null,
-          fechaFactura: null,
+          fechaFactura,
           clienteId: null,
           cliente: { nombre: null, ccActivas: [], descuento: 0 },
           cuentaCorriente: cuentaCorriente,

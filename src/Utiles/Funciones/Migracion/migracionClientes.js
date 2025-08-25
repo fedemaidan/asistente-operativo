@@ -9,7 +9,7 @@ async function migrarClientesDesdeGoogleSheets() {
   try {
     console.log("📊 Obteniendo clientes desde Google Sheets...");
     const clientesFromSheet = await getClientesFromSheet(
-      "16j6RZWb-Tif87zdvsH18OWol9DunIQ0dIRCXtvAEubg"
+      process.env.GOOGLE_SHEET_ID
     );
 
     let clientesCreados = 0;

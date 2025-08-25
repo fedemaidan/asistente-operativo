@@ -17,13 +17,6 @@ const parseEntregas = (arr) => {
   };
 
   const entregas = arr.map((row) => {
-    // Indices según cabecera provista y ejemplos:
-    // 0: Numero de entrega, 1: Fecha, 2: Hora, 3: Cliente, 4: CD,
-    // 5: Monto enviado, 6: Monto CC, 7: CC, 8: TC, 9: (Estado u otro),
-    // 10: "", 11: "", 12: ARS, 13: USD BLUE, 14: USD OFICIAL, 15: p+q,
-    // 16: MONEDA DE PAGO, 17: ARS RECIBIDOS, 18: USD RECIBIDOS,
-    // 19: CUENTA ORIGEN, 20: CUENTA DESTINO
-
     const numeroEntrega = row[0];
     const fecha = row[1];
     const hora = row[2];
@@ -72,6 +65,7 @@ const parseEntregas = (arr) => {
     return {
       descripcion: numeroEntrega || "",
       fechaCuenta: fecha,
+      horaCuenta: hora,
       proveedorOCliente: cliente,
       descuentoAplicado,
       moneda: monedaDePago,

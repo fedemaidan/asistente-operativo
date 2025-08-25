@@ -27,7 +27,7 @@ Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 4 dest
 
 [
   {
-    "nombre": "ASOCIACION CONSULTURA MUTUAL",
+    "nombre": "ASOCIACION CONSULTORA MUTUAL",
     "cuit": "30-71108832-2",
     "cvu": "0000252500000001000054"
   },

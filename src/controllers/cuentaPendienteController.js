@@ -117,6 +117,36 @@ class CuentaPendienteController extends BaseController {
     }
   }
 
+  async getByClienteId(clienteId) {
+    try {
+      // Primero obtenemos el cliente para obtener su nombre
+      const Cliente = require("../models/cliente.model");
+      const cliente = await Cliente.findById(clienteId);
+      if (!cliente) {
+        return { success: false, error: "Cliente no encontrado" };
+      }
+
+      // Normalizamos el nombre del cliente para la búsqueda
+      const nombreCliente = cliente.nombre.toString().trim().toLowerCase();
+
+      // Buscamos cuentas pendientes donde proveedorOCliente coincida con el nombre del cliente
+      const cuentas = await this.model
+        .find({
+          $expr: {
+            $eq: [
+              { $toLower: { $trim: { input: "$proveedorOCliente" } } },
+              nombreCliente,
+            ],
+          },
+        })
+        .sort({ fechaCuenta: -1 });
+
+      return { success: true, data: cuentas };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   // Obtener logs de una cuenta pendiente
   async getLogs(id) {
     try {

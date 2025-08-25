@@ -10,9 +10,6 @@ class MovimientoController extends BaseController {
     super(Movimiento);
   }
   async createMovimiento(movimientoData, montoEnviado, saveToSheet = true) {
-    console.log("movimientoData", movimientoData);
-    console.log("montoEnviado", montoEnviado);
-
     const { type, moneda, cuentaCorriente } = movimientoData;
     let tipoDeCambio = movimientoData.tipoDeCambio || null;
 
@@ -107,6 +104,14 @@ class MovimientoController extends BaseController {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+
+  async actualizarEstados(ids, usuario) {
+    const response = await this.model.updateMany(
+      { _id: { $in: ids } },
+      { $set: { estado: "CONFIRMADO", usuarioConfirmacion: usuario } }
+    );
+    return response;
   }
 
   async getByCliente(clienteId) {
@@ -240,8 +245,8 @@ class MovimientoController extends BaseController {
           }
 
           if (mov.type === "INGRESO") {
-            if (!fechaUltimoPago || mov.fechaCreacion > fechaUltimoPago) {
-              fechaUltimoPago = mov.fechaCreacion;
+            if (!fechaUltimoPago || mov.fechaFactura > fechaUltimoPago) {
+              fechaUltimoPago = mov.fechaFactura;
             }
           }
         });
@@ -321,6 +326,64 @@ class MovimientoController extends BaseController {
         return { success: false, error: "Movimiento no encontrado" };
       }
       return { success: true, data: movimiento.logs };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getArqueoDiario(options = {}) {
+    try {
+      const match = options.filter || {};
+
+      // Proyección para calcular monto enviado por moneda
+      const pipeline = [
+        { $match: match },
+        {
+          $project: {
+            fecha: { $ifNull: ["$fechaFactura", "$fechaCreacion"] },
+            moneda: 1,
+            cuentaCorriente: 1,
+            total: 1,
+            montoARS: {
+              $cond: [{ $eq: ["$moneda", "ARS"] }, "$total.ars", 0],
+            },
+            montoUSD: {
+              $cond: [
+                { $eq: ["$moneda", "USD"] },
+                {
+                  $cond: [
+                    { $eq: ["$cuentaCorriente", "USD BLUE"] },
+                    "$total.usdBlue",
+                    "$total.usdOficial",
+                  ],
+                },
+                0,
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$fecha" },
+            },
+            totalARS: { $sum: "$montoARS" },
+            totalUSD: { $sum: "$montoUSD" },
+          },
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            fecha: "$_id",
+            totalARS: { $ifNull: ["$totalARS", 0] },
+            totalUSD: { $ifNull: ["$totalUSD", 0] },
+          },
+        },
+      ];
+
+      const data = await this.model.aggregate(pipeline);
+      return { success: true, data };
     } catch (error) {
       return { success: false, error: error.message };
     }

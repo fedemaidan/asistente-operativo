@@ -8,7 +8,7 @@ const opciones = [
       Para obtener el destino debes usar el atributo nombre unicamente de una de las siguientes 2 opciones o no encontrado:
       [
         {
-          "nombre": "ASOCIACION CONSULTURA MUTUAL",
+          "nombre": "ASOCIACION CONSULTORA MUTUAL",
           "cuit": "30-71108832-2",
           "cvu": "0000252500000001000054"
         },
@@ -25,7 +25,7 @@ const opciones = [
       monto:
         "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
       destino:
-        "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTURA MUTUAL, ENSHOP SRL o NO ENCONTRADO",
+        "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL o NO ENCONTRADO",
       fecha: "fecha de la transferencia, en formato dd/mm/yyyy",
       hora: "hora de la transferencia",
     },

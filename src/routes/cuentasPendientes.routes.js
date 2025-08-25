@@ -43,15 +43,57 @@ router.put("/:id", async (req, res) => {
 // GET /api/cuentas-pendientes - Listar cuentas pendientes
 router.get("/", async (req, res) => {
   try {
-    const { populate } = req.query;
-    const result = await cuentaPendienteController.getAll({}, populate || "");
+    const {
+      populate,
+      limit = 20,
+      offset = 0,
+      sortField = "fechaCuenta",
+      sortDirection = "desc",
+      nombreCliente,
+    } = req.query;
+
+    const filters = {};
+    if (nombreCliente) {
+      filters.proveedorOCliente = {
+        $regex: nombreCliente,
+        $options: "i", // case insensitive
+      };
+    }
+
+    const sort = {};
+    if (sortField) {
+      sort[sortField] = sortDirection === "asc" ? 1 : -1;
+    }
+
+    const options = {
+      filter: filters,
+      populate,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      sort,
+    };
+
+    const result = await cuentaPendienteController.getAllPaginado(options);
     return res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET /api/cuentas-pendientes/:id/logs - Obtener logs por ID
+router.get("/cliente/:clienteId", async (req, res) => {
+  try {
+    const { clienteId } = req.params;
+    const result = await cuentaPendienteController.getByClienteId(clienteId);
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener las cuentas pendientes del cliente",
+      message: error.message,
+    });
+  }
+});
+
 router.get("/:id/logs", async (req, res) => {
   try {
     const { id } = req.params;

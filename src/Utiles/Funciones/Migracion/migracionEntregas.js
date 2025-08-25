@@ -2,6 +2,7 @@ const { getEntregasFromSheet } = require("../../GoogleServices/Sheets/entrega");
 const cuentaPendienteController = require("../../../controllers/cuentaPendienteController");
 require("../../../DBConnection");
 const { parseNombreToUpperCase } = require("./migracionComprobantes");
+const clienteController = require("../../../controllers/clienteController");
 
 function parseFechaDDMMYYYYToDate(fecha) {
   if (!fecha || typeof fecha !== "string") return null;
@@ -29,15 +30,31 @@ async function migrarEntregasDesdeGoogleSheets(
     let errores = 0;
 
     for (const entrega of entregas) {
+      const clienteResp = await clienteController.getByNombre(
+        parseNombreToUpperCase(entrega.proveedorOCliente)
+      );
       try {
-        const fechaCuenta =
+        // Combinar fecha y hora en un solo objeto Date
+        const fechaBase =
           parseFechaDDMMYYYYToDate(entrega.fechaCuenta) || new Date();
+        const horaCuenta = entrega.horaCuenta || "00:00";
+
+        // Parsear la hora (formato HH:MM)
+        const [horas, minutos] = horaCuenta
+          .split(":")
+          .map((num) => parseInt(num) || 0);
+
+        // Crear Date completo con fecha y hora
+        const fechaCuentaCompleta = new Date(fechaBase);
+        fechaCuentaCompleta.setHours(horas, minutos, 0, 0);
 
         const cuentaPendienteData = {
           descripcion: entrega.descripcion || "",
-          fechaCuenta: fechaCuenta,
+          fechaCuenta: fechaCuentaCompleta,
           fechaCreacion: new Date(),
-          proveedorOCliente: parseNombreToUpperCase(entrega.proveedorOCliente),
+          proveedorOCliente: clienteResp.success
+            ? clienteResp.data.nombre
+            : entrega.proveedorOCliente,
           descuentoAplicado: entrega.descuentoAplicado,
           subTotal: entrega.subTotal,
           montoTotal: entrega.montoTotal,
@@ -48,17 +65,12 @@ async function migrarEntregasDesdeGoogleSheets(
           empresaId: "celulandia",
         };
 
-        console.log(
-          `📝 Procesando entrega: ${entrega.descripcion} - Cliente: ${entrega.proveedorOCliente}`
-        );
-
         const resp = await cuentaPendienteController.createCuentaPendiente(
           cuentaPendienteData
         );
 
         if (resp && resp.success) {
           creados++;
-          console.log(`✅ Entrega creada: ${entrega.descripcion}`);
         } else {
           errores++;
           console.log(
