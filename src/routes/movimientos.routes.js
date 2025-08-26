@@ -60,10 +60,16 @@ router.get("/", async (req, res) => {
       fecha,
       fechaInicio,
       fechaFin,
+      includeInactive = false,
     } = req.query;
 
-    const filters = {};
+    const filters = { active: true }; // Por defecto solo mostrar movimientos activos
     if (type) filters.type = type;
+
+    // Si se solicita incluir inactivos, remover el filtro de active
+    if (includeInactive === "true") {
+      delete filters.active;
+    }
     if (clienteNombre) {
       filters["cliente.nombre"] = {
         $regex: clienteNombre,
@@ -204,7 +210,10 @@ router.get("/", async (req, res) => {
 
 router.get("/clientes-totales", async (req, res) => {
   try {
-    const result = await movimientoController.getClientesTotales();
+    const { includeInactive = false } = req.query;
+    const result = await movimientoController.getClientesTotales(
+      includeInactive
+    );
     res.json(result);
   } catch (error) {
     res.status(500).json({
@@ -217,20 +226,11 @@ router.get("/clientes-totales", async (req, res) => {
 router.get("/cliente/:clienteId", async (req, res) => {
   try {
     const { clienteId } = req.params;
-    const result = await movimientoController.getByCliente(clienteId);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-router.get("/tipo/:type", async (req, res) => {
-  try {
-    const { type } = req.params;
-    const result = await movimientoController.getByType(type);
+    const { includeInactive = false } = req.query;
+    const result = await movimientoController.getByCliente(
+      clienteId,
+      includeInactive
+    );
     res.json(result);
   } catch (error) {
     res.status(500).json({
@@ -243,9 +243,11 @@ router.get("/tipo/:type", async (req, res) => {
 router.get("/fecha/:fechaInicio/:fechaFin", async (req, res) => {
   try {
     const { fechaInicio, fechaFin } = req.params;
+    const { includeInactive = false } = req.query;
     const result = await movimientoController.getByFechaRange(
       fechaInicio,
-      fechaFin
+      fechaFin,
+      includeInactive
     );
     res.json(result);
   } catch (error) {
@@ -258,10 +260,14 @@ router.get("/fecha/:fechaInicio/:fechaFin", async (req, res) => {
 
 router.get("/arqueo/diario", async (req, res) => {
   try {
-    const { type, cajaNombre, moneda } = req.query;
+    const { type, cajaNombre, moneda, includeInactive = false } = req.query;
 
-    const filters = {};
+    const filters = { active: true };
     if (type) filters.type = type;
+
+    if (includeInactive === "true") {
+      delete filters.active;
+    }
     if (moneda) filters.moneda = moneda;
 
     if (cajaNombre) {
@@ -313,7 +319,15 @@ router.get("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await movimientoController.delete(id);
+    const { nombreUsuario } = req.body;
+
+    if (!nombreUsuario) {
+      return res
+        .status(400)
+        .json({ error: "El nombreUsuario es requerido para los logs" });
+    }
+
+    const result = await movimientoController.delete(id, nombreUsuario);
     res.json(result);
   } catch (error) {
     res.status(500).json({

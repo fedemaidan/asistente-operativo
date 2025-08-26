@@ -81,101 +81,116 @@ class MovimientoController extends BaseController {
     }
   }
 
+  // controllers/movimientoController.js
+
   async updateMovimiento(id, movimientoData) {
     try {
-      if (movimientoData.total !== undefined && movimientoData.total <= 0) {
-        return { success: false, error: "El total debe ser mayor que 0" };
+      // --- cargar SIEMPRE el movimiento actual
+      const movimientoActual = await this.model.findById(id);
+      if (!movimientoActual) {
+        return { success: false, error: "Movimiento no encontrado" };
       }
 
-      // Manejar cambio de nombre de cliente
-      if (movimientoData.clienteNombre) {
-        // Buscar cliente por nombre (insensible a mayúsculas/minúsculas)
-        const clienteExistente = await Cliente.findOne({
-          nombre: {
-            $regex: new RegExp(`^${movimientoData.clienteNombre}$`, "i"),
-          },
-        });
+      // Si no hay nada para cambiar, seguimos como hoy
+      const cambiaronTcOMonto =
+        movimientoData.montoEnviado !== undefined ||
+        movimientoData.tipoDeCambio !== undefined;
 
-        if (clienteExistente) {
-          // Cliente existe, usar su ID y datos completos
-          movimientoData.clienteId = clienteExistente._id;
-          movimientoData.cliente = {
-            nombre: clienteExistente.nombre,
-            ccActivas: clienteExistente.ccActivas,
-            descuento: clienteExistente.descuento,
-          };
-        } else {
-          // Cliente no existe, solo cambiar el nombre y poner clienteId como null
-          movimientoData.clienteId = null;
-          // Mantener otros datos del cliente si existen, solo cambiar el nombre
-          if (!movimientoData.cliente) {
-            movimientoData.cliente = {};
-          }
-          movimientoData.cliente.nombre = movimientoData.clienteNombre;
-        }
+      // Cotizaciones disponibles para cálculos automáticos
+      const cotizaciones = await DolarService.obtenerValoresDolar();
+      const { blue, oficial } = cotizaciones;
 
-        // Remover clienteNombre del update ya que se procesó
-        delete movimientoData.clienteNombre;
-      }
+      const { moneda, type, cuentaCorriente } = movimientoActual;
 
-      if (movimientoData.montoEnviado !== undefined) {
-        const montoEnviado = parseFloat(movimientoData.montoEnviado);
+      // Determinar tipo de cambio a usar (manual si vino, sino automático)
+      const tcAuto = () => {
+        if (
+          (moneda === "ARS" && cuentaCorriente === "ARS") ||
+          (moneda === "USD" &&
+            (cuentaCorriente === "USD BLUE" ||
+              cuentaCorriente === "USD OFICIAL"))
+        )
+          return 1;
+        if (moneda === "ARS" && cuentaCorriente === "USD BLUE")
+          return blue.venta;
+        if (moneda === "ARS" && cuentaCorriente === "USD OFICIAL")
+          return oficial.venta;
+        if (moneda === "USD" && cuentaCorriente === "ARS") return blue.venta;
+        return movimientoActual.tipoDeCambio || 1;
+      };
 
-        const cotizaciones = await DolarService.obtenerValoresDolar();
-        const { blue, oficial } = cotizaciones;
+      let tipoDeCambio =
+        movimientoData.tipoDeCambio !== undefined
+          ? Number(movimientoData.tipoDeCambio)
+          : tcAuto();
 
-        // Obtener datos actuales del movimiento para saber la moneda
-        const movimientoActual = await this.model.findById(id);
-        if (!movimientoActual) {
-          return { success: false, error: "Movimiento no encontrado" };
-        }
+      // Reconstruir monto base si no vino explícito
+      let montoBase =
+        movimientoData.montoEnviado !== undefined
+          ? Number(movimientoData.montoEnviado)
+          : moneda === "ARS"
+          ? movimientoActual.total?.ars || 0
+          : movimientoActual.total?.usdBlue ||
+            movimientoActual.total?.usdOficial ||
+            0;
 
-        const { moneda, type } = movimientoActual;
+      // Si cambian tipo de cambio o monto, recalcular totales
+      if (cambiaronTcOMonto) {
+        let nuevosTotales;
 
         if (type === "EGRESO") {
-          movimientoData.total = {
-            ars: montoEnviado,
-            usdOficial: montoEnviado,
-            usdBlue: montoEnviado,
+          nuevosTotales = {
+            ars: montoBase,
+            usdOficial: montoBase,
+            usdBlue: montoBase,
           };
         } else if (moneda === "ARS") {
-          movimientoData.total = {
-            ars: montoEnviado,
-            usdOficial: montoEnviado / oficial.venta,
-            usdBlue: montoEnviado / blue.venta,
+          // Si vino TC manual y CC es USD, usarlo para esa CC; el resto automático
+          const usdOficial =
+            cuentaCorriente === "USD OFICIAL" &&
+            movimientoData.tipoDeCambio !== undefined
+              ? montoBase / tipoDeCambio
+              : montoBase / oficial.venta;
+
+          const usdBlue =
+            cuentaCorriente === "USD BLUE" &&
+            movimientoData.tipoDeCambio !== undefined
+              ? montoBase / tipoDeCambio
+              : montoBase / blue.venta;
+
+          nuevosTotales = {
+            ars: montoBase,
+            usdOficial,
+            usdBlue,
           };
         } else if (moneda === "USD") {
-          movimientoData.total = {
-            ars: montoEnviado * blue.venta,
-            usdOficial: montoEnviado,
-            usdBlue: montoEnviado,
+          // Si USD→ARS y vino TC manual, usarlo (sino blue)
+          const ars =
+            cuentaCorriente === "ARS" &&
+            movimientoData.tipoDeCambio !== undefined
+              ? montoBase * tipoDeCambio
+              : montoBase * blue.venta;
+
+          nuevosTotales = {
+            ars,
+            usdBlue: montoBase,
+            usdOficial: montoBase,
           };
         }
+
+        // Forzar que se guarden ambos cambios
+        movimientoData.total = nuevosTotales;
+        movimientoData.tipoDeCambio = tipoDeCambio;
       }
 
-      if (
-        movimientoData.cliente &&
-        typeof movimientoData.cliente === "string"
-      ) {
-        const cliente = await Cliente.findById(movimientoData.cliente);
-        if (!cliente) {
-          return { success: false, error: "Cliente no encontrado" };
-        }
-      }
-
+      // Validaciones existentes...
       if (movimientoData.caja) {
         const caja = await Caja.findById(movimientoData.caja);
-        if (!caja) {
-          return { success: false, error: "Caja no encontrada" };
-        }
+        if (!caja) return { success: false, error: "Caja no encontrada" };
       }
 
       const { nombreUsuario, ...datosMovimiento } = movimientoData;
-
-      const updateData = {
-        ...datosMovimiento,
-        nombreUsuario: nombreUsuario,
-      };
+      const updateData = { ...datosMovimiento, nombreUsuario };
 
       return await this.update(id, updateData);
     } catch (error) {
@@ -191,10 +206,15 @@ class MovimientoController extends BaseController {
     return response;
   }
 
-  async getByCliente(clienteId) {
+  async getByCliente(clienteId, includeInactive = false) {
     try {
+      const filters = { clienteId: clienteId };
+      if (!includeInactive) {
+        filters.active = true;
+      }
+
       const movimientos = await this.model
-        .find({ clienteId: clienteId })
+        .find(filters)
         .populate("cliente")
         .populate("caja")
         .sort({ fechaFactura: -1 });
@@ -204,10 +224,15 @@ class MovimientoController extends BaseController {
     }
   }
 
-  async getByCaja(cajaId) {
+  async getByCaja(cajaId, includeInactive = false) {
     try {
+      const filters = { caja: cajaId };
+      if (!includeInactive) {
+        filters.active = true;
+      }
+
       const movimientos = await this.model
-        .find({ caja: cajaId })
+        .find(filters)
         .populate("cliente")
         .populate("caja")
         .sort({ fechaFactura: -1 });
@@ -217,10 +242,15 @@ class MovimientoController extends BaseController {
     }
   }
 
-  async getByType(type) {
+  async getByType(type, includeInactive = false) {
     try {
+      const filters = { type };
+      if (!includeInactive) {
+        filters.active = true;
+      }
+
       const movimientos = await this.model
-        .find({ type })
+        .find(filters)
         .populate("cliente")
         .populate("caja")
         .sort({ fechaFactura: -1 });
@@ -230,15 +260,21 @@ class MovimientoController extends BaseController {
     }
   }
 
-  async getByFechaRange(fechaInicio, fechaFin) {
+  async getByFechaRange(fechaInicio, fechaFin, includeInactive = false) {
     try {
+      const filters = {
+        fechaFactura: {
+          $gte: new Date(fechaInicio),
+          $lte: new Date(fechaFin),
+        },
+      };
+
+      if (!includeInactive) {
+        filters.active = true;
+      }
+
       const movimientos = await this.model
-        .find({
-          fechaFactura: {
-            $gte: new Date(fechaInicio),
-            $lte: new Date(fechaFin),
-          },
-        })
+        .find(filters)
         .populate("cliente")
         .populate("caja")
         .sort({ fechaFactura: -1 });
@@ -252,7 +288,9 @@ class MovimientoController extends BaseController {
     try {
       const clientes = await Cliente.find({});
 
-      const movimientos = await this.model.find({}).populate("cliente");
+      const movimientos = await this.model
+        .find({ active: true })
+        .populate("cliente");
 
       const cuentasResp =
         await CuentaPendienteController.getByProveedorOCliente("");
@@ -359,10 +397,15 @@ class MovimientoController extends BaseController {
     }
   }
 
-  async getTotalByType(type) {
+  async getTotalByType(type, includeInactive = false) {
     try {
+      const match = { type };
+      if (!includeInactive) {
+        match.active = true;
+      }
+
       const result = await this.model.aggregate([
-        { $match: { type } },
+        { $match: match },
         { $group: { _id: null, total: { $sum: "$total" } } },
       ]);
       const total = result.length > 0 ? result[0].total : 0;
@@ -372,12 +415,21 @@ class MovimientoController extends BaseController {
     }
   }
 
-  async getEstadisticas() {
+  async getEstadisticas(includeInactive = false) {
     try {
-      const totalMovimientos = await this.model.countDocuments();
-      const totalIngresos = await this.getTotalByType("INGRESO");
-      const totalEgresos = await this.getTotalByType("EGRESO");
+      const filters = {};
+      if (!includeInactive) {
+        filters.active = true;
+      }
+
+      const totalMovimientos = await this.model.countDocuments(filters);
+      const totalIngresos = await this.getTotalByType(
+        "INGRESO",
+        includeInactive
+      );
+      const totalEgresos = await this.getTotalByType("EGRESO", includeInactive);
       const movimientosPorTipo = await this.model.aggregate([
+        { $match: filters },
         { $group: { _id: "$type", count: { $sum: 1 } } },
       ]);
 
@@ -417,7 +469,7 @@ class MovimientoController extends BaseController {
 
   async getArqueoDiario(options = {}) {
     try {
-      const match = options.filter || {};
+      const match = { active: true, ...options.filter } || { active: true };
 
       // Proyección para calcular monto enviado por moneda
       const pipeline = [
@@ -468,6 +520,39 @@ class MovimientoController extends BaseController {
 
       const data = await this.model.aggregate(pipeline);
       return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async delete(id, nombreUsuario) {
+    try {
+      if (!nombreUsuario) {
+        return {
+          success: false,
+          error: "El nombreUsuario es requerido para los logs",
+        };
+      }
+
+      const movimiento = await this.model.findById(id);
+      if (!movimiento) {
+        return { success: false, error: "Movimiento no encontrado" };
+      }
+
+      if (!movimiento.active) {
+        return { success: false, error: "El movimiento ya está eliminado" };
+      }
+
+      const updateData = {
+        active: false,
+        nombreUsuario: nombreUsuario,
+      };
+
+      const result = await this.model.findByIdAndUpdate(id, updateData, {
+        new: true,
+      });
+
+      return { success: true, data: result };
     } catch (error) {
       return { success: false, error: error.message };
     }

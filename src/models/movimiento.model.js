@@ -104,6 +104,10 @@ const movimientosSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  active: {
+    type: Boolean,
+    default: true,
+  },
   logs: [
     {
       campo: {
@@ -123,6 +127,8 @@ const movimientosSchema = new mongoose.Schema({
           "userPhone",
           "nombreUsuario",
           "concepto",
+          "active",
+          "total",
         ],
         required: true,
       },
@@ -146,211 +152,96 @@ const movimientosSchema = new mongoose.Schema({
   ],
 });
 
-// Middleware pre-save para registrar logs automáticamente
-movimientosSchema.pre("save", function (next) {
-  console.log("save");
-  if (this.isNew) {
-    // Si es un nuevo documento, no hay logs que registrar
-    return next();
+// models/movimiento.model.js
+
+function normalizeUpdate(raw) {
+  const direct = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k.startsWith("$")) direct[k] = v;
   }
+  const set = raw.$set || {};
+  return { ...direct, ...set };
+}
 
-  const modifiedPaths = this.modifiedPaths();
-  if (modifiedPaths.length === 0) {
-    return next();
-  }
+function buildLogs(originalDoc, effectiveUpdate, actor) {
+  const loggable = new Set([
+    "tipoDeCambio",
+    "estado",
+    "caja",
+    "cliente",
+    "cuentaCorriente",
+    "moneda",
+    "tipoFactura",
+    "urlImagen",
+    "numeroFactura",
+    "fechaFactura",
+    "fechaCreacion",
+    "userPhone",
+    "nombreUsuario",
+    "concepto",
+    "active",
+    "total",
+  ]);
 
-  // Obtener el documento original antes de los cambios
-  this.constructor
-    .findById(this._id)
-    .then((originalDoc) => {
-      if (!originalDoc) {
-        return next();
-      }
+  const logsToAdd = [];
 
-      const logsToAdd = [];
+  for (const field of Object.keys(effectiveUpdate)) {
+    if (!loggable.has(field)) continue;
 
-      modifiedPaths.forEach((path) => {
-        if (
-          [
-            "tipoDeCambio",
-            "estado",
-            "caja",
-            "cliente",
-            "cuentaCorriente",
-            "moneda",
-            "tipoFactura",
-            "urlImagen",
-            "numeroFactura",
-            "fechaFactura",
-            "fechaCreacion",
-            "userPhone",
-            "nombreUsuario",
-            "concepto",
-          ].includes(path)
-        ) {
-          const valorAnterior = originalDoc[path];
-          const valorNuevo = this[path];
+    const prev = originalDoc[field] !== undefined ? originalDoc[field] : null;
+    const next =
+      effectiveUpdate[field] !== undefined ? effectiveUpdate[field] : null;
 
-          // Solo agregar log si el valor realmente cambió
-          if (JSON.stringify(valorAnterior) !== JSON.stringify(valorNuevo)) {
-            logsToAdd.push({
-              campo: path,
-              valorAnterior: valorAnterior,
-              valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
-              usuario: this.nombreUsuario || "Sistema", // Usuario que creó el movimiento
-            });
-          }
-        }
+    if (
+      JSON.stringify(prev) !== JSON.stringify(next) &&
+      (prev !== null || next !== null)
+    ) {
+      logsToAdd.push({
+        campo: field,
+        valorAnterior: prev === undefined ? null : prev,
+        valorNuevo: next === undefined ? null : next,
+        fechaActualizacion: new Date(),
+        usuario: actor || "Sistema",
       });
-
-      // Agregar los logs al array
-      if (logsToAdd.length > 0) {
-        this.logs.push(...logsToAdd);
-      }
-
-      next();
-    })
-    .catch(next);
-});
-
-// Middleware pre-findOneAndUpdate para registrar logs en actualizaciones
-movimientosSchema.pre("findOneAndUpdate", function (next) {
-  console.log("findOneAndUpdate middleware ejecutándose");
-  const update = this.getUpdate();
-  const modifiedFields = Object.keys(update);
-
-  if (modifiedFields.length === 0) {
-    return next();
+    }
   }
 
-  // Obtener el documento original
+  return logsToAdd;
+}
+
+function preUpdateWithLogs(next) {
+  const raw = this.getUpdate();
+  const effectiveUpdate = normalizeUpdate(raw);
+
   this.model
     .findOne(this.getQuery())
     .then((originalDoc) => {
-      if (!originalDoc) {
-        return next();
-      }
+      if (!originalDoc) return next();
 
-      const logsToAdd = [];
+      // Actor para el log
+      const actor =
+        effectiveUpdate.nombreUsuario ||
+        raw.nombreUsuario ||
+        (raw.$set && raw.$set.nombreUsuario) ||
+        originalDoc.nombreUsuario ||
+        "Sistema";
 
-      modifiedFields.forEach((field) => {
-        if (
-          [
-            "tipoDeCambio",
-            "estado",
-            "caja",
-            "cliente",
-            "cuentaCorriente",
-            "moneda",
-            "tipoFactura",
-            "urlImagen",
-            "numeroFactura",
-            "fechaFactura",
-            "fechaCreacion",
-            "userPhone",
-            "nombreUsuario",
-            "concepto",
-          ].includes(field)
-        ) {
-          const valorAnterior = originalDoc[field];
-          const valorNuevo = update[field];
-
-          // Solo agregar log si el valor realmente cambió
-          if (JSON.stringify(valorAnterior) !== JSON.stringify(valorNuevo)) {
-            logsToAdd.push({
-              campo: field,
-              valorAnterior: valorAnterior,
-              valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
-              usuario:
-                update.nombreUsuario || originalDoc.nombreUsuario || "Sistema",
-            });
-          }
-        }
-      });
-
-      // Agregar los logs al update
+      const logsToAdd = buildLogs(originalDoc, effectiveUpdate, actor);
       if (logsToAdd.length > 0) {
-        if (!update.$push) {
-          update.$push = {};
-        }
-        update.$push.logs = { $each: logsToAdd };
+        // Inyectar $push.logs correctamente
+        const newUpdate = { ...raw };
+        newUpdate.$push = newUpdate.$push || {};
+        newUpdate.$push.logs = { $each: logsToAdd };
+        this.setUpdate(newUpdate);
       }
 
       next();
     })
     .catch(next);
-});
+}
 
-// Middleware específico para findByIdAndUpdate
-movimientosSchema.pre("findByIdAndUpdate", function (next) {
-  console.log("findByIdAndUpdate middleware ejecutándose");
-  const update = this.getUpdate();
-  const modifiedFields = Object.keys(update);
-
-  if (modifiedFields.length === 0) {
-    return next();
-  }
-
-  // Obtener el documento original
-  this.model
-    .findById(this.getQuery()._id || this.getQuery())
-    .then((originalDoc) => {
-      if (!originalDoc) {
-        return next();
-      }
-
-      const logsToAdd = [];
-
-      modifiedFields.forEach((field) => {
-        if (
-          [
-            "tipoDeCambio",
-            "estado",
-            "caja",
-            "cliente",
-            "cuentaCorriente",
-            "moneda",
-            "tipoFactura",
-            "urlImagen",
-            "numeroFactura",
-            "fechaFactura",
-            "fechaCreacion",
-            "userPhone",
-            "nombreUsuario",
-            "concepto",
-          ].includes(field)
-        ) {
-          const valorAnterior = originalDoc[field];
-          const valorNuevo = update[field];
-
-          // Solo agregar log si el valor realmente cambió
-          if (JSON.stringify(valorAnterior) !== JSON.stringify(valorNuevo)) {
-            logsToAdd.push({
-              campo: field,
-              valorAnterior: valorAnterior,
-              valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
-              usuario:
-                update.nombreUsuario || originalDoc.nombreUsuario || "Sistema",
-            });
-          }
-        }
-      });
-
-      // Agregar los logs al update
-      if (logsToAdd.length > 0) {
-        if (!update.$push) {
-          update.$push = {};
-        }
-        update.$push.logs = { $each: logsToAdd };
-      }
-
-      next();
-    })
-    .catch(next);
-});
+movimientosSchema.pre("findOneAndUpdate", preUpdateWithLogs);
+movimientosSchema.pre("findByIdAndUpdate", preUpdateWithLogs);
 
 // Compilar el modelo DESPUÉS de definir middlewares
 const Movimiento = mongoose.model("Movimiento", movimientosSchema);
