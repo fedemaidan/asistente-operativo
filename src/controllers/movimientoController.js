@@ -81,20 +81,22 @@ class MovimientoController extends BaseController {
     }
   }
 
-  // controllers/movimientoController.js
-
   async updateMovimiento(id, movimientoData) {
     try {
-      // --- cargar SIEMPRE el movimiento actual
       const movimientoActual = await this.model.findById(id);
       if (!movimientoActual) {
         return { success: false, error: "Movimiento no encontrado" };
       }
 
-      // Si no hay nada para cambiar, seguimos como hoy
       const cambiaronTcOMonto =
         movimientoData.montoEnviado !== undefined ||
         movimientoData.tipoDeCambio !== undefined;
+
+      // Si solo cambió la caja y no hay otros cambios, no recalcular totales
+      const soloCambioCaja =
+        movimientoData.caja !== undefined &&
+        !cambiaronTcOMonto &&
+        Object.keys(movimientoData).length === 1;
 
       // Cotizaciones disponibles para cálculos automáticos
       const cotizaciones = await DolarService.obtenerValoresDolar();
@@ -134,15 +136,18 @@ class MovimientoController extends BaseController {
             movimientoActual.total?.usdOficial ||
             0;
 
-      // Si cambian tipo de cambio o monto, recalcular totales
-      if (cambiaronTcOMonto) {
+      if (cambiaronTcOMonto && !soloCambioCaja) {
         let nuevosTotales;
 
         if (type === "EGRESO") {
+          const montoOriginal = movimientoActual.total?.ars || 0;
+          const signo = montoOriginal < 0 ? -1 : 1;
+          const montoAbsoluto = Math.abs(montoBase);
+
           nuevosTotales = {
-            ars: montoBase,
-            usdOficial: montoBase,
-            usdBlue: montoBase,
+            ars: montoAbsoluto * signo,
+            usdOficial: montoAbsoluto * signo,
+            usdBlue: montoAbsoluto * signo,
           };
         } else if (moneda === "ARS") {
           // Si vino TC manual y CC es USD, usarlo para esa CC; el resto automático
@@ -164,7 +169,6 @@ class MovimientoController extends BaseController {
             usdBlue,
           };
         } else if (moneda === "USD") {
-          // Si USD→ARS y vino TC manual, usarlo (sino blue)
           const ars =
             cuentaCorriente === "ARS" &&
             movimientoData.tipoDeCambio !== undefined
@@ -178,12 +182,10 @@ class MovimientoController extends BaseController {
           };
         }
 
-        // Forzar que se guarden ambos cambios
         movimientoData.total = nuevosTotales;
         movimientoData.tipoDeCambio = tipoDeCambio;
       }
 
-      // Validaciones existentes...
       if (movimientoData.caja) {
         const caja = await Caja.findById(movimientoData.caja);
         if (!caja) return { success: false, error: "Caja no encontrada" };

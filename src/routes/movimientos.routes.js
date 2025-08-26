@@ -81,12 +81,23 @@ router.get("/", async (req, res) => {
     if (tipoFactura) filters.tipoFactura = tipoFactura;
 
     if (cajaNombre) {
-      const cajaDoc = await Caja.findOne({ nombre: cajaNombre });
-      if (cajaDoc?._id) {
-        filters.caja = cajaDoc._id;
-      } else {
-        // Si no existe la caja, forzamos a no devolver resultados
-        filters.caja = null;
+      if (cajaNombre === "ambas") {
+        const cajasCheque = await Caja.find({
+          nombre: { $in: ["CHEQUE", "ECHEQ"] },
+        });
+        if (cajasCheque.length > 0) {
+          const cajaIds = cajasCheque.map((caja) => caja._id);
+          filters.caja = { $in: cajaIds };
+        } else {
+          filters.caja = null;
+        }
+      } else if (cajaNombre === "CHEQUE" || cajaNombre === "ECHEQ") {
+        const cajaDoc = await Caja.findOne({ nombre: cajaNombre });
+        if (cajaDoc?._id) {
+          filters.caja = cajaDoc._id;
+        } else {
+          filters.caja = null;
+        }
       }
     }
 
