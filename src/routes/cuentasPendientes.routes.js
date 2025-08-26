@@ -40,6 +40,28 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// PUT /api/cuentas-pendientes/:id/delete - Eliminación lógica
+router.put("/:id/delete", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+
+    if (!usuario) {
+      return res
+        .status(400)
+        .json({ error: "El usuario es requerido para los logs" });
+    }
+
+    const result = await cuentaPendienteController.deleteCuentaPendiente(
+      id,
+      usuario
+    );
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/cuentas-pendientes - Listar cuentas pendientes
 router.get("/", async (req, res) => {
   try {
@@ -52,6 +74,7 @@ router.get("/", async (req, res) => {
       nombreCliente,
       fechaInicio,
       fechaFin,
+      includeInactive = false,
     } = req.query;
 
     const filters = {};
@@ -97,6 +120,11 @@ router.get("/", async (req, res) => {
         fechaFin,
         dateFilter,
       });
+    }
+
+    // Filtro por active (solo si no se incluyen inactivos)
+    if (!includeInactive || includeInactive === "false") {
+      filters.active = true;
     }
 
     const sort = {};

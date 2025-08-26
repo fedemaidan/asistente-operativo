@@ -38,13 +38,17 @@ class CuentaPendienteController extends BaseController {
   }
 
   // Obtener cuentas pendientes por proveedor/cliente
-  async getByProveedorOCliente(proveedorOCliente) {
+  async getByProveedorOCliente(proveedorOCliente, includeInactive = false) {
     try {
-      const cuentas = await this.model
-        .find({
-          proveedorOCliente: new RegExp(proveedorOCliente, "i"),
-        })
-        .sort({ fechaCuenta: -1 });
+      const query = {
+        proveedorOCliente: new RegExp(proveedorOCliente, "i"),
+      };
+
+      if (!includeInactive) {
+        query.active = true;
+      }
+
+      const cuentas = await this.model.find(query).sort({ fechaCuenta: -1 });
 
       return { success: true, data: cuentas };
     } catch (error) {
@@ -53,11 +57,15 @@ class CuentaPendienteController extends BaseController {
   }
 
   // Obtener cuentas pendientes por moneda
-  async getByMoneda(moneda) {
+  async getByMoneda(moneda, includeInactive = false) {
     try {
-      const cuentas = await this.model
-        .find({ moneda })
-        .sort({ fechaCuenta: -1 });
+      const query = { moneda };
+
+      if (!includeInactive) {
+        query.active = true;
+      }
+
+      const cuentas = await this.model.find(query).sort({ fechaCuenta: -1 });
       return { success: true, data: cuentas };
     } catch (error) {
       return { success: false, error: error.message };
@@ -65,16 +73,20 @@ class CuentaPendienteController extends BaseController {
   }
 
   // Obtener cuentas pendientes por rango de fechas
-  async getByFechaRange(fechaInicio, fechaFin) {
+  async getByFechaRange(fechaInicio, fechaFin, includeInactive = false) {
     try {
-      const cuentas = await this.model
-        .find({
-          fechaCuenta: {
-            $gte: new Date(fechaInicio),
-            $lte: new Date(fechaFin),
-          },
-        })
-        .sort({ fechaCuenta: -1 });
+      const query = {
+        fechaCuenta: {
+          $gte: new Date(fechaInicio),
+          $lte: new Date(fechaFin),
+        },
+      };
+
+      if (!includeInactive) {
+        query.active = true;
+      }
+
+      const cuentas = await this.model.find(query).sort({ fechaCuenta: -1 });
 
       return { success: true, data: cuentas };
     } catch (error) {
@@ -83,10 +95,16 @@ class CuentaPendienteController extends BaseController {
   }
 
   // Calcular total de cuentas pendientes por moneda
-  async getTotalByMoneda(moneda) {
+  async getTotalByMoneda(moneda, includeInactive = false) {
     try {
+      const matchStage = { moneda };
+
+      if (!includeInactive) {
+        matchStage.active = true;
+      }
+
       const result = await this.model.aggregate([
-        { $match: { moneda } },
+        { $match: matchStage },
         { $group: { _id: null, total: { $sum: "$montoTotal" } } },
       ]);
 
@@ -98,11 +116,16 @@ class CuentaPendienteController extends BaseController {
   }
 
   // Obtener estadísticas de cuentas pendientes
-  async getEstadisticas() {
+  async getEstadisticas(includeInactive = false) {
     try {
-      const totalCuentas = await this.model.countDocuments();
-      const totalARS = await this.getTotalByMoneda("ARS");
-      const totalUSD = await this.getTotalByMoneda("USD");
+      const query = {};
+      if (!includeInactive) {
+        query.active = true;
+      }
+
+      const totalCuentas = await this.model.countDocuments(query);
+      const totalARS = await this.getTotalByMoneda("ARS", includeInactive);
+      const totalUSD = await this.getTotalByMoneda("USD", includeInactive);
 
       return {
         success: true,
@@ -117,7 +140,7 @@ class CuentaPendienteController extends BaseController {
     }
   }
 
-  async getByClienteId(clienteId) {
+  async getByClienteId(clienteId, includeInactive = false) {
     try {
       // Primero obtenemos el cliente para obtener su nombre
       const Cliente = require("../models/cliente.model");
@@ -130,16 +153,20 @@ class CuentaPendienteController extends BaseController {
       const nombreCliente = cliente.nombre.toString().trim().toLowerCase();
 
       // Buscamos cuentas pendientes donde proveedorOCliente coincida con el nombre del cliente
-      const cuentas = await this.model
-        .find({
-          $expr: {
-            $eq: [
-              { $toLower: { $trim: { input: "$proveedorOCliente" } } },
-              nombreCliente,
-            ],
-          },
-        })
-        .sort({ fechaCuenta: -1 });
+      const query = {
+        $expr: {
+          $eq: [
+            { $toLower: { $trim: { input: "$proveedorOCliente" } } },
+            nombreCliente,
+          ],
+        },
+      };
+
+      if (!includeInactive) {
+        query.active = true;
+      }
+
+      const cuentas = await this.model.find(query).sort({ fechaCuenta: -1 });
 
       return { success: true, data: cuentas };
     } catch (error) {
@@ -155,6 +182,28 @@ class CuentaPendienteController extends BaseController {
         return { success: false, error: "Cuenta pendiente no encontrada" };
       }
       return { success: true, data: cuenta.logs };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Eliminar lógicamente una cuenta pendiente
+  async deleteCuentaPendiente(id, usuario) {
+    try {
+      const result = await this.model.findByIdAndUpdate(
+        id,
+        {
+          active: false,
+          usuario: usuario || "Sistema",
+        },
+        { new: true }
+      );
+
+      if (!result) {
+        return { success: false, error: "Cuenta pendiente no encontrada" };
+      }
+
+      return { success: true, data: result };
     } catch (error) {
       return { success: false, error: error.message };
     }

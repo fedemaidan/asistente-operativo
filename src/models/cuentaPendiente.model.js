@@ -55,6 +55,10 @@ const cuentaPendienteSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  active: {
+    type: Boolean,
+    default: true,
+  },
   logs: [
     {
       campo: {
@@ -69,6 +73,7 @@ const cuentaPendienteSchema = new mongoose.Schema({
           "moneda",
           "cc",
           "usuario",
+          "active",
         ],
         required: true,
       },
@@ -130,6 +135,7 @@ cuentaPendienteSchema.pre("save", function (next) {
             "moneda",
             "cc",
             "usuario",
+            "active",
           ].includes(path)
         ) {
           const valorAnterior = originalDoc[path];
@@ -190,6 +196,7 @@ cuentaPendienteSchema.pre("findOneAndUpdate", function (next) {
             "moneda",
             "cc",
             "usuario",
+            "active",
           ].includes(field)
         ) {
           const valorAnterior = originalDoc[field];
@@ -253,6 +260,7 @@ cuentaPendienteSchema.pre("findByIdAndUpdate", function (next) {
             "moneda",
             "cc",
             "usuario",
+            "active",
           ].includes(field)
         ) {
           const valorAnterior = originalDoc[field];
