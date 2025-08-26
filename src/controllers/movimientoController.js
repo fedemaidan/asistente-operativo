@@ -56,7 +56,15 @@ class MovimientoController extends BaseController {
           usdBlue: montoEnviado,
         };
       }
-      const movimiento = await this.create(movimientoData);
+
+      if (typeof movimientoData.fechaFactura === "string") {
+        movimientoData.fechaFactura = new Date();
+      }
+
+      const movimiento = await this.create({
+        ...movimientoData,
+        empresaId: movimientoData.empresaId || "celulandia",
+      });
 
       if (movimiento?.success && movimiento?.data?._id) {
         const populated = await this.model
@@ -79,7 +87,76 @@ class MovimientoController extends BaseController {
         return { success: false, error: "El total debe ser mayor que 0" };
       }
 
-      if (movimientoData.cliente) {
+      // Manejar cambio de nombre de cliente
+      if (movimientoData.clienteNombre) {
+        // Buscar cliente por nombre (insensible a mayúsculas/minúsculas)
+        const clienteExistente = await Cliente.findOne({
+          nombre: {
+            $regex: new RegExp(`^${movimientoData.clienteNombre}$`, "i"),
+          },
+        });
+
+        if (clienteExistente) {
+          // Cliente existe, usar su ID y datos completos
+          movimientoData.clienteId = clienteExistente._id;
+          movimientoData.cliente = {
+            nombre: clienteExistente.nombre,
+            ccActivas: clienteExistente.ccActivas,
+            descuento: clienteExistente.descuento,
+          };
+        } else {
+          // Cliente no existe, solo cambiar el nombre y poner clienteId como null
+          movimientoData.clienteId = null;
+          // Mantener otros datos del cliente si existen, solo cambiar el nombre
+          if (!movimientoData.cliente) {
+            movimientoData.cliente = {};
+          }
+          movimientoData.cliente.nombre = movimientoData.clienteNombre;
+        }
+
+        // Remover clienteNombre del update ya que se procesó
+        delete movimientoData.clienteNombre;
+      }
+
+      if (movimientoData.montoEnviado !== undefined) {
+        const montoEnviado = parseFloat(movimientoData.montoEnviado);
+
+        const cotizaciones = await DolarService.obtenerValoresDolar();
+        const { blue, oficial } = cotizaciones;
+
+        // Obtener datos actuales del movimiento para saber la moneda
+        const movimientoActual = await this.model.findById(id);
+        if (!movimientoActual) {
+          return { success: false, error: "Movimiento no encontrado" };
+        }
+
+        const { moneda, type } = movimientoActual;
+
+        if (type === "EGRESO") {
+          movimientoData.total = {
+            ars: montoEnviado,
+            usdOficial: montoEnviado,
+            usdBlue: montoEnviado,
+          };
+        } else if (moneda === "ARS") {
+          movimientoData.total = {
+            ars: montoEnviado,
+            usdOficial: montoEnviado / oficial.venta,
+            usdBlue: montoEnviado / blue.venta,
+          };
+        } else if (moneda === "USD") {
+          movimientoData.total = {
+            ars: montoEnviado * blue.venta,
+            usdOficial: montoEnviado,
+            usdBlue: montoEnviado,
+          };
+        }
+      }
+
+      if (
+        movimientoData.cliente &&
+        typeof movimientoData.cliente === "string"
+      ) {
         const cliente = await Cliente.findById(movimientoData.cliente);
         if (!cliente) {
           return { success: false, error: "Cliente no encontrado" };
@@ -326,6 +403,13 @@ class MovimientoController extends BaseController {
         return { success: false, error: "Movimiento no encontrado" };
       }
       return { success: true, data: movimiento.logs };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getArqueoTotal() {
+    try {
     } catch (error) {
       return { success: false, error: error.message };
     }

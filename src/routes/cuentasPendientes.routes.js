@@ -50,6 +50,8 @@ router.get("/", async (req, res) => {
       sortField = "fechaCuenta",
       sortDirection = "desc",
       nombreCliente,
+      fechaInicio,
+      fechaFin,
     } = req.query;
 
     const filters = {};
@@ -58,6 +60,43 @@ router.get("/", async (req, res) => {
         $regex: nombreCliente,
         $options: "i", // case insensitive
       };
+    }
+
+    // Filtros por fecha
+    if (fechaInicio || fechaFin) {
+      const dateFilter = {};
+      if (fechaInicio) {
+        const [year, month, day] = fechaInicio.split("-");
+        const startDate = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          0,
+          0,
+          0,
+          0
+        );
+        dateFilter.$gte = startDate;
+      }
+      if (fechaFin) {
+        const [year, month, day] = fechaFin.split("-");
+        const endDate = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          23,
+          59,
+          59,
+          999
+        );
+        dateFilter.$lte = endDate;
+      }
+      filters.fechaCuenta = dateFilter;
+      console.log(`Filtro de fechas en cuentas pendientes:`, {
+        fechaInicio,
+        fechaFin,
+        dateFilter,
+      });
     }
 
     const sort = {};

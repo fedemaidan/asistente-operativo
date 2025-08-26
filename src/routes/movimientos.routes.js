@@ -57,6 +57,9 @@ router.get("/", async (req, res) => {
       tipoFactura,
       cajaNombre,
       estado,
+      fecha,
+      fechaInicio,
+      fechaFin,
     } = req.query;
 
     const filters = {};
@@ -78,6 +81,100 @@ router.get("/", async (req, res) => {
       } else {
         // Si no existe la caja, forzamos a no devolver resultados
         filters.caja = null;
+      }
+    }
+
+    if (fecha) {
+      // Crear fecha en zona horaria local (no UTC)
+      // Formato esperado: "YYYY-MM-DD"
+      const [year, month, day] = fecha.split("-");
+      const startDate = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        0,
+        0,
+        0,
+        0
+      );
+      const endDate = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        23,
+        59,
+        59,
+        999
+      );
+
+      console.log(`Filtro de fecha: ${fecha}`);
+      console.log(
+        `Rango: ${startDate.toISOString()} - ${endDate.toISOString()}`
+      );
+
+      filters.$or = [
+        {
+          fechaFactura: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        },
+        {
+          fechaFactura: null,
+          fechaCreacion: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        },
+      ];
+    }
+
+    // Filtro por rango de fechas (fechaInicio a fechaFin)
+    if (fechaInicio || fechaFin) {
+      const dateFilter = {};
+
+      if (fechaInicio) {
+        const [year, month, day] = fechaInicio.split("-");
+        const startDate = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          0,
+          0,
+          0,
+          0
+        );
+        dateFilter.$gte = startDate;
+      }
+
+      if (fechaFin) {
+        const [year, month, day] = fechaFin.split("-");
+        const endDate = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          23,
+          59,
+          59,
+          999
+        );
+        dateFilter.$lte = endDate;
+      }
+
+      // Aplicar filtro a fechaFactura con fallback a fechaCreacion
+      if (Object.keys(dateFilter).length > 0) {
+        filters.$or = [
+          { fechaFactura: dateFilter },
+          {
+            fechaFactura: null,
+            fechaCreacion: dateFilter,
+          },
+        ];
+
+        console.log(
+          `Filtro de rango: ${fechaInicio || "inicio"} - ${fechaFin || "fin"}`
+        );
+        console.log(`Fechas aplicadas:`, dateFilter);
       }
     }
 

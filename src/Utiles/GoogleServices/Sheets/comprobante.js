@@ -12,14 +12,11 @@ function generarUUIDConTimestamp() {
 }
 
 async function getArrayToSheetGeneral(comprobante) {
-  if (comprobante.cliente === "sandra cavagnaro") {
-    console.log("comprobante", comprobante);
-  }
   const values = [
     comprobante.numero_comprobante,
     comprobante.fecha,
     comprobante.hora,
-    comprobante.cliente.toUpperCase(),
+    comprobante.cliente,
     comprobante.destino,
     comprobante.montoEnviado,
     comprobante.monto,

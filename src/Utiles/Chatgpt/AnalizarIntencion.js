@@ -26,8 +26,9 @@ const opciones = [
         "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
       destino:
         "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL o NO ENCONTRADO",
-      fecha: "fecha de la transferencia, en formato dd/mm/yyyy",
-      hora: "hora de la transferencia",
+      fecha:
+        "fecha de la transferencia, en formato dd/mm/yyyy o devolve un - si no se encuentra",
+      hora: "hora de la transferencia en formato HH:MM, si no podes obtener la hora devolve un - si no se encuentra",
     },
   },
 ];
