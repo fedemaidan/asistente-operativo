@@ -20,9 +20,16 @@ const startApi = async () => {
   const app = express();
   app.use(
     cors({
-      origin: "*",
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+      origin: [
+        "http://localhost:3000",
+        "http://localhost:4000",
+        "http://127.0.0.1:3000",
+        "http://137.184.68.197:3004",
+        "https://sorbydata.com",
+        "https://admin.sorbydata.com",
+      ],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     })
   );
