@@ -26,7 +26,7 @@ const startApi = async () => {
         "http://127.0.0.1:3000",
         "http://137.184.68.197:3004",
         "https://sorbydata.com",
-        "https://admin.sorbydata.com",
+        //"https://admin.sorbydata.com",
       ],
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
