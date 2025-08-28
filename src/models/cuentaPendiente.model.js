@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
 
 const cuentaPendienteSchema = new mongoose.Schema({
   descripcion: {
@@ -7,17 +8,17 @@ const cuentaPendienteSchema = new mongoose.Schema({
   },
   fechaCuenta: {
     type: Date,
-    default: Date.now, // FECHA DEL USUARIO || FECHA DE CREACION
+    default: getFechaArgentina, // FECHA DEL USUARIO || FECHA DE CREACION
     required: true,
   },
   fechaCreacion: {
     type: Date,
-    default: Date.now,
+    default: getFechaArgentina,
     required: true,
   },
   horaCreacion: {
     type: String,
-    default: Date.now,
+    default: getFechaArgentina,
   },
   proveedorOCliente: {
     type: String,
@@ -87,7 +88,7 @@ const cuentaPendienteSchema = new mongoose.Schema({
       },
       fechaActualizacion: {
         type: Date,
-        default: Date.now,
+        default: getFechaArgentina,
       },
       usuario: {
         type: String,
@@ -147,7 +148,7 @@ cuentaPendienteSchema.pre("save", function (next) {
               campo: path,
               valorAnterior: valorAnterior,
               valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
+              fechaActualizacion: getFechaArgentina(),
               usuario: this.usuario || "Sistema",
             });
           }
@@ -208,7 +209,7 @@ cuentaPendienteSchema.pre("findOneAndUpdate", function (next) {
               campo: field,
               valorAnterior: valorAnterior,
               valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
+              fechaActualizacion: getFechaArgentina(),
               usuario: update.usuario || originalDoc.usuario || "Sistema",
             });
           }
@@ -272,7 +273,7 @@ cuentaPendienteSchema.pre("findByIdAndUpdate", function (next) {
               campo: field,
               valorAnterior: valorAnterior,
               valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
+              fechaActualizacion: getFechaArgentina(),
               usuario: update.usuario || originalDoc.usuario || "Sistema",
             });
           }

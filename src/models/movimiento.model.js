@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
 
 const movimientosSchema = new mongoose.Schema({
   type: {
@@ -16,11 +17,11 @@ const movimientosSchema = new mongoose.Schema({
   },
   fechaFactura: {
     type: Date,
-    default: null,
+    default: getFechaArgentina,
   },
   fechaCreacion: {
     type: Date,
-    default: Date.now,
+    default: getFechaArgentina,
   },
   clienteId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -142,7 +143,7 @@ const movimientosSchema = new mongoose.Schema({
       },
       fechaActualizacion: {
         type: Date,
-        default: Date.now,
+        default: getFechaArgentina,
       },
       usuario: {
         type: String,
@@ -200,7 +201,7 @@ function buildLogs(originalDoc, effectiveUpdate, actor) {
         campo: field,
         valorAnterior: prev === undefined ? null : prev,
         valorNuevo: next === undefined ? null : next,
-        fechaActualizacion: new Date(),
+        fechaActualizacion: getFechaArgentina(),
         usuario: actor || "Sistema",
       });
     }

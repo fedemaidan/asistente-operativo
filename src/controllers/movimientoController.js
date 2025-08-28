@@ -464,6 +464,64 @@ class MovimientoController extends BaseController {
 
   async getArqueoTotal() {
     try {
+      const cajaEfectivo = await Caja.findOne({ nombre: "EFECTIVO" });
+      if (!cajaEfectivo) {
+        return {
+          success: false,
+          error: "No se encontró la caja EFECTIVO",
+        };
+      }
+
+      const pipeline = [
+        {
+          $match: {
+            active: true,
+            caja: cajaEfectivo._id,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalARS: {
+              $sum: {
+                $cond: [{ $eq: ["$moneda", "ARS"] }, "$total.ars", 0],
+              },
+            },
+            totalUSD: {
+              $sum: {
+                $cond: [{ $eq: ["$moneda", "USD"] }, "$total.usdBlue", 0],
+              },
+            },
+            totalMovimientos: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalARS: { $round: ["$totalARS", 2] },
+            totalUSD: { $round: ["$totalUSD", 2] },
+            totalMovimientos: 1,
+          },
+        },
+      ];
+
+      const result = await this.model.aggregate(pipeline);
+
+      if (result.length === 0) {
+        return {
+          success: true,
+          data: {
+            totalARS: 0,
+            totalUSD: 0,
+            totalMovimientos: 0,
+          },
+        };
+      }
+
+      return {
+        success: true,
+        data: result[0],
+      };
     } catch (error) {
       return { success: false, error: error.message };
     }

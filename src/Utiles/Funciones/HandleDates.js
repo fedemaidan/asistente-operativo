@@ -48,6 +48,44 @@ const getDaysDiff = (comprobanteFechaStr, movimientoFechaSerial) => {
   return mejorDiff;
 };
 
+// Función para obtener la fecha actual en horario argentino
+const getFechaArgentina = () => {
+  return new Date().toLocaleString("en-US", {
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+};
+
+// Función para convertir una fecha a horario argentino
+const convertirAHorarioArgentina = (fecha) => {
+  if (!fecha) return fecha;
+  return new Date(fecha).toLocaleString("en-US", {
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+};
+
+// Función para obtener solo la fecha en formato YYYY-MM-DD en horario argentino
+const getFechaArgentinaFormato = () => {
+  const fecha = new Date();
+  return fecha.toLocaleDateString("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+};
+
+// Función para obtener solo la hora en formato HH:MM en horario argentino
+const getHoraArgentinaFormato = () => {
+  const fecha = new Date();
+  return fecha.toLocaleTimeString("en-US", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 module.exports = {
   getDaysDiff,
+  getFechaArgentina,
+  convertirAHorarioArgentina,
+  getFechaArgentinaFormato,
+  getHoraArgentinaFormato,
 };

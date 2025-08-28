@@ -354,4 +354,9 @@ router.post("/confirmar", async (req, res) => {
   res.json(result);
 });
 
+router.get("/arqueo/total-general", async (req, res) => {
+  const result = await movimientoController.getArqueoTotal();
+  res.json(result);
+});
+
 module.exports = router;

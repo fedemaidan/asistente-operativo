@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
 
 const clienteSchema = new mongoose.Schema(
   {
@@ -46,7 +47,7 @@ const clienteSchema = new mongoose.Schema(
         },
         fechaActualizacion: {
           type: Date,
-          default: Date.now,
+          default: getFechaArgentina,
         },
         usuario: {
           type: String,
@@ -56,7 +57,16 @@ const clienteSchema = new mongoose.Schema(
     ],
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: {
+        type: Date,
+        default: getFechaArgentina,
+      },
+      updatedAt: {
+        type: Date,
+        default: getFechaArgentina,
+      },
+    },
   }
 );
 
@@ -93,7 +103,7 @@ clienteSchema.pre("save", function (next) {
               campo: path,
               valorAnterior: valorAnterior,
               valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
+              fechaActualizacion: getFechaArgentina(),
               usuario: this.usuario, // Usuario que creó el cliente
             });
           }
@@ -140,7 +150,7 @@ clienteSchema.pre("findOneAndUpdate", function (next) {
               campo: field,
               valorAnterior: valorAnterior,
               valorNuevo: valorNuevo,
-              fechaActualizacion: new Date(),
+              fechaActualizacion: getFechaArgentina(),
               usuario: update.usuario || originalDoc.usuario || "Sistema", // Usuario que hace la edición
             });
           }
