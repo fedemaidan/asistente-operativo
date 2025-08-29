@@ -21,7 +21,6 @@ const clienteSchema = new mongoose.Schema(
       },
     },
     ccActivas: {
-      required: true,
       type: [String],
       enum: ["ARS", "USD BLUE", "USD OFICIAL"],
       default: ["ARS"],
@@ -58,14 +57,9 @@ const clienteSchema = new mongoose.Schema(
   },
   {
     timestamps: {
-      createdAt: {
-        type: Date,
-        default: getFechaArgentina,
-      },
-      updatedAt: {
-        type: Date,
-        default: getFechaArgentina,
-      },
+      createdAt: "createdAt",
+      updatedAt: "updatedAt",
+      currentTime: getFechaArgentina,
     },
   }
 );
