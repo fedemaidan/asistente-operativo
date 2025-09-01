@@ -15,16 +15,22 @@ class BaseController {
     }
   }
 
-  async getAllPaginado({ filter = {}, populate = "", sort = { createdAt: -1 }, limit = 20, offset = 0 }) {
+  async getAllPaginado({
+    filter = {},
+    populate = "",
+    sort = { createdAt: -1 },
+    limit = 20,
+    offset = 0,
+  }) {
     try {
       const total = await this.model.countDocuments(filter);
-  
+
       let queryBuilder = this.model.find(filter);
-  
+
       if (sort) {
         queryBuilder = queryBuilder.sort(sort);
       }
-  
+
       if (populate && populate.trim() !== "") {
         const populateFields = populate.split(",").map((field) => field.trim());
         populateFields.forEach((field) => {
@@ -34,16 +40,15 @@ class BaseController {
           });
         });
       }
-  
+
       const documents = await queryBuilder.skip(offset).limit(limit);
-  
+
       return { success: true, data: documents, total };
     } catch (error) {
       return { success: false, error: error.message };
     }
   }
 
-  
   async getAll(query = {}, populate = "", options = {}) {
     try {
       const filter = { ...query, ...options.filter };

@@ -61,6 +61,7 @@ router.get("/", async (req, res) => {
       fechaInicio,
       fechaFin,
       includeInactive = false,
+      totalMoneda = false,
     } = req.query;
 
     const filters = { active: true }; // Por defecto solo mostrar movimientos activos
@@ -92,6 +93,13 @@ router.get("/", async (req, res) => {
           filters.caja = null;
         }
       } else if (cajaNombre === "CHEQUE" || cajaNombre === "ECHEQ") {
+        const cajaDoc = await Caja.findOne({ nombre: cajaNombre });
+        if (cajaDoc?._id) {
+          filters.caja = cajaDoc._id;
+        } else {
+          filters.caja = null;
+        }
+      } else {
         const cajaDoc = await Caja.findOne({ nombre: cajaNombre });
         if (cajaDoc?._id) {
           filters.caja = cajaDoc._id;
@@ -210,7 +218,19 @@ router.get("/", async (req, res) => {
     };
 
     const result = await movimientoController.getAllPaginado(options);
-    res.json(result);
+    if (totalMoneda) {
+      const sumaARS = await movimientoController.getSumTotalByMoneda(
+        "ARS",
+        filters?.caja
+      );
+      const sumaUSD = await movimientoController.getSumTotalByMoneda(
+        "USD",
+        filters?.caja
+      );
+      res.json({ ...result, sumaARS, sumaUSD });
+    } else {
+      res.json(result);
+    }
   } catch (error) {
     res.status(500).json({
       success: false,

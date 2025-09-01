@@ -617,6 +617,34 @@ class MovimientoController extends BaseController {
       return { success: false, error: error.message };
     }
   }
+
+  async getSumTotalByMoneda(moneda, cajaId = null) {
+    const matchFilter = { active: true, moneda };
+
+    if (cajaId) {
+      matchFilter.caja = cajaId;
+    }
+
+    const result = await this.model.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $cond: [
+                { $eq: ["$moneda", "ARS"] },
+                "$total.ars",
+                "$total.usdBlue",
+              ],
+            },
+          },
+        },
+      },
+    ]);
+    console.log("resultTotal", result);
+    return result.length > 0 ? result[0].total : 0;
+  }
 }
 
 module.exports = new MovimientoController();

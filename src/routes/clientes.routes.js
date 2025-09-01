@@ -30,7 +30,42 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.get("/:id/cuenta-corriente", async (req, res) => {});
+router.get("/:id/cuenta-corriente", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      limit = 20,
+      offset = 0,
+      sortField = "fecha",
+      sortDirection = "desc",
+      fechaInicio,
+      fechaFin,
+      includeInactive = false,
+    } = req.query;
+
+    const result = await clienteController.getClienteCCById(id, {
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      sortField,
+      sortDirection,
+      fechaInicio,
+      fechaFin,
+      includeInactive: includeInactive === "true",
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener la cuenta corriente del cliente",
+      message: error.message,
+    });
+  }
+});
 
 router.get("/:id/logs", async (req, res) => {
   try {

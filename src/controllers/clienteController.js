@@ -1,12 +1,14 @@
 const BaseController = require("./baseController");
 const Cliente = require("../models/cliente.model");
+const mongoose = require("mongoose");
+const Movimiento = require("../models/movimiento.model");
+const CuentaPendiente = require("../models/cuentaPendiente.model");
 
 class ClienteController extends BaseController {
   constructor() {
     super(Cliente);
   }
 
-  // Crear cliente con validaciones específicas
   async createCliente(clienteData) {
     try {
       // Validar que el nombre sea único
@@ -24,10 +26,8 @@ class ClienteController extends BaseController {
     }
   }
 
-  // Actualizar cliente completo - los logs se manejan automáticamente con el middleware
   async updateCliente(id, clienteData) {
     try {
-      // Verificar que el nombre no esté duplicado (excluyendo el cliente actual)
       if (clienteData.nombre) {
         const existingCliente = await this.model.findOne({
           nombre: clienteData.nombre,
@@ -55,7 +55,6 @@ class ClienteController extends BaseController {
     }
   }
 
-  // Buscar cliente por nombre
   async getByNombre(nombre) {
     try {
       const cliente = await this.model.findOne({ nombre });
@@ -68,7 +67,6 @@ class ClienteController extends BaseController {
     }
   }
 
-  // Obtener clientes con cuentas activas específicas
   async getByCuentaActiva(cuenta) {
     try {
       const clientes = await this.model.find({
@@ -80,7 +78,6 @@ class ClienteController extends BaseController {
     }
   }
 
-  // Actualizar cuentas activas de un cliente - los logs se manejan automáticamente
   async updateCuentasActivas(id, cuentasActivas, usuario) {
     try {
       const clienteOriginal = await this.model.findById(id);
@@ -109,7 +106,6 @@ class ClienteController extends BaseController {
     }
   }
 
-  // Obtener logs de un cliente
   async getLogs(id) {
     try {
       const cliente = await this.model.findById(id).select("logs");
@@ -122,7 +118,6 @@ class ClienteController extends BaseController {
     }
   }
 
-  // Obtener cliente con logs
   async getClienteWithLogs(id) {
     try {
       const cliente = await this.model.findById(id);
@@ -132,6 +127,268 @@ class ClienteController extends BaseController {
       return { success: true, data: cliente };
     } catch (error) {
       return { success: false, error: error.message };
+    }
+  }
+
+  async getClienteCCById(id, options = {}) {
+    try {
+      const {
+        limit = 50,
+        offset = 0,
+        sortDirection = "desc", // solo usamos fecha; 'asc' | 'desc'
+        fechaInicio,
+        fechaFin,
+        includeInactive = false,
+        group, // 'ARS' | 'USD BLUE' | 'USD OFICIAL' (opcional)
+      } = options;
+
+      const cli = await Cliente.findById(id).lean();
+      if (!cli) return { success: false, error: "Cliente no encontrado" };
+      const clienteNombre = (cli.nombre || "").toString().trim().toLowerCase();
+
+      const dir = sortDirection === "asc" ? 1 : -1;
+
+      // Filtros comunes
+      const dateStart = fechaInicio ? new Date(fechaInicio) : null;
+      const dateEnd = fechaFin ? new Date(fechaFin) : null;
+
+      const movMatch = {
+        clienteId: new mongoose.Types.ObjectId(id),
+        ...(includeInactive ? {} : { active: true }),
+        ...(group ? { cuentaCorriente: group } : {}),
+      };
+      const cuentasMatch = {
+        ...(includeInactive ? {} : { active: true }),
+        ...(group ? { cc: group } : {}),
+        $expr: {
+          $eq: [
+            { $toLower: { $trim: { input: "$proveedorOCliente" } } },
+            clienteNombre,
+          ],
+        },
+      };
+
+      const movimientosPipeline = [
+        { $match: movMatch },
+        ...(dateStart || dateEnd
+          ? [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      ...(dateStart
+                        ? [{ $gte: ["$fechaFactura", dateStart] }]
+                        : []),
+                      ...(dateEnd
+                        ? [{ $lte: ["$fechaFactura", dateEnd] }]
+                        : []),
+                    ],
+                  },
+                },
+              },
+            ]
+          : []),
+        {
+          $addFields: {
+            itemType: "movimiento",
+            fechaOrden: "$fechaFactura",
+          },
+        },
+      ];
+
+      const cuentasPipeline = [
+        { $match: cuentasMatch },
+        ...(dateStart || dateEnd
+          ? [
+              {
+                $match: {
+                  fechaCuenta: {
+                    ...(dateStart ? { $gte: dateStart } : {}),
+                    ...(dateEnd ? { $lte: dateEnd } : {}),
+                  },
+                },
+              },
+            ]
+          : []),
+        {
+          $addFields: {
+            itemType: "cuentaPendiente",
+            fechaOrden: "$fechaCuenta",
+          },
+        },
+      ];
+
+      const pipeline = [
+        ...movimientosPipeline,
+        {
+          $unionWith: {
+            coll: CuentaPendiente.collection.name,
+            pipeline: cuentasPipeline,
+          },
+        },
+        { $sort: { fechaOrden: dir, _id: dir } },
+        {
+          $facet: {
+            data: [{ $skip: offset }, { $limit: Number(limit) }],
+            meta: [{ $count: "total" }],
+          },
+        },
+      ];
+
+      const agg = await Movimiento.aggregate(pipeline);
+      const data = agg[0]?.data || [];
+      const total = agg[0]?.meta?.[0]?.total || 0;
+
+      return {
+        success: true,
+        data,
+        total,
+        limit,
+        offset,
+        sortField: "fecha",
+        sortDirection,
+        group: group || null,
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  parseMovimiento(movimiento) {
+    let montoCC = 0;
+    switch (movimiento.cuentaCorriente) {
+      case "ARS":
+        montoCC = movimiento.total.ars;
+        break;
+      case "USD BLUE":
+        montoCC = movimiento.total.usdBlue;
+        break;
+      case "USD OFICIAL":
+        montoCC = movimiento.total.usdOficial;
+        break;
+    }
+
+    let montoEnviado = 0;
+
+    switch (movimiento.moneda) {
+      case "ARS":
+        montoEnviado = movimiento.total.ars;
+        break;
+      case "USD":
+        if (movimiento.cuentaCorriente === "USD BLUE") {
+          montoEnviado = movimiento.total.usdBlue;
+        } else if (movimiento.cuentaCorriente === "USD OFICIAL") {
+          montoEnviado = movimiento.total.usdOficial;
+        } else if (movimiento.cuentaCorriente === "ARS") {
+          montoEnviado = movimiento.total.usdBlue;
+        }
+        break;
+    }
+
+    let fechaFactura = null;
+    let horaCreacion = null;
+
+    if (movimiento?.fechaFactura) {
+      fechaFactura = this.getFechaArgentina(movimiento.fechaFactura);
+    }
+
+    if (movimiento?.fechaCreacion) {
+      horaCreacion = this.getHoraArgentina(movimiento.fechaCreacion);
+    }
+
+    return {
+      ...movimiento.toObject(),
+      montoEnviado,
+      tipoDeCambio: Math.round(movimiento.tipoDeCambio),
+      montoCC: Math.round(montoCC),
+      fechaCreacion: movimiento.fechaCreacion,
+      fechaFactura,
+      horaCreacion,
+      nombreCliente: movimiento.cliente?.nombre || "Sin cliente",
+      ccActivasCliente: movimiento.cliente?.ccActivas || [],
+      cuentaDestino: movimiento.caja?.nombre || "Sin caja",
+      type: "movimiento",
+      itemType: "movimiento",
+    };
+  }
+
+  parseCuentaPendiente(cuenta) {
+    const fechaCuentaCompleta = new Date(cuenta.fechaCuenta);
+    const hora = fechaCuentaCompleta.toTimeString().split(" ")[0]; // HH:MM:SS
+    const cc = cuenta.cc;
+    let montoCC = 0;
+    if (cc === "ARS") montoCC = Number(cuenta?.montoTotal?.ars || 0);
+    else if (cc === "USD BLUE")
+      montoCC = Number(cuenta?.montoTotal?.usdBlue || 0);
+    else if (cc === "USD OFICIAL")
+      montoCC = Number(cuenta?.montoTotal?.usdOficial || 0);
+
+    let montoEnviado;
+
+    switch (cuenta.moneda) {
+      case "ARS":
+        montoEnviado = Number(cuenta?.subTotal?.ars || 0);
+        break;
+      case "USD":
+        montoEnviado = Number(cuenta?.subTotal?.usdBlue || 0);
+        break;
+    }
+
+    return {
+      ...cuenta.toObject(),
+      id: cuenta._id,
+      _id: cuenta._id,
+      origen: "cuentaPendiente",
+      numeroComprobante: cuenta.descripcion || "-",
+      fecha: this.getFechaArgentina(cuenta.fechaCuenta),
+      hora,
+      montoCC,
+      tipoDeCambio: cuenta.tipoDeCambio || 1,
+      montoEnviado,
+      monedaDePago: cuenta.moneda,
+      cuentaDestino: cuenta.cc,
+      estado: "-",
+      type: "EGRESO",
+      cuentaCorriente: cuenta.cc,
+      proveedorOCliente: cuenta.proveedorOCliente,
+      descripcion: cuenta.descripcion,
+      CC: cuenta.cc,
+      descuentoAplicado: cuenta.descuentoAplicado,
+      type: "cuentaPendiente",
+      itemType: "cuentaPendiente",
+    };
+  }
+
+  getFechaArgentina(fecha) {
+    if (!fecha) return null;
+    try {
+      const date = new Date(fecha);
+      if (isNaN(date.getTime())) {
+        return fecha;
+      }
+      return date.toLocaleDateString("es-AR", {
+        timeZone: "America/Argentina/Buenos_Aires",
+      });
+    } catch (error) {
+      return fecha;
+    }
+  }
+
+  getHoraArgentina(fecha) {
+    if (!fecha) return null;
+    try {
+      const date = new Date(fecha);
+      if (isNaN(date.getTime())) {
+        return fecha;
+      }
+      return date.toLocaleTimeString("es-AR", {
+        timeZone: "America/Argentina/Buenos_Aires",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch (error) {
+      return fecha;
     }
   }
 }

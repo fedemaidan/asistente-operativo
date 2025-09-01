@@ -96,7 +96,6 @@ const cuentaPendienteSchema = new mongoose.Schema({
       },
       empresaId: {
         type: String,
-        required: true,
       },
     },
   ],
