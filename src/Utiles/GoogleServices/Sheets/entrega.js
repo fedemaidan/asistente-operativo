@@ -33,33 +33,25 @@ const parseEntregas = (arr) => {
         ? posibleUsuario
         : "Sistema";
 
+    const montoARS = row[14].replace(",", ".");
+    const montoUSD = row[15].replace(",", ".");
+    const montoUSDOficial = row[16].replace(",", ".");
+
     const montoEnviado = Math.abs(montoEnviadoRaw);
     const montoCC = Math.abs(montoCCRaw);
 
     const descuentoAplicado = montoEnviado > 0 ? montoCC / montoEnviado : 1;
 
-    const tipoDeCambioFinal = tc;
-
     const subTotal = {
-      ars: -(monedaDePago === "ARS"
-        ? montoEnviado
-        : Math.round(montoEnviado * tipoDeCambioFinal)),
-      usdOficial: -(monedaDePago === "USD"
-        ? montoEnviado
-        : Math.round(montoEnviado / tipoDeCambioFinal)),
-      usdBlue: -(monedaDePago === "USD"
-        ? montoEnviado
-        : Math.round(montoEnviado / tipoDeCambioFinal)),
+      ars: Number(montoARS),
+      usdOficial: Number(montoUSDOficial),
+      usdBlue: Number(montoUSD),
     };
 
     const montoTotal = {
-      ars: -(cc === "ARS" ? montoCC : Math.round(montoCC * tipoDeCambioFinal)),
-      usdOficial: -(cc === "USD OFICIAL"
-        ? montoCC
-        : Math.round(montoCC / tipoDeCambioFinal)),
-      usdBlue: -(cc === "USD BLUE"
-        ? montoCC
-        : Math.round(montoCC / tipoDeCambioFinal)),
+      ars: Number(montoARS),
+      usdOficial: Number(montoUSDOficial),
+      usdBlue: Number(montoUSD),
     };
 
     return {

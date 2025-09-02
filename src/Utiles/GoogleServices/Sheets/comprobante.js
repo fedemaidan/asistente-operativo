@@ -120,7 +120,7 @@ const parseComprobantes = (arr) => {
     cliente: row[3],
     destino: row[4],
     montoEnviado: row[5],
-    monto: row[6],
+    monto: row[6], //montoCC
     moneda: row[7],
     tipoDeCambio: row[8],
     estado: row[9],

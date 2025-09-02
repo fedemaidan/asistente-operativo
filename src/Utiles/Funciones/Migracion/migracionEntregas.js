@@ -1,8 +1,5 @@
 const { getEntregasFromSheet } = require("../../GoogleServices/Sheets/entrega");
-const cuentaPendienteController = require("../../../controllers/cuentaPendienteController");
-require("../../../DBConnection");
 const { parseNombreToUpperCase } = require("./migracionComprobantes");
-const clienteController = require("../../../controllers/clienteController");
 
 function parseFechaDDMMYYYYToDate(fecha) {
   if (!fecha || typeof fecha !== "string") return null;
@@ -29,6 +26,7 @@ async function migrarEntregasDesdeGoogleSheets(
     let creados = 0;
     let errores = 0;
 
+    const clienteController = require("../../../controllers/clienteController");
     for (const entrega of entregas) {
       const clienteResp = await clienteController.getByNombre(
         parseNombreToUpperCase(entrega.proveedorOCliente)
@@ -61,10 +59,11 @@ async function migrarEntregasDesdeGoogleSheets(
           moneda: entrega.moneda,
           cc: entrega.cc,
           tipoDeCambio: Number(entrega.tipoDeCambio) || 1,
-          usuario: entrega.usuario || "Sistema",
+          usuario: "Sistema",
           empresaId: "celulandia",
         };
 
+        const cuentaPendienteController = require("../../../controllers/cuentaPendienteController");
         const resp = await cuentaPendienteController.createCuentaPendiente(
           cuentaPendienteData
         );
@@ -74,7 +73,7 @@ async function migrarEntregasDesdeGoogleSheets(
         } else {
           errores++;
           console.log(
-            `❌ Error creando entrega ${entrega.descripcion}: ${
+            `❌ Error creando entrega ${JSON.stringify(entrega)}: ${
               resp && resp.error ? resp.error : "Error desconocido"
             }`
           );

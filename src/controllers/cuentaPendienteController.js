@@ -1,5 +1,11 @@
 const BaseController = require("./baseController");
 const CuentaPendiente = require("../models/cuentaPendiente.model");
+const Cliente = require("../models/cliente.model");
+const migrarEntregasDesdeGoogleSheets = require("../Utiles/Funciones/Migracion/migracionEntregas");
+const Movimiento = require("../models/movimiento.model");
+const {
+  migrarComprobantesDesdeGoogleSheets,
+} = require("../Utiles/Funciones/Migracion/migracionComprobantes");
 
 class CuentaPendienteController extends BaseController {
   constructor() {
@@ -172,10 +178,47 @@ class CuentaPendienteController extends BaseController {
   }
 
   async migracionEntregasMonto() {
+    const fecha = "2025-08-26T22:32:23.290Z";
     const cuentas = await this.model.countDocuments({
-      fechaCreacion: { $lt: new Date("2025-08-26T21:32:23.290Z") },
+      fechaCreacion: { $lt: new Date(fecha) },
     });
-    return cuentas;
+
+    console.log("Cantidad de cuentas: ", cuentas);
+
+    const cuentasActualizadas = await this.model.updateMany(
+      {
+        fechaCreacion: { $lt: new Date(fecha) },
+      },
+      {
+        $set: {
+          active: false,
+          usuario: "SISTEMA BACKUP",
+        },
+      }
+    );
+
+    const movimientos = await this.model.countDocuments({
+      fechaCreacion: { $lt: new Date(fecha) },
+    });
+
+    const movimientosActualizados = await Movimiento.updateMany(
+      {
+        fechaCreacion: { $lt: new Date(fecha) },
+      },
+      {
+        $set: {
+          active: false,
+          usuario: "SISTEMA BACKUP",
+        },
+      }
+    );
+
+    console.log("Cantidad de movimientos: ", movimientos.length);
+
+    await migrarComprobantesDesdeGoogleSheets(
+      "1zf7cetDmaKG59vGMI9Dlb2D7SVCijEk-6xiL7GRyWqo"
+    );
+    await migrarEntregasDesdeGoogleSheets();
   }
 
   // Obtener logs de una cuenta pendiente

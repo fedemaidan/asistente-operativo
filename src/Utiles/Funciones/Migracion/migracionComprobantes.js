@@ -1,11 +1,3 @@
-const {
-  getComprobantesFromSheet,
-} = require("../../GoogleServices/Sheets/comprobante");
-const clienteController = require("../../../controllers/clienteController");
-const cajaController = require("../../../controllers/cajaController");
-const movimientoController = require("../../../controllers/movimientoController");
-require("../../../DBConnection");
-
 const parseNombreToUpperCase = (nombre) => {
   return nombre.toUpperCase();
 };
@@ -152,7 +144,14 @@ async function migrarComprobantesDesdeGoogleSheets(
 
   await ensureCajasBase();
 
+  const clienteController = require("../../../controllers/clienteController");
+  const cajaController = require("../../../controllers/cajaController");
+  const movimientoController = require("../../../controllers/movimientoController");
+
   try {
+    const {
+      getComprobantesFromSheet,
+    } = require("../../GoogleServices/Sheets/comprobante");
     const comprobantes = await getComprobantesFromSheet(sheetId);
 
     let creados = 0;
@@ -197,6 +196,16 @@ async function migrarComprobantesDesdeGoogleSheets(
           } catch (_) {}
         }
 
+        const montoTEST =
+          Number(
+            typeof comp.monto === "string"
+              ? comp.monto
+                  .replace(/\$/g, "")
+                  .replace(/\./g, "")
+                  .replace(/,/g, ".")
+              : comp.monto
+          ) || 0;
+
         const movimientoData = {
           type: "INGRESO",
           numeroFactura: comp.numero_comprobante,
@@ -220,6 +229,7 @@ async function migrarComprobantesDesdeGoogleSheets(
           nombreUsuario: comp.usuario || "Sistema",
           tipoDeCambio: Number(comp.tipoDeCambio) || 1,
           empresaId: "celulandia",
+          montoTEST: montoTEST,
         };
 
         const montoEnviado =
@@ -235,6 +245,7 @@ async function migrarComprobantesDesdeGoogleSheets(
         const resp = await movimientoController.createMovimiento(
           movimientoData,
           montoEnviado,
+          false,
           false
         );
 
@@ -269,6 +280,8 @@ async function migrarComprobantesDesdeGoogleSheets(
       "💥 Error durante la migración de comprobantes:",
       error.message
     );
+
+    console.log(error);
     throw error;
   }
 }

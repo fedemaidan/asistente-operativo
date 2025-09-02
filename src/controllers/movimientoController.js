@@ -9,32 +9,37 @@ class MovimientoController extends BaseController {
   constructor() {
     super(Movimiento);
   }
-  async createMovimiento(movimientoData, montoEnviado, saveToSheet = true) {
+  async createMovimiento(
+    movimientoData,
+    montoEnviado,
+    saveToSheet = true,
+    calcular = true
+  ) {
     const { type, moneda, cuentaCorriente } = movimientoData;
     let tipoDeCambio = movimientoData.tipoDeCambio || null;
+    const cotizaciones = await DolarService.obtenerValoresDolar();
+    const { blue, oficial } = cotizaciones;
 
     try {
-      const cotizaciones = await DolarService.obtenerValoresDolar();
-      const { blue, oficial } = cotizaciones;
-
-      if (!movimientoData.tipoDeCambio) {
-        if (
-          (moneda === "ARS" && cuentaCorriente === "ARS") ||
-          (moneda === "USD" && cuentaCorriente === "USD BLUE") ||
-          (moneda === "USD" && cuentaCorriente === "USD OFICIAL")
-        ) {
-          tipoDeCambio = 1;
-        } else if (moneda === "ARS" && cuentaCorriente === "USD BLUE") {
-          tipoDeCambio = blue.venta;
-        } else if (moneda === "ARS" && cuentaCorriente === "USD OFICIAL") {
-          tipoDeCambio = oficial.venta;
-        } else if (moneda === "USD" && cuentaCorriente === "ARS") {
-          tipoDeCambio = blue.venta;
-        } else {
-          tipoDeCambio = 1;
+      if (calcular) {
+        if (!movimientoData.tipoDeCambio) {
+          if (
+            (moneda === "ARS" && cuentaCorriente === "ARS") ||
+            (moneda === "USD" && cuentaCorriente === "USD BLUE") ||
+            (moneda === "USD" && cuentaCorriente === "USD OFICIAL")
+          ) {
+            tipoDeCambio = 1;
+          } else if (moneda === "ARS" && cuentaCorriente === "USD BLUE") {
+            tipoDeCambio = blue.venta;
+          } else if (moneda === "ARS" && cuentaCorriente === "USD OFICIAL") {
+            tipoDeCambio = oficial.venta;
+          } else if (moneda === "USD" && cuentaCorriente === "ARS") {
+            tipoDeCambio = blue.venta;
+          } else {
+            tipoDeCambio = 1;
+          }
         }
       }
-
       movimientoData.tipoDeCambio = tipoDeCambio;
 
       if (type === "EGRESO") {
@@ -46,12 +51,16 @@ class MovimientoController extends BaseController {
       } else if (moneda === "ARS") {
         movimientoData.total = {
           ars: montoEnviado,
-          usdOficial: montoEnviado / oficial.venta,
-          usdBlue: montoEnviado / blue.venta,
+          usdOficial: calcular
+            ? montoEnviado / oficial.venta
+            : movimientoData?.montoTEST,
+          usdBlue: calcular
+            ? montoEnviado / blue.venta
+            : movimientoData?.montoTEST,
         };
       } else if (moneda === "USD") {
         movimientoData.total = {
-          ars: montoEnviado * blue.venta,
+          ars: calcular ? montoEnviado * blue.venta : movimientoData?.montoTEST,
           usdOficial: montoEnviado,
           usdBlue: montoEnviado,
         };
