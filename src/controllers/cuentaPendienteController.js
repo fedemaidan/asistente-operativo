@@ -190,8 +190,8 @@ class CuentaPendienteController extends BaseController {
       {
         fechaCreacion: {
           $gt: new Date("2025-09-02T:12:23.290Z"),
-          usuario: "Sistema",
         },
+        usuario: "Sistema",
       },
       {
         $set: {
