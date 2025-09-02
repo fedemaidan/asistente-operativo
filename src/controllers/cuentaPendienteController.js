@@ -189,7 +189,7 @@ class CuentaPendienteController extends BaseController {
     await this.model.updateMany(
       {
         fechaCreacion: {
-          $gt: new Date("2025-09-02T:12:23.290Z"),
+          $gt: new Date("2025-09-02T12:32:23.290Z"),
         },
         usuario: "Sistema",
       },
