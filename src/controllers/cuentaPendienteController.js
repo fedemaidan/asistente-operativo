@@ -171,6 +171,13 @@ class CuentaPendienteController extends BaseController {
     }
   }
 
+  async migracionEntregasMonto() {
+    const cuentas = await this.model.countDocuments({
+      fechaCreacion: { $lt: new Date("2025-08-26T21:32:23.290Z") },
+    });
+    return cuentas;
+  }
+
   // Obtener logs de una cuenta pendiente
   async getLogs(id) {
     try {

@@ -208,4 +208,9 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+router.get("/migracion/entregas-monto", async (req, res) => {
+  const result = await cuentaPendienteController.migracionEntregasMonto();
+  return res.json(result);
+});
+
 module.exports = router;
