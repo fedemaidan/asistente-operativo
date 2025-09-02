@@ -178,47 +178,28 @@ class CuentaPendienteController extends BaseController {
   }
 
   async migracionEntregasMonto() {
-    const fecha = "2025-08-26T22:32:23.290Z";
-    const cuentas = await this.model.countDocuments({
-      fechaCreacion: { $lt: new Date(fecha) },
-    });
+    await this.deleteTEST();
 
-    console.log("Cantidad de cuentas: ", cuentas);
-
-    const cuentasActualizadas = await this.model.updateMany(
-      {
-        fechaCreacion: { $lt: new Date(fecha) },
-      },
-      {
-        $set: {
-          active: false,
-          usuario: "SISTEMA BACKUP",
-        },
-      }
-    );
-
-    const movimientos = await this.model.countDocuments({
-      fechaCreacion: { $lt: new Date(fecha) },
-    });
-
-    const movimientosActualizados = await Movimiento.updateMany(
-      {
-        fechaCreacion: { $lt: new Date(fecha) },
-      },
-      {
-        $set: {
-          active: false,
-          usuario: "SISTEMA BACKUP",
-        },
-      }
-    );
-
-    console.log("Cantidad de movimientos: ", movimientos.length);
-
-    await migrarComprobantesDesdeGoogleSheets(
+    await migrarEntregasDesdeGoogleSheets(
       "1zf7cetDmaKG59vGMI9Dlb2D7SVCijEk-6xiL7GRyWqo"
     );
-    await migrarEntregasDesdeGoogleSheets();
+  }
+
+  async deleteTEST() {
+    await this.model.updateMany(
+      {
+        fechaCreacion: {
+          $gt: new Date("2025-09-02T:12:23.290Z"),
+          usuario: "Sistema",
+        },
+      },
+      {
+        $set: {
+          active: false,
+          usuario: "Sistema Backup",
+        },
+      }
+    );
   }
 
   // Obtener logs de una cuenta pendiente

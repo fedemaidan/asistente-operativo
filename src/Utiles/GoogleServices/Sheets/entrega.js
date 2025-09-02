@@ -33,12 +33,14 @@ const parseEntregas = (arr) => {
         ? posibleUsuario
         : "Sistema";
 
+    const montoEnviado = row[5];
+
     const montoARS = row[14].replace(",", ".");
     const montoUSD = row[15].replace(",", ".");
     const montoUSDOficial = row[16].replace(",", ".");
 
-    const montoEnviado = Math.abs(montoEnviadoRaw);
-    const montoCC = Math.abs(montoCCRaw);
+    // const montoEnviado = Math.abs(montoEnviadoRaw);
+    // const montoCC = Math.abs(montoCCRaw);
 
     const descuentoAplicado = montoEnviado > 0 ? montoCC / montoEnviado : 1;
 
