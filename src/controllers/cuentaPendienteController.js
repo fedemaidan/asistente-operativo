@@ -134,7 +134,7 @@ class CuentaPendienteController extends BaseController {
     }
   }
 
-  async getByClienteId(clienteId, includeInactive = false) {
+  async getByClienteId(clienteId, populate = "", includeInactive = false) {
     try {
       // Primero obtenemos el cliente para obtener su nombre
       const Cliente = require("../models/cliente.model");
@@ -160,7 +160,10 @@ class CuentaPendienteController extends BaseController {
         query.active = true;
       }
 
-      const cuentas = await this.model.find(query).sort({ fechaCuenta: -1 });
+      const cuentas = await this.model
+        .find(query)
+        .populate(populate)
+        .sort({ fechaCuenta: -1 });
 
       return { success: true, data: cuentas };
     } catch (error) {

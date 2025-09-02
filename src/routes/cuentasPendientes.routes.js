@@ -150,7 +150,11 @@ router.get("/", async (req, res) => {
 router.get("/cliente/:clienteId", async (req, res) => {
   try {
     const { clienteId } = req.params;
-    const result = await cuentaPendienteController.getByClienteId(clienteId);
+    const { populate } = req.query;
+    const result = await cuentaPendienteController.getByClienteId(
+      clienteId,
+      populate || ""
+    );
     return res.json(result);
   } catch (error) {
     res.status(500).json({

@@ -8,6 +8,7 @@ const DolarService = require("../services/monedasService/dolarService.js");
 const {
   ejecutarMigracion,
 } = require("../Utiles/Funciones/Migracion/migracion.js");
+const migrarCuentasPendientesConCliente = require("../Utiles/Funciones/Migracion/migracionCuentasPendientes.js");
 const router = express.Router();
 
 router.use("/movimientos", movimientosRouter);
@@ -34,5 +35,16 @@ router.delete("/reset-db", async (req, res) => {
 });
 
 router.get("/migracion", ejecutarMigracion);
+router.post("/migracion/cuentas-pendientes", async (req, res) => {
+  const resultado = await migrarCuentasPendientesConCliente();
+  res.json({
+    success: true,
+    message: "🏁 Proceso de migración finalizado",
+    cuentasActualizadas: resultado.cuentasActualizadas,
+    cuentasSinCliente: resultado.cuentasSinCliente,
+    errores: resultado.errores,
+    totalCuentas: resultado.total,
+  });
+});
 
 module.exports = router;
