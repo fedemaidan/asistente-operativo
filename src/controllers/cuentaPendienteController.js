@@ -205,6 +205,38 @@ class CuentaPendienteController extends BaseController {
       return { success: false, error: error.message };
     }
   }
+
+  async updateSigno(id) {
+    try {
+      // Primero obtenemos el documento actual
+      const cuenta = await this.model.findById(id);
+      if (!cuenta) {
+        return { success: false, error: "Cuenta pendiente no encontrada" };
+      }
+
+      // Multiplicamos subtotal y montoTotal por -1
+      const updateData = {
+        subTotal: {
+          ars: cuenta.subTotal.ars * -1,
+          usdOficial: cuenta.subTotal.usdOficial * -1,
+          usdBlue: cuenta.subTotal.usdBlue * -1,
+        },
+        montoTotal: {
+          ars: cuenta.montoTotal.ars * -1,
+          usdOficial: cuenta.montoTotal.usdOficial * -1,
+          usdBlue: cuenta.montoTotal.usdBlue * -1,
+        },
+      };
+
+      const result = await this.model.findByIdAndUpdate(id, updateData, {
+        new: true,
+      });
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+      throw error;
+    }
+  }
 }
 
 module.exports = new CuentaPendienteController();

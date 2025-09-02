@@ -40,6 +40,12 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+router.put("/:id/signo", async (req, res) => {
+  const { id } = req.params;
+  const result = await cuentaPendienteController.updateSigno(id);
+  return res.json(result);
+});
+
 // PUT /api/cuentas-pendientes/:id/delete - Eliminación lógica
 router.put("/:id/delete", async (req, res) => {
   try {
