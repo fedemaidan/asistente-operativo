@@ -96,7 +96,7 @@ async function migrarPagosDesdeGoogleSheets(
           caja: cajaId,
           urlImagen: "",
           estado: "CONFIRMADO",
-          nombreUsuario: pago.usuario || "Sistema",
+          nombreUsuario: pago.usuario,
           tipoDeCambio: Number(pago.tipoDeCambio) || 0,
           concepto: (pago.total && pago.total.concepto) || "Pago",
           total: {

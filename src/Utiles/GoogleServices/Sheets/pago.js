@@ -27,7 +27,7 @@ const parsePagos = (arr) => {
       concepto: row[3],
       caja: row[4],
     },
-    usuario: row[11],
+    usuario: "SISTEMA MIGRACION PAGOS",
     tipoDeCambio: row[8],
     fecha: row[1],
     hora: row[2],

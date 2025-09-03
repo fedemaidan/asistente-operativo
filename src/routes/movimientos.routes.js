@@ -1,6 +1,7 @@
 const express = require("express");
 const movimientoController = require("../controllers/movimientoController");
 const Caja = require("../models/caja.model");
+const migrarPagosDesdeGoogleSheets = require("../Utiles/Funciones/Migracion/migracionPagos");
 
 const router = express.Router();
 
@@ -376,6 +377,13 @@ router.post("/confirmar", async (req, res) => {
 
 router.get("/arqueo/total-general", async (req, res) => {
   const result = await movimientoController.getArqueoTotal();
+  res.json(result);
+});
+
+router.post("/migracion/pagos", async (req, res) => {
+  const result = await migrarPagosDesdeGoogleSheets(
+    "1zf7cetDmaKG59vGMI9Dlb2D7SVCijEk-6xiL7GRyWqo"
+  );
   res.json(result);
 });
 
