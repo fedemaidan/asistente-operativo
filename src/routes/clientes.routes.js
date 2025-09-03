@@ -222,4 +222,19 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+router.get("/cc/:id", async (req, res) => {
+  try {
+    const result = await clienteController.getClienteMovimientosCC(
+      req.params.id
+    );
+  } catch (error) {
+    console.log("error", error);
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener la cuenta corriente del cliente",
+      message: error.message,
+    });
+  }
+});
+
 module.exports = router;

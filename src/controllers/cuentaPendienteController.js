@@ -268,6 +268,41 @@ class CuentaPendienteController extends BaseController {
       throw error;
     }
   }
+
+  async migracionClientesPerdidos() {
+    const cuentas = await this.model.find({ cliente: null, active: true });
+
+    let actualizadas = 0;
+    let errores = 0;
+    for (const cuenta of cuentas) {
+      const cliente = await Cliente.findOne({
+        nombre: {
+          $in: [
+            cuenta.proveedorOCliente.trim().toUpperCase(),
+            cuenta.proveedorOCliente.trim().toLowerCase(),
+            cuenta.proveedorOCliente.trim(),
+            cuenta.proveedorOCliente,
+          ],
+        },
+      });
+      if (cliente) {
+        const respUpd = await this.updateCuentaPendiente(cuenta._id, {
+          cliente: cliente._id,
+          usuario: cuenta.usuario,
+        });
+        if (respUpd?.success === false) {
+          errores++;
+          console.log(`❌ Error en cuenta ${cuenta?._id}: ${respUpd.error}`);
+        }
+        actualizadas++;
+        console.log(
+          `✅ Cuenta ${cuenta._id} asociada a cliente ${cliente._id}`
+        );
+      }
+    }
+
+    return { success: true, data: cuentas, actualizadas, errores };
+  }
 }
 
 module.exports = new CuentaPendienteController();

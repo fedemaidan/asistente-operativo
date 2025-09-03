@@ -80,6 +80,9 @@ router.get("/", async (req, res) => {
       nombreCliente,
       fechaInicio,
       fechaFin,
+      moneda,
+      cc,
+      usuario,
       includeInactive = false,
     } = req.query;
 
@@ -90,7 +93,18 @@ router.get("/", async (req, res) => {
         $options: "i", // case insensitive
       };
     }
+    if (moneda) {
+      filters.moneda = moneda.toUpperCase();
+    }
+    if (cc) {
+      filters.cc = cc.toUpperCase();
+    }
 
+    if (usuario) {
+      filters.usuario = usuario;
+    }
+
+    console.log("filters", filters);
     // Filtros por fecha
     if (fechaInicio || fechaFin) {
       const dateFilter = {};
@@ -210,6 +224,11 @@ router.delete("/:id", async (req, res) => {
 
 router.get("/migracion/entregas-monto", async (req, res) => {
   const result = await cuentaPendienteController.migracionEntregasMonto();
+  return res.json(result);
+});
+
+router.get("/migracion/clientes-perdidos", async (req, res) => {
+  const result = await cuentaPendienteController.migracionClientesPerdidos();
   return res.json(result);
 });
 
