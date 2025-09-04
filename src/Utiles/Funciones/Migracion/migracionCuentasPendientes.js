@@ -105,7 +105,6 @@ async function migrarCuentasPendientesConCliente({
         }
 
         actualizadas++;
-        console.log(`✅ Cuenta ${cuenta._id} asociada a cliente ${clienteId}`);
       } catch (e) {
         errores++;
         console.log(`❌ Error en cuenta ${cuenta?._id}: ${e.message}`);

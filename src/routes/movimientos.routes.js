@@ -2,6 +2,7 @@ const express = require("express");
 const movimientoController = require("../controllers/movimientoController");
 const Caja = require("../models/caja.model");
 const migrarPagosDesdeGoogleSheets = require("../Utiles/Funciones/Migracion/migracionPagos");
+const Movimiento = require("../models/movimiento.model");
 
 const router = express.Router();
 
@@ -20,6 +21,14 @@ router.post("/", async (req, res) => {
       error: error.message,
     });
   }
+});
+
+router.put("/pendiente", async (req, res) => {
+  const result = await Movimiento.updateMany(
+    { active: true },
+    { $set: { estado: "PENDIENTE" } }
+  );
+  res.json(result);
 });
 
 router.put("/:id", async (req, res) => {

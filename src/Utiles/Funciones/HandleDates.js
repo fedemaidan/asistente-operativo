@@ -2,7 +2,12 @@ const dayjs = require("dayjs");
 const customParseFormat = require("dayjs/plugin/customParseFormat");
 dayjs.extend(customParseFormat);
 
-const getDaysDiff = (comprobanteFechaStr, movimientoFechaSerial) => {
+const getDaysDiff = (
+  comprobanteFechaStr,
+  movimientoFechaSerial,
+  montoComprobante,
+  montoMovimiento
+) => {
   const formatos = ["DD/MM/YYYY", "D/M/YYYY", "MM/DD/YYYY", "M/D/YYYY"];
   let movimientoDate;
 
@@ -10,7 +15,11 @@ const getDaysDiff = (comprobanteFechaStr, movimientoFechaSerial) => {
     "getDaysDiff -> comprobanteFechaStr:",
     comprobanteFechaStr,
     "movimientoFechaSerial:",
-    movimientoFechaSerial
+    movimientoFechaSerial,
+    "montoComprobante:",
+    montoComprobante,
+    "montoMovimiento:",
+    montoMovimiento
   );
 
   if (

@@ -12,10 +12,13 @@ module.exports = async function ElegirTipoExcelStep(userId, message) {
   const { excelJson, fileName } = FlowManager.userFlows[userId].flowData;
 
   if (message == "1") {
+    console.log("file name", fileName);
     const movimientosExcel = parseJsonBancoToMovimiento(excelJson, fileName);
+    console.log("movimientosExcel", movimientosExcel);
     ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "2") {
     const movimientosExcel = parseJsonFinancieraToMovimiento(excelJson);
+    console.log("movimientosExcel", movimientosExcel);
     ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "3") {
     StockFlow.start(userId, excelJson, sock);

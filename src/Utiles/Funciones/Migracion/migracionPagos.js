@@ -18,7 +18,6 @@ function parseFechaDDMMYYYYToDate(fecha) {
 
   // Crear fecha con año, mes-1 (porque Date usa 0-11), día
   const fechaParseada = new Date(Number(anio), Number(mes) - 1, Number(dia));
-  console.log(`✅ Fecha parseada: ${fecha} -> ${fechaParseada.toISOString()}`);
   return fechaParseada;
 }
 
@@ -29,16 +28,13 @@ function buildDateWithTime(baseDate, timeHHMM) {
   }
 
   const horaStr = (timeHHMM || "00:00").toString().trim();
-  console.log(`🕐 Procesando hora: "${horaStr}"`);
 
   // Manejar formato "H:MM" (sin cero inicial)
   const [horas, minutos] = horaStr.split(":").map((num) => parseInt(num) || 0);
-  console.log(`🕐 Horas: ${horas}, Minutos: ${minutos}`);
 
   const fechaCompleta = new Date(baseDate);
   fechaCompleta.setHours(horas, minutos, 0, 0);
 
-  console.log(`✅ Fecha completa: ${fechaCompleta.toISOString()}`);
   return fechaCompleta;
 }
 
@@ -69,12 +65,6 @@ async function migrarPagosDesdeGoogleSheets(
             cajaId = cajaResp && cajaResp.success ? cajaResp.data._id : null;
           } catch (_) {}
         }
-
-        console.log(`\n📊 Procesando pago:`, {
-          fecha: pago.fecha,
-          hora: pago.hora,
-          concepto: (pago.total && pago.total.concepto) || "sin concepto",
-        });
 
         const cuentaCorriente =
           pago.moneda === "USD" ? "USD BLUE" : pago.moneda;

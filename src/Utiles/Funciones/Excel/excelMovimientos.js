@@ -35,16 +35,7 @@ function parseExcelDate(value) {
 
 const parseComprobantesJson = (arr) => {
   return arr.map((comprobante) => {
-    // Procesar el monto: remover '$' y puntos, luego convertir a número
-    const montoLimpio = comprobante.montoEnviado
-      .replace("$", "")
-      .replace(/\./g, "")
-      .trim();
-
-    return {
-      ...comprobante,
-      montoEnviado: parseInt(montoLimpio),
-    };
+    return comprobante;
   });
 };
 
@@ -58,6 +49,7 @@ const parseMovimientosBanco = (arr) => {
       concepto: row["__EMPTY_4"],
       importe: row["__EMPTY_5"],
       saldo: row["__EMPTY_6"],
+      caja: "ENSHOP SRL",
     }))
     .filter(
       (mov) =>
@@ -110,6 +102,7 @@ const parseMovimientosBancoXls = (arr) => {
       concepto: row["__EMPTY_5"],
       importe: importeFinal,
       saldo: saldoFinal,
+      caja: "ENSHOP SRL",
     };
   });
 };
@@ -149,6 +142,7 @@ const parseJsonBancoToMovimiento = (data, fileName) => {
 };
 
 const parseJsonFinancieraToMovimiento = (data) => {
+  console.log("DATAJSON", data);
   const dataArray = Array.isArray(data) ? data : Object.values(data);
 
   const infoMovimientos = dataArray
@@ -157,6 +151,7 @@ const parseJsonFinancieraToMovimiento = (data) => {
       importe: value.credito,
       fecha: value.diaCrea,
       hora: value.horaCrea,
+      caja: "ASOCIACION CONSULTORA MUTUAL",
     }));
 
   return infoMovimientos;
@@ -169,8 +164,17 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
   );
 
   const comprobantesParseados = parseComprobantesJson(comprobantesFiltrados);
-  console.log("comprobantesParseados", comprobantesParseados);
-  console.log("comprobanteMovimientos", comprobanteMovimientos);
+  console.log(
+    "comprobantesParseados",
+    comprobantesParseados.length,
+    comprobantesParseados
+  );
+
+  console.log(
+    "comprobanteMovimientos",
+    comprobanteMovimientos.length,
+    comprobanteMovimientos
+  );
 
   for (const comprobante of comprobantesParseados) {
     for (const movimiento of comprobanteMovimientos) {
@@ -181,9 +185,7 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
         comprobante.numero_comprobante == movimiento.referencia
       ) {
         comprobante.estado =
-          montoComprobante == montoMovimiento
-            ? "CONFIRMADO REF"
-            : "REVISAR MONTO";
+          montoComprobante == montoMovimiento ? "CONFIRMADO" : "REVISAR MONTO";
         matchs.push({
           comprobante,
           movimiento,
@@ -192,12 +194,17 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
       } else if (montoComprobante == montoMovimiento) {
         // Verificar si existe fecha en el movimiento
         if (movimiento.fecha) {
-          const diffDays = getDaysDiff(comprobante.fecha, movimiento.fecha);
-          console.log("diffDays", diffDays);
-          console.log("comprobanteMatch", comprobante);
-          console.log("movimientoMatch", movimiento);
-          if (diffDays < 10 && diffDays >= 0) {
-            comprobante.estado = `CONFIRMADO ${diffDays}`;
+          const diffDays = getDaysDiff(
+            comprobante.fecha,
+            movimiento.fecha,
+            montoComprobante,
+            montoMovimiento
+          );
+          if (diffDays < 5 && diffDays >= 0) {
+            console.log("diffDays", diffDays);
+            console.log("comprobanteMatch", comprobante);
+            console.log("movimientoMatch", movimiento);
+            comprobante.estado = `CONFIRMADO`;
             matchs.push({
               comprobante,
               movimiento,

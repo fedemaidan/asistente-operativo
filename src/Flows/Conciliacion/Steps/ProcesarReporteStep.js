@@ -7,19 +7,29 @@ const {
   updateComprobanteToSheet,
   getComprobantesFromSheet,
 } = require("../../../Utiles/GoogleServices/Sheets/comprobante");
+const {
+  getComprobantesFromMongo,
+} = require("../../../Utiles/Funciones/comprobantes");
+const movimientoController = require("../../../controllers/movimientoController");
 
 module.exports = async function ProcesarReporteStep(
   userId,
-  movimientoBancario
+  movimientosBancario
 ) {
+  const user = botSingleton.getUsuarioByUserId(userId);
   const sock = botSingleton.getSock();
   const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
   await sock.sendMessage(userId, {
     text: "🔄 Procesando...",
   });
 
-  const comprobantesRAW = await getComprobantesFromSheet(GOOGLE_SHEET_ID);
-  const matchs = getMatchs(comprobantesRAW, movimientoBancario);
+  console.log("movimientosBancario", movimientosBancario);
+  //const comprobantesRAW = await getComprobantesFromSheet(GOOGLE_SHEET_ID);
+  const comprobantesRAW = await getComprobantesFromMongo(
+    movimientosBancario[0].caja
+  );
+  console.log("comprobantesRAW", comprobantesRAW);
+  const matchs = getMatchs(comprobantesRAW, movimientosBancario);
   if (matchs.length === 0) {
     await sock.sendMessage(userId, {
       text: "❌ No se encontraron comprobantes que coincidan con las referencias del archivo Excel.",
@@ -38,7 +48,14 @@ module.exports = async function ProcesarReporteStep(
     text: mensajeExito,
   });
 
-  await updateComprobanteToSheet(matchs, GOOGLE_SHEET_ID);
+  //await updateComprobanteToSheet(matchs, GOOGLE_SHEET_ID);
+
+  const resp = await movimientoController.actualizarEstados(
+    matchs.map((m) => m.comprobante.id),
+    user
+  );
+
+  console.log("respController", resp);
   await sock.sendMessage(userId, {
     text: `✅ Comprobantes actualizados en la hoja de cálculo. Link al Google Sheet: https://docs.google.com/spreadsheets/d/${process.env.GOOGLE_SHEET_ID}/edit?usp=sharing`,
   });

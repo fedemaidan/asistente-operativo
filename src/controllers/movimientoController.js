@@ -209,10 +209,10 @@ class MovimientoController extends BaseController {
     }
   }
 
-  async actualizarEstados(ids, usuario) {
+  async actualizarEstados(ids, usuario, estado = "CONFIRMADO") {
     const response = await this.model.updateMany(
       { _id: { $in: ids } },
-      { $set: { estado: "CONFIRMADO", usuarioConfirmacion: usuario } }
+      { $set: { estado: estado } }
     );
     return response;
   }

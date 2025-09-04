@@ -13,6 +13,7 @@ async function ensureCajasBase() {
     "EFECTIVO",
   ];
 
+  const cajaController = require("../../../controllers/cajaController");
   for (const nombreCaja of cajasNecesarias) {
     try {
       const existsResp = await cajaController.cajaExists(nombreCaja);
@@ -41,7 +42,6 @@ function parseFechaDDMMYYYYToDate(fecha) {
 
   // Crear fecha con año, mes-1 (porque Date usa 0-11), día
   const fechaParseada = new Date(Number(anio), Number(mes) - 1, Number(dia));
-  console.log(`✅ Fecha parseada: ${fecha} -> ${fechaParseada.toISOString()}`);
   return fechaParseada;
 }
 
@@ -52,7 +52,6 @@ function buildDateWithTime(baseDate, timeHHMM) {
   }
 
   const horaStr = (timeHHMM || "").toString().trim();
-  console.log(`🕐 Procesando hora: "${horaStr}"`);
 
   let horas = 0;
   let minutos = 0;
@@ -64,20 +63,16 @@ function buildDateWithTime(baseDate, timeHHMM) {
     horas = Number.isFinite(h) ? h : 0;
     minutos = Number.isFinite(m) ? m : 0;
   }
-  console.log(`🕐 Horas: ${horas}, Minutos: ${minutos}`);
 
   const fechaCompleta = new Date(baseDate);
   fechaCompleta.setHours(horas, minutos, 0, 0);
 
   try {
-    console.log(`✅ Fecha completa: ${fechaCompleta.toISOString()}`);
   } catch (_) {}
   return fechaCompleta;
 }
 
 function obtenerFechaFacturaConFallback(fecha, hora, ultimaFechaValida) {
-  console.log(`🔄 Obteniendo fecha con fallback...`);
-
   // Normalizar última fecha válida (00:00) o hoy si no existe
   const ultimaNormalizada =
     ultimaFechaValida && !isNaN(ultimaFechaValida.getTime())
@@ -118,7 +113,6 @@ function obtenerFechaFacturaConFallback(fecha, hora, ultimaFechaValida) {
   try {
     const fechaConHora = buildDateWithTime(fechaBase, horaStr);
     try {
-      console.log(`✅ Usando fecha+hora: ${fechaConHora.toISOString()}`);
     } catch (_) {}
     return fechaConHora;
   } catch (_) {
@@ -167,12 +161,6 @@ async function migrarComprobantesDesdeGoogleSheets(
           parseNombreToUpperCase(comp.cliente)
         );
 
-        console.log(`\n📊 Procesando comprobante:`, {
-          fecha: comp.fecha,
-          hora: comp.hora,
-          numeroComprobante: comp.numero_comprobante,
-        });
-
         const cajaResp = await cajaController.getByNombre(comp.destino);
         const cajaId = cajaResp && cajaResp.success ? cajaResp.data._id : null;
 
@@ -190,9 +178,6 @@ async function migrarComprobantesDesdeGoogleSheets(
           normalizada.setHours(0, 0, 0, 0);
           ultimaFechaValida = normalizada;
           try {
-            console.log(
-              `📅 Última fecha válida actualizada: ${ultimaFechaValida.toISOString()}`
-            );
           } catch (_) {}
         }
 

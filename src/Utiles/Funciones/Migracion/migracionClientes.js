@@ -54,14 +54,6 @@ async function migrarClientesDesdeGoogleSheets() {
           clienteData.ccActivas = ["ARS"]; // Default
         }
 
-        console.log(
-          `📝 Procesando cliente: ${
-            clienteData.nombre
-          }, ccActivas: ${JSON.stringify(clienteData.ccActivas)}, descuento: ${
-            clienteData.descuento
-          }`
-        );
-
         const resultado = await clienteController.createCliente(clienteData);
 
         if (resultado.success) {

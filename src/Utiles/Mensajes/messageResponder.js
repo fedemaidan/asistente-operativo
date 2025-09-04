@@ -66,6 +66,13 @@ const messageResponder = async (messageType, msg, sender) => {
         } else if (users.get(phoneNumber).perfil.name === "financiera") {
           const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
           await FlowMapper.handleMessage(sender, msg, messageType);
+        } else if (users.get(phoneNumber).perfil.name === "drive") {
+          const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
+          await FlowMapper.handleMessage(
+            sender,
+            { imageUrl, msg },
+            messageType
+          );
         }
       } catch (error) {
         console.error("Error al procesar la imagen:", error);
