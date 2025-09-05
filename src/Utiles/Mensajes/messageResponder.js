@@ -9,8 +9,6 @@ const { parseCsvToJson } = require("../Funciones/Csv/csvHandler");
 const { parseExcelToJson } = require("../Funciones/Excel/excelHandler");
 
 const messageResponder = async (messageType, msg, sender) => {
-  //5493876147003@s.whatsapp.net
-  //8767868768@g.us
   console.log("sender", sender);
   const phoneNumber = sender.split("@")[0];
   const sock = botSingleton.getSock();
@@ -22,6 +20,7 @@ const messageResponder = async (messageType, msg, sender) => {
   }
 
   const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
+  console.log("msgRecibido", msg.message);
   console.log("MessageType", messageType);
   switch (messageType) {
     case "text":
@@ -34,9 +33,6 @@ const messageResponder = async (messageType, msg, sender) => {
     }
     case "image": {
       try {
-        await sock.sendMessage(sender, {
-          text: "⏳ Analizando imagen... ⏳",
-        });
         // Verificar si el mensaje tiene una imagen (no audio)
         if (!msg.message || !msg.message.imageMessage) {
           await sock.sendMessage(sender, {
@@ -66,11 +62,18 @@ const messageResponder = async (messageType, msg, sender) => {
         } else if (users.get(phoneNumber).perfil.name === "financiera") {
           const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
           await FlowMapper.handleMessage(sender, msg, messageType);
-        } else if (users.get(phoneNumber).perfil.name === "drive") {
+        } else if (
+          ["drive", "drive-dev"].includes(users.get(phoneNumber).perfil.name)
+        ) {
           const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
+
           await FlowMapper.handleMessage(
             sender,
-            { imageUrl, msg },
+            {
+              imageUrl,
+              caption: msg?.message?.imageMessage?.caption,
+              mimeType: msg?.message?.imageMessage?.mimeType,
+            },
             messageType
           );
         }
@@ -135,40 +138,50 @@ const messageResponder = async (messageType, msg, sender) => {
         }
 
         if (mimetype.endsWith("pdf")) {
-          const fileUrl = docMessage.url;
-          const fileName = docMessage.fileName || "archivo.pdf";
-
-          console.log(`📄 Documento recibido: ${fileName}, URL: ${fileUrl}`);
-
+          // Guardar PDF en Firebase y obtener URL firmada (misma función que imágenes)
           const pdfUrl = await saveImageToStorage(
-            {
-              message: {
-                documentMessage: docMessage,
-              },
-            },
+            { message: { documentMessage: docMessage } },
             sender
           );
           if (!pdfUrl) {
-            console.error("❌ No se pudo obtener el documento.");
             await sock.sendMessage(sender, {
               text: "❌ No se pudo procesar tu documento.",
             });
             return;
           }
 
+          if (
+            ["drive", "drive-dev"].includes(users.get(phoneNumber).perfil.name)
+          ) {
+            const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
+            await FlowMapper.handleMessage(
+              sender,
+              {
+                imageUrl: pdfUrl,
+                caption: docMessage?.fileName?.replace(/\.pdf$/i, ""),
+                mimeType: "application/pdf",
+              },
+              "image" // reutilizamos el mismo pipeline que imagen
+            );
+            return;
+          }
+
+          // Otros perfiles mantienen comportamiento previo
           if (users.get(phoneNumber).perfil.name === "celulandia") {
             const transcripcion = await transcribeImage(pdfUrl, phoneNumber);
             const ComprobanteFlow =
               users.get(phoneNumber).perfil.ComprobanteFlow;
-
             ComprobanteFlow.start(
               sender,
               { ...transcripcion.data, imagen: pdfUrl },
               sock
             );
-          } else if (users.get(phoneNumber).perfil.name === "financiera") {
+            return;
+          }
+          if (users.get(phoneNumber).perfil.name === "financiera") {
             const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
             await FlowMapper.handleMessage(sender, msg, messageType);
+            return;
           }
         } else if (
           mimetype.endsWith("spreadsheetml.sheet") ||
@@ -217,6 +230,11 @@ const messageResponder = async (messageType, msg, sender) => {
       break;
     }
     default: {
+      // Algunos clientes envían un mensaje "albumMessage" (tipo unknown) previo a las imágenes.
+      // Lo ignoramos para evitar mensajes innecesarios.
+      if (messageType === "unknown" && msg?.message?.albumMessage) {
+        return;
+      }
       await sock.sendMessage(sender, {
         text: `No entiendo este tipo de mensaje (${messageType}). Por favor, envíame texto o un comando válido.`,
       });

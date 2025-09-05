@@ -1,4 +1,4 @@
-const botSingleton = require("../../Utiles/botSingleton");
+const botSingleton = require("../../../src/Utiles/botSingleton");
 const { DriveSteps } = require("./DriveSteps");
 
 const DriveFlow = {

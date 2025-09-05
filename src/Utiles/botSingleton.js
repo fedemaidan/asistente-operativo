@@ -84,6 +84,13 @@ class BotSingleton {
 
     return usuario;
   }
+
+  getDriveFolderIdByUserId(userId) {
+    const phoneNumber = userId.split("@")[0];
+    const driveFolderId = this.users.get(phoneNumber).perfil.driveFolderId;
+
+    return driveFolderId;
+  }
 }
 
 module.exports = new BotSingleton();

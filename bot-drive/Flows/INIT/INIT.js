@@ -1,6 +1,9 @@
 const FlowManager = require("../../FlowControl/FlowManager");
 const botSingleton = require("../../../src/Utiles/botSingleton");
 const DriveFlow = require("../Drive/DriveFlow");
+const {
+  guardarArchivoDrive,
+} = require("../../../src/Utiles/GoogleServices/Drive/guardarDrive");
 
 const defaultFlow = {
   async Init(userId, message, messageType) {
@@ -29,7 +32,15 @@ const defaultFlow = {
 
       switch (result.accion) {
         case "Guardar archivo":
-          DriveFlow.start(userId, result.data);
+          const carpetaId = botSingleton.getDriveFolderIdByUserId(userId);
+          console.log("messageDrive", message);
+          const response = await guardarArchivoDrive(
+            message.imageUrl,
+            carpetaId,
+            message?.caption || "imagen"
+          );
+
+          DriveFlow.start(userId, response);
           break;
 
         case "No comprendido":
@@ -47,9 +58,17 @@ const defaultFlow = {
   },
 
   async handle(userId, message) {
-    await sock.sendMessage(userId, {
-      text: "No entendi tu mensaje, porfavor repitelo",
-    });
+    const sock = botSingleton.getSock();
+    try {
+      // Si viene un álbum (albumMessage), no respondemos; luego llegarán las imágenes individuales
+      if (message?.albumMessage) return;
+
+      await sock.sendMessage(userId, {
+        text: "No entendi tu mensaje, porfavor repitelo",
+      });
+    } catch (err) {
+      console.error("Error en defaultFlow.handle:", err.message);
+    }
   },
 };
 
