@@ -5,6 +5,8 @@ class BotSingleton {
     if (!BotSingleton.instance) {
       this.sock = {}; // Se guardará la instancia única de sock
       this.users = new Map(); // Mapa para almacenar usuarios y sus perfiles
+      // Estado de álbum por usuario: { expected, processed, caption, startTs }
+      this.albumStateByUser = new Map();
       BotSingleton.instance = this;
     }
 
@@ -42,6 +44,12 @@ class BotSingleton {
       // Identificar el tipo de mensaje
       const messageType = getMessageType(msg.message);
 
+      // Si llega un álbum, inicializamos estado de álbum para el usuario
+      if (msg?.message?.albumMessage?.expectedImageCount) {
+        const expected = msg.message.albumMessage.expectedImageCount;
+        this.startAlbum(sender, expected);
+      }
+
       // Delegar manejo al messageResponder
       await messageResponder(messageType, msg, sender);
     });
@@ -63,6 +71,41 @@ class BotSingleton {
 
   getUsers() {
     return this.users;
+  }
+
+  // ==== Estado de álbum por usuario ====
+  startAlbum(userId, expected) {
+    this.albumStateByUser.set(userId, {
+      expected: Number(expected) || 0,
+      processed: 0,
+      caption: null,
+      startTs: Date.now(),
+    });
+  }
+
+  updateAlbumCaption(userId, caption) {
+    if (!caption) return;
+    const st = this.albumStateByUser.get(userId);
+    if (st) {
+      if (!st.caption) st.caption = caption;
+      this.albumStateByUser.set(userId, st);
+    }
+  }
+
+  getAlbumCaption(userId) {
+    const st = this.albumStateByUser.get(userId);
+    return st?.caption || null;
+  }
+
+  markAlbumImageProcessed(userId) {
+    const st = this.albumStateByUser.get(userId);
+    if (!st) return;
+    st.processed += 1;
+    if (st.processed >= st.expected) {
+      this.albumStateByUser.delete(userId);
+    } else {
+      this.albumStateByUser.set(userId, st);
+    }
   }
 
   getSheetIdByUserId(userId) {

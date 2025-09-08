@@ -15,6 +15,10 @@ class FlowMapper {
             messageType
           );
           break;
+        case "INITFLOW":
+          // Mientras se estén recibiendo mensajes en INIT, re-ejecutamos Init para cada imagen/documento
+          await defaultFlow.Init(userId, message, messageType);
+          break;
         default:
           await defaultFlow.handle(userId, message, messageType);
       }

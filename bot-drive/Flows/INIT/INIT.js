@@ -44,9 +44,7 @@ const defaultFlow = {
           break;
 
         case "No comprendido":
-          await sock.sendMessage(userId, {
-            text: "No entendi tu mensaje, porfavor repitelo",
-          });
+          console.log("No comprendido");
           FlowManager.resetFlow(userId);
           break;
       }
@@ -63,9 +61,7 @@ const defaultFlow = {
       // Si viene un álbum (albumMessage), no respondemos; luego llegarán las imágenes individuales
       if (message?.albumMessage) return;
 
-      await sock.sendMessage(userId, {
-        text: "No entendi tu mensaje, porfavor repitelo",
-      });
+      console.log("No comprendido");
     } catch (err) {
       console.error("Error en defaultFlow.handle:", err.message);
     }

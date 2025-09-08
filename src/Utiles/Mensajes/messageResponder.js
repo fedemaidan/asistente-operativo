@@ -1,18 +1,17 @@
-const FlowMapper = require("../../FlowControl/FlowMapper");
 const downloadMedia = require("../Chatgpt/downloadMedia");
-const ComprobanteFlow = require("../../Flows/Comprobante/ComprobanteFlow");
 const transcribeImage = require("../Chatgpt/transcribeImage");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
-const FlowManager = require("../../FlowControl/FlowManager");
 const botSingleton = require("../botSingleton");
 const { parseCsvToJson } = require("../Funciones/Csv/csvHandler");
 const { parseExcelToJson } = require("../Funciones/Excel/excelHandler");
 
 const messageResponder = async (messageType, msg, sender) => {
-  console.log("sender", sender);
   const phoneNumber = sender.split("@")[0];
   const sock = botSingleton.getSock();
   const users = botSingleton.getUsers();
+
+  console.log("messageType", messageType);
+  console.log("msgContent", msg);
 
   if (!users.has(phoneNumber)) {
     console.log(`Usuario ${phoneNumber} no encontrado en el mapa de usuarios.`);
@@ -20,11 +19,13 @@ const messageResponder = async (messageType, msg, sender) => {
   }
 
   const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
-  console.log("msgRecibido", msg.message);
-  console.log("MessageType", messageType);
   switch (messageType) {
     case "text":
     case "text_extended": {
+      if ("drive" === users.get(phoneNumber).perfil.name) {
+        return;
+      }
+
       const text =
         msg.message.conversation || msg.message.extendedTextMessage?.text;
       await FlowMapper.handleMessage(sender, text, messageType);
@@ -33,6 +34,9 @@ const messageResponder = async (messageType, msg, sender) => {
     }
     case "image": {
       try {
+        if (msg?.message?.albumMessage) {
+          return;
+        }
         // Verificar si el mensaje tiene una imagen (no audio)
         if (!msg.message || !msg.message.imageMessage) {
           await sock.sendMessage(sender, {
@@ -42,6 +46,11 @@ const messageResponder = async (messageType, msg, sender) => {
         }
 
         const imageUrl = await saveImageToStorage(msg, sender);
+        const incomingCaption = msg?.message?.imageMessage?.caption;
+        if (incomingCaption) {
+          botSingleton.updateAlbumCaption(sender, incomingCaption);
+        }
+        const albumCaption = botSingleton.getAlbumCaption(sender);
 
         if (users.get(phoneNumber).perfil.name === "celulandia") {
           const transcripcion = await transcribeImage(imageUrl, phoneNumber);
@@ -62,20 +71,23 @@ const messageResponder = async (messageType, msg, sender) => {
         } else if (users.get(phoneNumber).perfil.name === "financiera") {
           const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
           await FlowMapper.handleMessage(sender, msg, messageType);
-        } else if (
-          ["drive", "drive-dev"].includes(users.get(phoneNumber).perfil.name)
-        ) {
+        } else if ("drive" === users.get(phoneNumber).perfil.name) {
           const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
 
           await FlowMapper.handleMessage(
             sender,
             {
               imageUrl,
-              caption: msg?.message?.imageMessage?.caption,
+              caption:
+                albumCaption ??
+                incomingCaption ??
+                msg?.message?.imageMessage?.caption,
               mimeType: msg?.message?.imageMessage?.mimeType,
             },
             messageType
           );
+          // Marcar imagen del álbum como procesada
+          botSingleton.markAlbumImageProcessed(sender);
         }
       } catch (error) {
         console.error("Error al procesar la imagen:", error);
@@ -90,6 +102,9 @@ const messageResponder = async (messageType, msg, sender) => {
     }
     case "audio": {
       try {
+        if ("drive" === users.get(phoneNumber).perfil.name) {
+          return;
+        }
         await sock.sendMessage(sender, {
           text: "⏳ Escuchando tu mensaje... ⏳",
         });
@@ -127,7 +142,6 @@ const messageResponder = async (messageType, msg, sender) => {
           msg.message.documentWithCaptionMessage?.message?.documentMessage;
 
         const mimetype = docMessage.mimetype;
-        console.log("MimeType", mimetype); //application/pdf
 
         if (!docMessage) {
           console.error("❌ El mensaje no contiene un documento válido.");
@@ -138,7 +152,6 @@ const messageResponder = async (messageType, msg, sender) => {
         }
 
         if (mimetype.endsWith("pdf")) {
-          // Guardar PDF en Firebase y obtener URL firmada (misma función que imágenes)
           const pdfUrl = await saveImageToStorage(
             { message: { documentMessage: docMessage } },
             sender
@@ -150,15 +163,15 @@ const messageResponder = async (messageType, msg, sender) => {
             return;
           }
 
-          if (
-            ["drive", "drive-dev"].includes(users.get(phoneNumber).perfil.name)
-          ) {
+          if ("drive" === users.get(phoneNumber).perfil.name) {
             const FlowMapper = users.get(phoneNumber).perfil.FlowMapper;
             await FlowMapper.handleMessage(
               sender,
               {
                 imageUrl: pdfUrl,
-                caption: docMessage?.fileName?.replace(/\.pdf$/i, ""),
+                caption:
+                  docMessage?.caption ||
+                  docMessage?.fileName?.replace(/\.pdf$/i, ""),
                 mimeType: "application/pdf",
               },
               "image" // reutilizamos el mismo pipeline que imagen
@@ -187,6 +200,9 @@ const messageResponder = async (messageType, msg, sender) => {
           mimetype.endsWith("spreadsheetml.sheet") ||
           mimetype.endsWith("excel")
         ) {
+          if ("drive" === users.get(phoneNumber).perfil.name) {
+            return;
+          }
           const { data, fileName, success, error } = await parseExcelToJson(
             docMessage
           );
@@ -206,6 +222,9 @@ const messageResponder = async (messageType, msg, sender) => {
             "excel"
           );
         } else if (mimetype.endsWith("csv")) {
+          if ("drive" === users.get(phoneNumber).perfil.name) {
+            return;
+          }
           const result = await parseCsvToJson(docMessage);
           console.log("ParseCsvToJson", result);
           if (!result.success) {
@@ -232,7 +251,10 @@ const messageResponder = async (messageType, msg, sender) => {
     default: {
       // Algunos clientes envían un mensaje "albumMessage" (tipo unknown) previo a las imágenes.
       // Lo ignoramos para evitar mensajes innecesarios.
-      if (messageType === "unknown" && msg?.message?.albumMessage) {
+      if (
+        (messageType === "unknown" && msg?.message?.albumMessage) ||
+        "drive" === users.get(phoneNumber).perfil.name
+      ) {
         return;
       }
       await sock.sendMessage(sender, {
