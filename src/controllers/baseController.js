@@ -153,94 +153,56 @@ class BaseController {
     }
   }
 
-  async search(
+  // Búsqueda simple basada en índice de texto ($text) sin score
+  async textSearchSimple(text = "", { limit = 20, offset = 0 } = {}) {
+    try {
+      const searchText = (text || "").trim();
+      if (!searchText) return { success: true, data: [], total: 0 };
+
+      const filter = { $text: { $search: searchText } };
+      const [data, total] = await Promise.all([
+        this.model.find(filter).skip(offset).limit(limit),
+        this.model.countDocuments(filter),
+      ]);
+      return { success: true, data, total };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Búsqueda $text con opciones de populate, sort y filter
+  async textSearchOpts(
     text = "",
-    { populate = "", sort = { createdAt: -1 }, filter = {} } = {}
+    { populate = "", sort = null, filter = {}, limit = 20, offset = 0 } = {}
   ) {
     try {
       const searchText = (text || "").trim();
-      if (!searchText) {
-        return { success: true, data: [], total: 0 };
-      }
+      if (!searchText) return { success: true, data: [], total: 0 };
 
-      // Crear condiciones de búsqueda
-      const orConditions = this._buildSearchConditions(searchText);
-      if (orConditions.length === 0) {
-        return { success: true, data: [], total: 0 };
-      }
-
-      // Construir filtro final
-      const searchFilter = { $or: orConditions };
+      const textExpr = { $text: { $search: searchText } };
       const finalFilter =
         filter && Object.keys(filter).length > 0
-          ? { $and: [filter, searchFilter] }
-          : searchFilter;
+          ? { $and: [filter, textExpr] }
+          : textExpr;
 
-      // Ejecutar consulta
-      let query = this.model.find(finalFilter);
-      query = this._applySorting(query, sort);
+      let query = this.model.find(finalFilter).skip(offset).limit(limit);
+      if (sort && Object.keys(sort).length > 0) {
+        query = this._applySorting(query, sort);
+      }
       query = this._applyPopulate(query, populate);
 
-      // Obtener resultados y total
       const [documents, total] = await Promise.all([
         query,
         this.model.countDocuments(finalFilter),
       ]);
-
       return { success: true, data: documents, total };
     } catch (error) {
       return { success: false, error: error.message };
     }
   }
 
-  _buildSearchConditions(searchText) {
-    const schemaPaths = this.model.schema.paths || {};
-    const orConditions = [];
-
-    // Buscar en campos de texto
-    const regex = new RegExp(
-      searchText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      "i"
-    );
-    Object.keys(schemaPaths).forEach((field) => {
-      const fieldType = schemaPaths[field];
-      if (fieldType && fieldType.instance === "String" && field !== "__v") {
-        orConditions.push({ [field]: regex });
-      }
-    });
-
-    // Buscar en campos numéricos si el texto es un número
-    const numericValue = Number(searchText);
-    if (!Number.isNaN(numericValue)) {
-      Object.keys(schemaPaths).forEach((field) => {
-        const fieldType = schemaPaths[field];
-        if (fieldType && fieldType.instance === "Number") {
-          orConditions.push({ [field]: numericValue });
-        }
-      });
-    }
-
-    // Buscar en campos ObjectId si el texto es un ObjectId válido
-    if (mongoose.Types.ObjectId.isValid(searchText)) {
-      const objectIdValue = new mongoose.Types.ObjectId(searchText);
-      Object.keys(schemaPaths).forEach((field) => {
-        const fieldType = schemaPaths[field];
-        if (
-          fieldType &&
-          (fieldType.instance === "ObjectID" ||
-            fieldType.instance === "ObjectId")
-        ) {
-          orConditions.push({ [field]: objectIdValue });
-        }
-      });
-    }
-
-    return orConditions;
-  }
-
   _applySorting(query, sort) {
     if (!sort) return query;
-
     const mappedSort = {};
     Object.keys(sort).forEach((key) => {
       mappedSort[key === "montoCC" ? "montoTotal.ars" : key] = sort[key];

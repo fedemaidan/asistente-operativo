@@ -149,25 +149,12 @@ class CuentaPendienteController extends BaseController {
         return { success: false, error: "Cliente no encontrado" };
       }
 
-      // Normalizamos el nombre del cliente para la búsqueda
-      const nombreCliente = cliente.nombre.toString().trim().toLowerCase();
-
-      // Buscamos cuentas pendientes donde proveedorOCliente coincida con el nombre del cliente
-      const query = {
-        $expr: {
-          $eq: [
-            { $toLower: { $trim: { input: "$proveedorOCliente" } } },
-            nombreCliente,
-          ],
-        },
-      };
-
-      if (!includeInactive) {
-        query.active = true;
-      }
-
+      // Buscamos cuentas pendientes donde cliente coincida con el id del cliente
       const cuentas = await this.model
-        .find(query)
+        .find({
+          cliente: clienteId,
+          active: includeInactive ? { $ne: false } : true,
+        })
         .populate(populate)
         .sort({ fechaCuenta: -1 });
 

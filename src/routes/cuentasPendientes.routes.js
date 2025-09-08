@@ -168,9 +168,12 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/cliente/:clienteId", async (req, res) => {
+  const { clienteId } = req.params;
+  const { populate } = req.query;
   try {
-    const { clienteId } = req.params;
-    const { populate } = req.query;
+    console.log("req.params", req.params);
+    console.log("req.query", req.query);
+    console.log("BUSCANDO CUENTAS PENDIENTES DEL CLIENTE", clienteId);
     const result = await cuentaPendienteController.getByClienteId(
       clienteId,
       populate || ""
@@ -182,6 +185,38 @@ router.get("/cliente/:clienteId", async (req, res) => {
       error: "Error al obtener las cuentas pendientes del cliente",
       message: error.message,
     });
+  }
+});
+
+// GET /api/cuentas-pendientes/search - Búsqueda $text
+router.get("/search", async (req, res) => {
+  const {
+    text,
+    populate,
+    limit = 20,
+    offset = 0,
+    sortField,
+    sortDirection,
+    includeInactive,
+  } = req.query;
+  try {
+    const sort = sortField
+      ? { [sortField]: sortDirection === "asc" ? 1 : -1 }
+      : null;
+    const filter = {};
+    if (!includeInactive || includeInactive === "false") {
+      filter.active = true;
+    }
+    const result = await cuentaPendienteController.textSearchOpts(text, {
+      populate: populate || "",
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      sort,
+      filter,
+    });
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -224,11 +259,6 @@ router.delete("/:id", async (req, res) => {
 
 router.get("/migracion/entregas-monto", async (req, res) => {
   const result = await cuentaPendienteController.migracionEntregasMonto();
-  return res.json(result);
-});
-
-router.get("/migracion/clientes-perdidos", async (req, res) => {
-  const result = await cuentaPendienteController.migracionClientesPerdidos();
   return res.json(result);
 });
 

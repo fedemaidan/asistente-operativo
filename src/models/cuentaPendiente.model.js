@@ -64,6 +64,16 @@ const cuentaPendienteSchema = new mongoose.Schema({
   ],
 });
 
+// Índice de texto para búsquedas con $text
+cuentaPendienteSchema.index(
+  {
+    descripcion: "text",
+    proveedorOCliente: "text",
+    usuario: "text",
+  },
+  { default_language: "spanish", name: "cuentaPendiente_text" }
+);
+
 function normalizeUpdate(raw) {
   const direct = {};
   for (const [k, v] of Object.entries(raw)) {
