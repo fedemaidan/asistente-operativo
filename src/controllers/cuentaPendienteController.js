@@ -166,10 +166,23 @@ class CuentaPendienteController extends BaseController {
         query.active = true;
       }
 
-      const cuentas = await this.model
+      let cuentas;
+      cuentas = await this.model
         .find(query)
         .populate(populate)
         .sort({ fechaCuenta: -1 });
+
+      if (cuentas.length === 0) {
+        console.log(
+          "No se encontraron cuentas pendientes para el cliente",
+          clienteId,
+          cliente.nombre
+        );
+        cuentas = await this.model
+          .find({ proveedorOCliente: cliente.nombre })
+          .populate(populate)
+          .sort({ fechaCuenta: -1 });
+      }
 
       return { success: true, data: cuentas };
     } catch (error) {
