@@ -348,6 +348,7 @@ class MovimientoController extends BaseController {
         let totalUSDBlue = 0;
         let totalUSDOficial = 0;
         let fechaUltimoPago = null;
+        let fechaUltimaEntrega = null;
 
         movimientosCliente.forEach((mov) => {
           if (mov.cuentaCorriente === "ARS") {
@@ -377,6 +378,15 @@ class MovimientoController extends BaseController {
           }
         });
 
+        cuentasPendientesCliente.forEach((cuenta) => {
+          const fechaCuenta = cuenta?.fechaCuenta;
+          if (fechaCuenta) {
+            if (!fechaUltimaEntrega || fechaCuenta > fechaUltimaEntrega) {
+              fechaUltimaEntrega = fechaCuenta;
+            }
+          }
+        });
+
         const nombreNormalizado = (cliente.nombre || "")
           .toString()
           .trim()
@@ -397,6 +407,7 @@ class MovimientoController extends BaseController {
           "USD BLUE": totalUSDBlue,
           "USD OFICIAL": totalUSDOficial,
           fechaUltimoPago: fechaUltimoPago,
+          fechaUltimaEntrega: fechaUltimaEntrega,
         };
       });
 
