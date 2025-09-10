@@ -72,6 +72,7 @@ router.get("/", async (req, res) => {
       fechaFin,
       includeInactive = false,
       totalMoneda = false,
+      nombreUsuario,
     } = req.query;
 
     const filters = { active: true }; // Por defecto solo mostrar movimientos activos
@@ -81,6 +82,10 @@ router.get("/", async (req, res) => {
     if (includeInactive === "true") {
       delete filters.active;
     }
+    if (nombreUsuario) {
+      filters.nombreUsuario = nombreUsuario;
+    }
+
     if (clienteNombre) {
       filters["cliente.nombre"] = {
         $regex: clienteNombre,
