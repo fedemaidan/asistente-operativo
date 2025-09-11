@@ -84,7 +84,11 @@ router.get("/", async (req, res) => {
       cc,
       usuario,
       includeInactive = false,
+      descuentoMayorQue,
+      descuentoMenorQue,
     } = req.query;
+
+    console.log("req.query", req.query);
 
     const filters = {};
     if (nombreCliente) {
@@ -104,6 +108,13 @@ router.get("/", async (req, res) => {
       filters.usuario = usuario;
     }
 
+    if (descuentoMayorQue) {
+      filters.descuentoAplicado = { $gt: parseFloat(descuentoMayorQue) };
+    }
+
+    if (descuentoMenorQue) {
+      filters.descuentoAplicado = { $lt: parseFloat(descuentoMenorQue) };
+    }
     console.log("filters", filters);
     // Filtros por fecha
     if (fechaInicio || fechaFin) {
@@ -121,6 +132,7 @@ router.get("/", async (req, res) => {
         );
         dateFilter.$gte = startDate;
       }
+
       if (fechaFin) {
         const [year, month, day] = fechaFin.split("-");
         const endDate = new Date(
@@ -138,6 +150,8 @@ router.get("/", async (req, res) => {
       console.log(`Filtro de fechas en cuentas pendientes:`, {
         fechaInicio,
         fechaFin,
+        descuentoMayorQue,
+        descuentoMenorQue,
         dateFilter,
       });
     }

@@ -21,6 +21,8 @@ class BaseController {
     sort = { createdAt: -1 },
     limit = 20,
     offset = 0,
+    mayorQue,
+    menorQue,
   }) {
     try {
       const total = await this.model.countDocuments(filter);
