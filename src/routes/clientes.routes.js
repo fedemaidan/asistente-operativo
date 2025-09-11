@@ -67,6 +67,40 @@ router.get("/:id/cuenta-corriente", async (req, res) => {
   }
 });
 
+// NUEVO: Cuenta Corriente computada (parseada, ordenada y con saldo)
+router.get("/:idCliente/cc", async (req, res) => {
+  try {
+    const { idCliente } = req.params;
+    const {
+      sortDirection = "desc",
+      fechaInicio,
+      fechaFin,
+      includeInactive = false,
+      group,
+    } = req.query;
+
+    const result = await clienteController.getClienteCCComputed(idCliente, {
+      sortDirection,
+      fechaInicio,
+      fechaFin,
+      includeInactive: includeInactive === "true" || includeInactive === true,
+      group,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener la CC computada del cliente",
+      message: error.message,
+    });
+  }
+});
+
 router.get("/:id/logs", async (req, res) => {
   try {
     const result = await clienteController.getLogs(req.params.id);
