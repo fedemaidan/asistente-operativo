@@ -307,7 +307,10 @@ class MovimientoController extends BaseController {
         await CuentaPendienteController.getByProveedorOCliente("");
       const cuentasPendientes = cuentasResp?.success ? cuentasResp.data : [];
       const pendientesPorCliente = cuentasPendientes.reduce((acc, cuenta) => {
-        const nombre = (cuenta.cliente || "").toString().trim().toLowerCase();
+        const nombre = (cuenta.proveedorOCliente || "")
+          .toString()
+          .trim()
+          .toLowerCase();
         if (!acc[nombre]) {
           acc[nombre] = { ars: 0, usdBlue: 0, usdOficial: 0 };
         }
