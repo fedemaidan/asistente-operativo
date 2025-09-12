@@ -24,6 +24,7 @@ class BaseController {
     mayorQue,
     menorQue,
   }) {
+    console.log("filter", filter);
     try {
       const total = await this.model.countDocuments(filter);
 

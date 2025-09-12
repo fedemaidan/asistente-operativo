@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
+const Caja = require("./caja.model");
 
 const movimientosSchema = new mongoose.Schema({
   type: {
@@ -220,7 +221,7 @@ function preUpdateWithLogs(next) {
 
   this.model
     .findOne(this.getQuery())
-    .then((originalDoc) => {
+    .then(async (originalDoc) => {
       if (!originalDoc) return next();
 
       // Actor para el log
@@ -232,13 +233,114 @@ function preUpdateWithLogs(next) {
         "Sistema";
 
       const logsToAdd = buildLogs(originalDoc, effectiveUpdate, actor);
+      const newUpdate = { ...raw };
       if (logsToAdd.length > 0) {
         // Inyectar $push.logs correctamente
-        const newUpdate = { ...raw };
         newUpdate.$push = newUpdate.$push || {};
         newUpdate.$push.logs = { $each: logsToAdd };
-        this.setUpdate(newUpdate);
       }
+
+      // Recalcular camposBusqueda con el estado "siguiente"
+      try {
+        const getNested = (obj, path) => {
+          if (!obj || !path) return undefined;
+          return path
+            .split(".")
+            .reduce((acc, key) => (acc ? acc[key] : undefined), obj);
+        };
+
+        const clienteNombre =
+          effectiveUpdate["cliente.nombre"] !== undefined
+            ? String(effectiveUpdate["cliente.nombre"])
+            : effectiveUpdate?.cliente?.nombre !== undefined
+            ? String(effectiveUpdate.cliente.nombre)
+            : String(originalDoc?.cliente?.nombre || "");
+
+        const cajaId =
+          effectiveUpdate.caja !== undefined
+            ? effectiveUpdate.caja
+            : originalDoc?.caja;
+        const cajaDoc = cajaId ? await Caja.findById(cajaId) : null;
+        const cajaNombre = String(cajaDoc?.nombre || "");
+
+        const cuentaCorriente = String(
+          effectiveUpdate.cuentaCorriente !== undefined
+            ? effectiveUpdate.cuentaCorriente
+            : originalDoc?.cuentaCorriente || ""
+        );
+        const moneda = String(
+          effectiveUpdate.moneda !== undefined
+            ? effectiveUpdate.moneda
+            : originalDoc?.moneda || ""
+        );
+        const estado = String(
+          effectiveUpdate.estado !== undefined
+            ? effectiveUpdate.estado
+            : originalDoc?.estado || ""
+        );
+        const usuario = String(
+          effectiveUpdate.nombreUsuario !== undefined
+            ? effectiveUpdate.nombreUsuario
+            : originalDoc?.nombreUsuario || ""
+        );
+        const tipoDeCambio = Math.round(
+          Number(
+            effectiveUpdate.tipoDeCambio !== undefined
+              ? effectiveUpdate.tipoDeCambio
+              : originalDoc?.tipoDeCambio || 0
+          )
+        );
+
+        const totalNext =
+          effectiveUpdate.total !== undefined
+            ? effectiveUpdate.total
+            : originalDoc?.total || {};
+
+        const montoCC = (() => {
+          if (cuentaCorriente === "ARS")
+            return Math.round(Number(totalNext?.ars || 0));
+          if (cuentaCorriente === "USD BLUE")
+            return Math.round(Number(totalNext?.usdBlue || 0));
+          if (cuentaCorriente === "USD OFICIAL")
+            return Math.round(Number(totalNext?.usdOficial || 0));
+          return 0;
+        })();
+
+        const montoEnviado = (() => {
+          if (moneda === "ARS") return Math.round(Number(totalNext?.ars || 0));
+          if (moneda === "USD") {
+            const usdVal =
+              totalNext?.usdBlue !== undefined && totalNext?.usdBlue !== null
+                ? totalNext.usdBlue
+                : totalNext?.usdOficial;
+            return Math.round(Number(usdVal || 0));
+          }
+          return 0;
+        })();
+
+        const camposBusqueda = [
+          clienteNombre,
+          cajaNombre,
+          cuentaCorriente,
+          moneda,
+          estado,
+          usuario,
+          String(tipoDeCambio),
+          String(montoCC),
+          String(montoEnviado),
+        ]
+          .filter(
+            (v) => v !== undefined && v !== null && String(v).trim().length > 0
+          )
+          .join(" ");
+
+        newUpdate.$set = newUpdate.$set || {};
+        newUpdate.$set.camposBusqueda = camposBusqueda;
+      } catch (e) {
+        // En caso de error al recomputar, continuar sin bloquear la actualización
+      }
+
+      this.setUpdate(newUpdate);
 
       next();
     })

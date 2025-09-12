@@ -72,6 +72,7 @@ router.get("/", async (req, res) => {
       fechaFin,
       includeInactive = false,
       totalMoneda = false,
+      text,
       nombreUsuario,
     } = req.query;
 
@@ -95,6 +96,10 @@ router.get("/", async (req, res) => {
     if (estado) filters.estado = estado;
 
     if (tipoFactura) filters.tipoFactura = tipoFactura;
+
+    if (text && String(text).trim().length > 0) {
+      filters.$text = { $search: String(text).trim() };
+    }
 
     if (cajaNombre) {
       if (cajaNombre === "ambas") {
