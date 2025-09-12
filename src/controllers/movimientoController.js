@@ -69,6 +69,22 @@ class MovimientoController extends BaseController {
       if (typeof movimientoData.fechaFactura === "string") {
         movimientoData.fechaFactura = new Date();
       }
+      if (cuentaCorriente === "ARS") {
+        movimientoData.camposBusqueda =
+          movimientoData.camposBusqueda +
+          " " +
+          Math.round(movimientoData.total.ars);
+      } else if (cuentaCorriente === "USD BLUE") {
+        movimientoData.camposBusqueda =
+          movimientoData.camposBusqueda +
+          " " +
+          Math.round(movimientoData.total.usdBlue);
+      } else if (cuentaCorriente === "USD OFICIAL") {
+        movimientoData.camposBusqueda =
+          movimientoData.camposBusqueda +
+          " " +
+          Math.round(movimientoData.total.usdOficial);
+      }
 
       const movimiento = await this.create({
         ...movimientoData,
@@ -664,6 +680,81 @@ class MovimientoController extends BaseController {
     ]);
     console.log("resultTotal", result);
     return result.length > 0 ? result[0].total : 0;
+  }
+
+  async migrarBusqueda() {
+    try {
+      const query = {
+        $or: [
+          { camposBusqueda: { $exists: false } },
+          { camposBusqueda: null },
+          { camposBusqueda: "" },
+        ],
+      };
+
+      const docs = await this.model.find(query).populate("caja");
+
+      let updated = 0;
+      for (const doc of docs) {
+        const clienteNombre = (doc?.cliente?.nombre || "").toString();
+        const cajaNombre = (doc?.caja?.nombre || "").toString();
+        const cuentaCorriente = (doc?.cuentaCorriente || "").toString();
+        const moneda = (doc?.moneda || "").toString();
+        const estado = (doc?.estado || "").toString();
+        const usuario = (doc?.nombreUsuario || "").toString();
+        const tipoDeCambio = Math.round(Number(doc?.tipoDeCambio || 0));
+
+        const total = doc?.total || {};
+        const montoCC = (() => {
+          if (cuentaCorriente === "ARS")
+            return Math.round(Number(total.ars || 0));
+          if (cuentaCorriente === "USD BLUE")
+            return Math.round(Number(total.usdBlue || 0));
+          if (cuentaCorriente === "USD OFICIAL")
+            return Math.round(Number(total.usdOficial || 0));
+          return 0;
+        })();
+
+        const montoEnviado = (() => {
+          if (moneda === "ARS") return Math.round(Number(total.ars || 0));
+          if (moneda === "USD") {
+            const usdVal =
+              total.usdBlue !== undefined && total.usdBlue !== null
+                ? total.usdBlue
+                : total.usdOficial;
+            return Math.round(Number(usdVal || 0));
+          }
+          return 0;
+        })();
+
+        const camposBusqueda = [
+          clienteNombre,
+          cajaNombre,
+          cuentaCorriente,
+          moneda,
+          estado,
+          usuario,
+          String(tipoDeCambio),
+          String(montoCC),
+          String(montoEnviado),
+        ]
+          .filter(
+            (v) => v !== undefined && v !== null && String(v).trim().length > 0
+          )
+          .join(" ");
+
+        await this.model.findByIdAndUpdate(
+          doc._id,
+          { camposBusqueda },
+          { new: false }
+        );
+        updated += 1;
+      }
+
+      return { success: true, data: { updated, total: docs.length } };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 }
 

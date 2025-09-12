@@ -109,6 +109,10 @@ const movimientosSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  camposBusqueda: {
+    type: String,
+    default: "",
+  },
   logs: [
     {
       campo: {
@@ -153,7 +157,7 @@ const movimientosSchema = new mongoose.Schema({
   ],
 });
 
-// models/movimiento.model.js
+movimientosSchema.index({ camposBusqueda: "text" });
 
 function normalizeUpdate(raw) {
   const direct = {};

@@ -254,6 +254,41 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/search", async (req, res) => {
+  const {
+    text,
+    populate,
+    limit = 20,
+    offset = 0,
+    sortField,
+    sortDirection,
+    includeInactive,
+  } = req.query;
+
+  try {
+    const sort = sortField
+      ? { [sortField]: sortDirection === "asc" ? 1 : -1 }
+      : null;
+
+    const filter = {};
+    if (!includeInactive || includeInactive === "false") {
+      filter.active = true;
+    }
+
+    const result = await movimientoController.textSearchOpts(text, {
+      populate: populate || "",
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      sort,
+      filter,
+    });
+
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get("/clientes-totales", async (req, res) => {
   try {
     const { includeInactive = false } = req.query;
@@ -398,6 +433,11 @@ router.post("/migracion/pagos", async (req, res) => {
   const result = await migrarPagosDesdeGoogleSheets(
     "1zf7cetDmaKG59vGMI9Dlb2D7SVCijEk-6xiL7GRyWqo"
   );
+  res.json(result);
+});
+
+router.post("/migracion/busqueda", async (req, res) => {
+  const result = await movimientoController.migrarBusqueda();
   res.json(result);
 });
 
