@@ -344,25 +344,6 @@ class MovimientoController extends BaseController {
       const cuentasResp =
         await CuentaPendienteController.getByProveedorOCliente("");
       const cuentasPendientes = cuentasResp?.success ? cuentasResp.data : [];
-      const pendientesPorCliente = cuentasPendientes.reduce((acc, cuenta) => {
-        const nombre = (cuenta.proveedorOCliente || "")
-          .toString()
-          .trim()
-          .toLowerCase();
-        if (!acc[nombre]) {
-          acc[nombre] = { ars: 0, usdBlue: 0, usdOficial: 0 };
-        }
-        const cc = cuenta.cc;
-        const monto = cuenta.montoTotal || {};
-        if (cc === "ARS") {
-          acc[nombre].ars += Number(monto.ars || 0);
-        } else if (cc === "USD BLUE") {
-          acc[nombre].usdBlue += Number(monto.usdBlue || 0);
-        } else if (cc === "USD OFICIAL") {
-          acc[nombre].usdOficial += Number(monto.usdOficial || 0);
-        }
-        return acc;
-      }, {});
 
       const clientesTotales = clientes.map((cliente) => {
         const movimientosCliente = movimientos.filter(
@@ -371,15 +352,12 @@ class MovimientoController extends BaseController {
         );
 
         const cuentasPendientesCliente = cuentasPendientes.filter((cuenta) => {
-          const nombreCuenta = (cuenta.proveedorOCliente || "")
-            .toString()
-            .trim()
-            .toLowerCase();
-          const nombreCliente = (cliente.nombre || "")
-            .toString()
-            .trim()
-            .toLowerCase();
-          return nombreCuenta === nombreCliente;
+          if (!cuenta?.cliente) return false;
+          try {
+            return cuenta.cliente.toString() === cliente._id.toString();
+          } catch (e) {
+            return false;
+          }
         });
 
         let totalARS = 0;
@@ -423,20 +401,19 @@ class MovimientoController extends BaseController {
               fechaUltimaEntrega = fechaCuenta;
             }
           }
+          // Sumar montos de cuentas pendientes por CC usando montoTotal
+          const cc = cuenta?.cc;
+          const monto = cuenta?.montoTotal || {};
+          if (cc === "ARS") {
+            totalARS += Number(monto.ars || 0);
+          } else if (cc === "USD BLUE") {
+            totalUSDBlue += Number(monto.usdBlue || 0);
+          } else if (cc === "USD OFICIAL") {
+            totalUSDOficial += Number(monto.usdOficial || 0);
+          }
         });
 
-        const nombreNormalizado = (cliente.nombre || "")
-          .toString()
-          .trim()
-          .toLowerCase();
-        const pendientes = pendientesPorCliente[nombreNormalizado] || {
-          ars: 0,
-          usdBlue: 0,
-          usdOficial: 0,
-        };
-        totalARS += pendientes.ars || 0;
-        totalUSDBlue += pendientes.usdBlue || 0;
-        totalUSDOficial += pendientes.usdOficial || 0;
+        // Totales ya incluyen cuentas pendientes por cliente a partir de su ObjectId
 
         return {
           _id: cliente._id,
