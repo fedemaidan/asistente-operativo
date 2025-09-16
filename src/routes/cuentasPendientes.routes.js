@@ -82,6 +82,7 @@ router.get("/", async (req, res) => {
       fechaFin,
       moneda,
       cc,
+      text,
       usuario,
       includeInactive = false,
       descuentoMayorQue,
@@ -89,6 +90,8 @@ router.get("/", async (req, res) => {
     } = req.query;
 
     console.log("req.query", req.query);
+    const isNumberSearch =
+      text && String(text).trim().length > 0 && !isNaN(Number(text));
 
     const filters = {};
     if (nombreCliente) {
@@ -106,6 +109,14 @@ router.get("/", async (req, res) => {
 
     if (usuario) {
       filters.usuario = usuario;
+    }
+
+    if (text && String(text).trim().length > 0) {
+      if (isNumberSearch) {
+        filters.camposBusqueda = { $regex: String(text).trim(), $options: "i" };
+      } else {
+        filters.$text = { $search: String(text).trim() };
+      }
     }
 
     if (descuentoMayorQue) {
@@ -273,6 +284,11 @@ router.delete("/:id", async (req, res) => {
 
 router.get("/migracion/entregas-monto", async (req, res) => {
   const result = await cuentaPendienteController.migracionEntregasMonto();
+  return res.json(result);
+});
+
+router.put("/migracion/busqueda", async (req, res) => {
+  const result = await cuentaPendienteController.migrarBusqueda();
   return res.json(result);
 });
 

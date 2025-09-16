@@ -34,6 +34,10 @@ const cuentaPendienteSchema = new mongoose.Schema({
   },
   empresaId: { type: String },
   active: { type: Boolean, default: true },
+  camposBusqueda: {
+    type: String,
+    default: "",
+  },
 
   logs: [
     {
@@ -64,15 +68,7 @@ const cuentaPendienteSchema = new mongoose.Schema({
   ],
 });
 
-// Índice de texto para búsquedas con $text
-cuentaPendienteSchema.index(
-  {
-    descripcion: "text",
-    proveedorOCliente: "text",
-    usuario: "text",
-  },
-  { default_language: "spanish", name: "cuentaPendiente_text" }
-);
+cuentaPendienteSchema.index({ camposBusqueda: "text" });
 
 function normalizeUpdate(raw) {
   const direct = {};
@@ -149,12 +145,109 @@ function preUpdateWithLogs(next) {
 
       const logsToAdd = buildLogs(originalDoc, effectiveUpdate, actor);
 
+      const newUpdate = { ...raw };
+
       if (logsToAdd.length > 0) {
-        const newUpdate = { ...raw };
         newUpdate.$push = newUpdate.$push || {};
         newUpdate.$push.logs = { $each: logsToAdd };
-        this.setUpdate(newUpdate);
       }
+
+      // Recalcular camposBusqueda con el estado "siguiente"
+      try {
+        const clienteNombre = String(
+          effectiveUpdate.cliente !== undefined
+            ? effectiveUpdate.cliente.nombre
+            : originalDoc?.cliente?.nombre || ""
+        );
+
+        const cc = String(
+          effectiveUpdate.cc !== undefined
+            ? effectiveUpdate.cc
+            : originalDoc?.cc || ""
+        );
+
+        const moneda = String(
+          effectiveUpdate.moneda !== undefined
+            ? effectiveUpdate.moneda
+            : originalDoc?.moneda || ""
+        );
+
+        const usuario = String(
+          effectiveUpdate.usuario !== undefined
+            ? effectiveUpdate.usuario
+            : originalDoc?.usuario || ""
+        );
+
+        const tipoDeCambio = Math.round(
+          Number(
+            effectiveUpdate.tipoDeCambio !== undefined
+              ? effectiveUpdate.tipoDeCambio
+              : originalDoc?.tipoDeCambio || 0
+          )
+        );
+
+        const totalNext =
+          effectiveUpdate.montoTotal !== undefined
+            ? effectiveUpdate.montoTotal
+            : originalDoc?.montoTotal || {};
+
+        const montoCC = (() => {
+          if (cc === "ARS") return Math.round(Number(totalNext?.ars || 0));
+          if (cc === "USD BLUE")
+            return Math.round(Number(totalNext?.usdBlue || 0));
+          if (cc === "USD OFICIAL")
+            return Math.round(Number(totalNext?.usdOficial || 0));
+          return 0;
+        })();
+
+        // Para montoEnviado usar SIEMPRE el subTotal (no el montoTotal)
+        const subTotalNext =
+          effectiveUpdate.subTotal !== undefined
+            ? effectiveUpdate.subTotal
+            : originalDoc?.subTotal || {};
+
+        const montoEnviado = (() => {
+          if (moneda === "ARS")
+            return Math.round(Number(subTotalNext?.ars || 0));
+          if (moneda === "USD") {
+            const usdVal =
+              subTotalNext?.usdBlue !== undefined &&
+              subTotalNext?.usdBlue !== null
+                ? subTotalNext.usdBlue
+                : subTotalNext?.usdOficial;
+            return Math.round(Number(usdVal || 0));
+          }
+          return 0;
+        })();
+
+        const descripcion = String(
+          effectiveUpdate.descripcion !== undefined
+            ? effectiveUpdate.descripcion
+            : originalDoc?.descripcion || ""
+        );
+
+        const camposBusqueda = [
+          clienteNombre,
+          descripcion,
+          cc,
+          moneda,
+          usuario,
+          String(tipoDeCambio),
+          String(montoCC),
+          String(montoEnviado),
+        ]
+          .filter(
+            (v) => v !== undefined && v !== null && String(v).trim().length > 0
+          )
+          .join(" ");
+
+        newUpdate.$set = newUpdate.$set || {};
+        newUpdate.$set.camposBusqueda = camposBusqueda;
+      } catch (e) {
+        // Continuar sin bloquear la actualización si falla el recomputo
+      }
+
+      this.setUpdate(newUpdate);
 
       next();
     })

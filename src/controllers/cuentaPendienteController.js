@@ -290,6 +290,71 @@ class CuentaPendienteController extends BaseController {
 
     return { success: true, data: cuentas, actualizadas, errores };
   }
+
+  async migrarBusqueda() {
+    try {
+      const docs = await this.model.find({}).populate("cliente");
+
+      let updated = 0;
+      for (const doc of docs) {
+        const cliente = (doc?.cliente?.nombre || "").toString();
+        const descripcion = (doc?.descripcion || "").toString();
+        const cc = (doc?.cc || "").toString();
+        const moneda = (doc?.moneda || "").toString();
+        const usuario = (doc?.usuario || "").toString();
+        const tipoDeCambio = Math.round(Number(doc?.tipoDeCambio || 0));
+
+        const total = doc?.montoTotal || {};
+        const montoCC = (() => {
+          if (cc === "ARS") return Math.round(Number(total.ars || 0));
+          if (cc === "USD BLUE") return Math.round(Number(total.usdBlue || 0));
+          if (cc === "USD OFICIAL")
+            return Math.round(Number(total.usdOficial || 0));
+          return 0;
+        })();
+
+        // Para montoEnviado usar SIEMPRE el subTotal (no el montoTotal)
+        const subTotal = doc?.subTotal || {};
+        const montoEnviado = (() => {
+          if (moneda === "ARS") return Math.round(Number(subTotal.ars || 0));
+          if (moneda === "USD") {
+            const usdVal =
+              subTotal.usdBlue !== undefined && subTotal.usdBlue !== null
+                ? subTotal.usdBlue
+                : subTotal.usdOficial;
+            return Math.round(Number(usdVal || 0));
+          }
+          return 0;
+        })();
+
+        const camposBusqueda = [
+          cliente,
+          descripcion,
+          cc,
+          moneda,
+          usuario,
+          String(tipoDeCambio),
+          String(montoCC),
+          String(montoEnviado),
+        ]
+          .filter(
+            (v) => v !== undefined && v !== null && String(v).trim().length > 0
+          )
+          .join(" ");
+
+        await this.model.findByIdAndUpdate(
+          doc._id,
+          { camposBusqueda },
+          { new: false }
+        );
+        updated += 1;
+      }
+
+      return { success: true, data: { updated, total: docs.length } };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new CuentaPendienteController();

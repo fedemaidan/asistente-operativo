@@ -3,6 +3,7 @@ const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
 const Caja = require("./caja.model");
 
 const movimientosSchema = new mongoose.Schema({
+  descripcion: { type: String, default: "" },
   type: {
     type: String,
     enum: ["INGRESO", "EGRESO"],
@@ -119,6 +120,7 @@ const movimientosSchema = new mongoose.Schema({
       campo: {
         type: String,
         enum: [
+          "descripcion",
           "tipoDeCambio",
           "estado",
           "caja",
@@ -171,6 +173,7 @@ function normalizeUpdate(raw) {
 
 function buildLogs(originalDoc, effectiveUpdate, actor) {
   const loggable = new Set([
+    "descripcion",
     "tipoDeCambio",
     "estado",
     "caja",
@@ -249,6 +252,12 @@ function preUpdateWithLogs(next) {
             .reduce((acc, key) => (acc ? acc[key] : undefined), obj);
         };
 
+        const descripcion = String(
+          effectiveUpdate.descripcion !== undefined
+            ? effectiveUpdate.descripcion
+            : originalDoc?.descripcion || ""
+        );
+
         const clienteNombre =
           effectiveUpdate["cliente.nombre"] !== undefined
             ? String(effectiveUpdate["cliente.nombre"])
@@ -319,6 +328,7 @@ function preUpdateWithLogs(next) {
         })();
 
         const camposBusqueda = [
+          descripcion,
           clienteNombre,
           cajaNombre,
           cuentaCorriente,

@@ -76,6 +76,8 @@ router.get("/", async (req, res) => {
       nombreUsuario,
     } = req.query;
 
+    const isNumberSearch =
+      text && String(text).trim().length > 0 && !isNaN(Number(text));
     const filters = { active: true }; // Por defecto solo mostrar movimientos activos
     if (type) filters.type = type;
 
@@ -98,7 +100,11 @@ router.get("/", async (req, res) => {
     if (tipoFactura) filters.tipoFactura = tipoFactura;
 
     if (text && String(text).trim().length > 0) {
-      filters.$text = { $search: String(text).trim() };
+      if (isNumberSearch) {
+        filters.camposBusqueda = { $regex: String(text).trim(), $options: "i" };
+      } else {
+        filters.$text = { $search: String(text).trim() };
+      }
     }
 
     if (cajaNombre) {
@@ -441,7 +447,7 @@ router.post("/migracion/pagos", async (req, res) => {
   res.json(result);
 });
 
-router.post("/migracion/busqueda", async (req, res) => {
+router.put("/migracion/busqueda", async (req, res) => {
   const result = await movimientoController.migrarBusqueda();
   res.json(result);
 });
