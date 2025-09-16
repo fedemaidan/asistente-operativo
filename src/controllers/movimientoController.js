@@ -15,6 +15,8 @@ class MovimientoController extends BaseController {
     saveToSheet = true,
     calcular = true
   ) {
+    console.log("movimientoData", movimientoData);
+    console.log("montoEnviado", montoEnviado);
     const { type, moneda, cuentaCorriente } = movimientoData;
     let tipoDeCambio = movimientoData.tipoDeCambio || null;
     const cotizaciones = await DolarService.obtenerValoresDolar();
@@ -66,8 +68,28 @@ class MovimientoController extends BaseController {
         };
       }
 
-      if (typeof movimientoData.fechaFactura === "string") {
-        movimientoData.fechaFactura = new Date();
+      // Normalizar fechaFactura: si no es Date válida, no enviar el campo
+      if (
+        movimientoData.fechaFactura !== undefined &&
+        movimientoData.fechaFactura !== null
+      ) {
+        if (movimientoData.fechaFactura instanceof Date) {
+          if (isNaN(movimientoData.fechaFactura.getTime())) {
+            delete movimientoData.fechaFactura;
+          }
+        } else if (
+          typeof movimientoData.fechaFactura === "string" ||
+          typeof movimientoData.fechaFactura === "number"
+        ) {
+          const parsed = new Date(movimientoData.fechaFactura);
+          if (!isNaN(parsed.getTime())) {
+            movimientoData.fechaFactura = parsed;
+          } else {
+            delete movimientoData.fechaFactura;
+          }
+        } else {
+          delete movimientoData.fechaFactura;
+        }
       }
       if (cuentaCorriente === "ARS") {
         movimientoData.camposBusqueda =
@@ -102,7 +124,7 @@ class MovimientoController extends BaseController {
 
       return movimiento;
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error };
     }
   }
 

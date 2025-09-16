@@ -11,7 +11,7 @@ class BaseController {
       const savedDocument = await newDocument.save();
       return { success: true, data: savedDocument };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error };
     }
   }
 

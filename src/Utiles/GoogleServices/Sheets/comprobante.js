@@ -4,7 +4,6 @@ const clienteController = require("../../../controllers/clienteController");
 const MovimientoController = require("../../../controllers/movimientoController");
 const { addRow, updateRow, getRowsValues, getLastRow } = require("../General");
 const { randomUUID } = require("crypto");
-
 function generarUUIDConTimestamp() {
   const uuid = randomUUID();
   const timestamp = Date.now();
@@ -185,7 +184,11 @@ async function addComprobanteToSheet(comprobante, GOOGLE_SHEET_ID) {
     const result = await addComprobanteToMongo(comprobante);
     return result;
   } catch (error) {
-    console.error("Error al agregar comprobante:", error);
+    console.error(
+      "Error al agregar comprobante:",
+      error?.message || error,
+      error?.cause ? `\nCausa: ${error.cause?.message || error.cause}` : ""
+    );
     throw error;
   }
 }
@@ -231,10 +234,17 @@ async function addComprobanteToMongo(comprobante) {
   if (result.success) {
     return result.data;
   }
-  throw new Error(
-    "Error al agregar comprobante a la base de datos",
-    result.error
+  const baseMsg =
+    (result && result.error && result.error.message) ||
+    (typeof result?.error === "string"
+      ? result.error
+      : JSON.stringify(result?.error));
+  const err = new Error(
+    `Error al agregar comprobante a la base de datos: ${baseMsg}`
   );
+  // Adjuntar causa para depuración aguas arriba
+  err.cause = result?.error;
+  throw err;
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
