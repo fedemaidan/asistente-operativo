@@ -1,9 +1,13 @@
 const { getByChatGpt4o } = require("./Base");
-const { getClientesFromSheet } = require("../GoogleServices/Sheets/cliente");
+const clienteController = require("../../controllers/clienteController");
 
 module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
-  const clientes = await getClientesFromSheet(GOOGLE_SHEET_ID);
-  const clientesStr = JSON.stringify(clientes);
+  const clientesMongo = await clienteController.getAll();
+  const clientesArr = clientesMongo?.data.map((c) => ({
+    nombre: c.nombre,
+    ccActivas: c.ccActivas,
+  }));
+  const clientesStr = JSON.stringify(clientesArr);
   const prompt = `
   Analiza el siguiente mensaje y detecta qué cliente se menciona y qué moneda se está utilizando.
   
