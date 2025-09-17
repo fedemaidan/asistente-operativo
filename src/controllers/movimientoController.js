@@ -703,7 +703,7 @@ class MovimientoController extends BaseController {
 
   async migrarBusqueda() {
     try {
-      const docs = await this.model.find(query).populate("caja");
+      const docs = await this.model.find({}).populate("caja");
 
       let updated = 0;
       for (const doc of docs) {
