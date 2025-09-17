@@ -155,6 +155,31 @@ class MovimientoController extends BaseController {
         return { success: false, error: "Movimiento no encontrado" };
       }
 
+      if (
+        typeof movimientoData.clienteNombre === "string" &&
+        movimientoData.clienteNombre.trim().length > 0
+      ) {
+        const nombreBuscado = movimientoData.clienteNombre.trim();
+        const clienteDoc = await Cliente.findOne({
+          nombre: { $regex: `^${nombreBuscado}$`, $options: "i" },
+        });
+
+        if (clienteDoc) {
+          movimientoData.clienteId = clienteDoc._id;
+          movimientoData.cliente = {
+            nombre: clienteDoc.nombre,
+            ccActivas: clienteDoc.ccActivas || [],
+            descuento: clienteDoc.descuento || 0,
+          };
+        } else {
+          // Si no existe, mantener solo el nombre y limpiar clienteId
+          movimientoData.clienteId = null;
+          movimientoData.cliente = { nombre: nombreBuscado };
+        }
+
+        delete movimientoData.clienteNombre;
+      }
+
       const cambiaronTcOMonto =
         movimientoData.montoEnviado !== undefined ||
         movimientoData.tipoDeCambio !== undefined;
