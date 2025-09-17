@@ -115,7 +115,7 @@ router.get("/", async (req, res) => {
       if (isNumberSearch) {
         filters.camposBusqueda = { $regex: String(text).trim(), $options: "i" };
       } else {
-        filters.$text = { $search: String(text).trim() };
+        filters.$text = { $search: `"${String(text).trim()}"` };
       }
     }
 
