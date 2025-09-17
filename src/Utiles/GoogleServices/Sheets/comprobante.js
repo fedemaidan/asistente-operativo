@@ -204,7 +204,7 @@ async function addComprobanteToMongo(comprobante) {
     nombre: cliente?.data?.nombre || comprobante.cliente,
   };
 
-  const fechaFactura = new Date(año, mes - 1, dia);
+  const fechaFactura = new Date(año, mes - 1, dia, 14, 0, 0);
   const movimientoDataToController = {
     type: "INGRESO",
     numeroFactura: comprobante.numero_comprobante,

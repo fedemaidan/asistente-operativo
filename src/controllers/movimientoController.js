@@ -108,6 +108,26 @@ class MovimientoController extends BaseController {
           Math.round(movimientoData.total.usdOficial);
       }
 
+      console.log("Cargando camposBusqueda");
+      const cuentaDestino = movimientoData.caja
+        ? await Caja.findById(movimientoData.caja)
+        : "Sin caja";
+      const montoCC =
+        movimientoData.cuentaCorriente === "ARS"
+          ? movimientoData.total.ars
+          : movimientoData.total.usdBlue;
+
+      const camposBusqueda = `${movimientoData?.cliente?.nombre} ${
+        cuentaDestino?.nombre || ""
+      } ${movimientoData.cuentaCorriente} ${movimientoData.moneda} ${
+        movimientoData.tipoDeCambio
+      } ${Math.round(montoEnviado)} ${movimientoData.nombreUsuario} ${
+        movimientoData.estado
+      } ${Math.round(montoCC)}`;
+
+      console.log("camposBusqueda", camposBusqueda);
+      movimientoData.camposBusqueda = camposBusqueda;
+
       const movimiento = await this.create({
         ...movimientoData,
         empresaId: movimientoData.empresaId || "celulandia",
