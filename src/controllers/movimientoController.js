@@ -703,14 +703,6 @@ class MovimientoController extends BaseController {
 
   async migrarBusqueda() {
     try {
-      const query = {
-        $or: [
-          { camposBusqueda: { $exists: false } },
-          { camposBusqueda: null },
-          { camposBusqueda: "" },
-        ],
-      };
-
       const docs = await this.model.find(query).populate("caja");
 
       let updated = 0;
