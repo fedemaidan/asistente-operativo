@@ -284,7 +284,8 @@ class MovimientoController extends BaseController {
       }
 
       const { nombreUsuario, ...datosMovimiento } = movimientoData;
-      const updateData = { ...datosMovimiento, nombreUsuario };
+      const updateData = { ...datosMovimiento };
+      if (nombreUsuario) updateData._actor = nombreUsuario;
 
       return await this.update(id, updateData);
     } catch (error) {
@@ -685,7 +686,7 @@ class MovimientoController extends BaseController {
 
       const updateData = {
         active: false,
-        nombreUsuario: nombreUsuario,
+        _actor: nombreUsuario,
       };
 
       const result = await this.model.findByIdAndUpdate(id, updateData, {

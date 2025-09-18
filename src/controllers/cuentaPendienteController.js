@@ -28,8 +28,9 @@ class CuentaPendienteController extends BaseController {
 
       const updateData = {
         ...datosCuenta,
-        usuario: usuario,
       };
+      // Mantener usuario inmutable; usar _actor para logs si viene
+      if (usuario) updateData._actor = usuario;
 
       return await this.update(id, updateData);
     } catch (error) {
@@ -209,7 +210,7 @@ class CuentaPendienteController extends BaseController {
         id,
         {
           active: false,
-          usuario: usuario || "Sistema",
+          _actor: usuario || "Sistema",
         },
         { new: true }
       );

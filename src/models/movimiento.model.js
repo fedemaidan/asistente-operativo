@@ -186,7 +186,6 @@ function buildLogs(originalDoc, effectiveUpdate, actor) {
     "fechaFactura",
     "fechaCreacion",
     "userPhone",
-    "nombreUsuario",
     "concepto",
     "active",
     "total",
@@ -227,13 +226,28 @@ function preUpdateWithLogs(next) {
     .then(async (originalDoc) => {
       if (!originalDoc) return next();
 
-      // Actor para el log
+      // Actor para el log: soportar múltiples fuentes
+      const opts =
+        (typeof this.getOptions === "function" && this.getOptions()) ||
+        this.options ||
+        {};
       const actor =
-        effectiveUpdate.nombreUsuario ||
+        raw._actor ||
+        (raw.$set && raw.$set._actor) ||
+        opts._actor ||
         raw.nombreUsuario ||
         (raw.$set && raw.$set.nombreUsuario) ||
         originalDoc.nombreUsuario ||
         "Sistema";
+
+      // Asegurar inmutabilidad de nombreUsuario: impedir su actualización y limpiar _actor del update
+      delete effectiveUpdate.nombreUsuario;
+      if (raw.$set) {
+        delete raw.$set.nombreUsuario;
+        delete raw.$set._actor;
+      }
+      if (raw.nombreUsuario) delete raw.nombreUsuario;
+      if (raw._actor) delete raw._actor;
 
       const logsToAdd = buildLogs(originalDoc, effectiveUpdate, actor);
       const newUpdate = { ...raw };
@@ -287,11 +301,7 @@ function preUpdateWithLogs(next) {
             ? effectiveUpdate.estado
             : originalDoc?.estado || ""
         );
-        const usuario = String(
-          effectiveUpdate.nombreUsuario !== undefined
-            ? effectiveUpdate.nombreUsuario
-            : originalDoc?.nombreUsuario || ""
-        );
+        const usuario = String(originalDoc?.nombreUsuario || "");
         const tipoDeCambio = Math.round(
           Number(
             effectiveUpdate.tipoDeCambio !== undefined

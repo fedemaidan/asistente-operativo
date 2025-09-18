@@ -136,14 +136,30 @@ function preUpdateWithLogs(next) {
     .then((originalDoc) => {
       if (!originalDoc) return next();
 
+      // Resolver actor para logs desde _actor u opciones, con fallback
+      const opts =
+        (typeof this.getOptions === "function" && this.getOptions()) ||
+        this.options ||
+        {};
       const actor =
-        effectiveUpdate.usuario ||
+        raw._actor ||
+        (raw.$set && raw.$set._actor) ||
+        opts._actor ||
         raw.usuario ||
         (raw.$set && raw.$set.usuario) ||
         originalDoc.usuario ||
         "Sistema";
 
       const logsToAdd = buildLogs(originalDoc, effectiveUpdate, actor);
+
+      // Asegurar inmutabilidad: impedir actualización del campo usuario y limpiar _actor
+      delete effectiveUpdate.usuario;
+      if (raw.$set) {
+        delete raw.$set.usuario;
+        delete raw.$set._actor;
+      }
+      if (raw.usuario) delete raw.usuario;
+      if (raw._actor) delete raw._actor;
 
       const newUpdate = { ...raw };
 
@@ -172,11 +188,7 @@ function preUpdateWithLogs(next) {
             : originalDoc?.moneda || ""
         );
 
-        const usuario = String(
-          effectiveUpdate.usuario !== undefined
-            ? effectiveUpdate.usuario
-            : originalDoc?.usuario || ""
-        );
+        const usuario = String(originalDoc?.usuario || "");
 
         const tipoDeCambio = Math.round(
           Number(
