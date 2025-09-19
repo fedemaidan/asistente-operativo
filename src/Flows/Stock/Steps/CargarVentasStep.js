@@ -12,19 +12,19 @@ const {
 const getDatesFromExcel = require("../../../Utiles/Chatgpt/getDatesFromExcel");
 const botSingleton = require("../../../Utiles/botSingleton");
 const stockProyeccionController = require("../../../controllers/stockProyeccionController");
+const proyeccionController = require("../../../controllers/proyeccionController");
 
-module.exports = async function CargarVentasStep(userId, excelRaw) {
+module.exports = async function CargarVentasStep(userId, data) {
   try {
+    console.log("dataCargarVentasStep", data);
+    console.log("flowDataVentasStep", FlowManager.userFlows[userId]?.flowData);
+    const { driveUrl: ventasDriveUrl, data: excelData, fileName } = data;
     const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
     const sock = botSingleton.getSock();
-    const { stockArray: stockExcelData } =
+    const { excelJson: stockExcelData, driveUrl: stockDriveUrl } =
       FlowManager.userFlows[userId]?.flowData;
 
-    console.log("stockExcelData", stockExcelData);
-
-    const { data, fileName } = await parseExcelToJson(excelRaw);
-
-    if (!data || Object.keys(data).length === 0) {
+    if (!excelData || Object.keys(excelData).length === 0) {
       await sock.sendMessage(userId, {
         text: "❌ *Error al procesar el archivo*\n\nEl archivo de ventas parece estar vacío o no tiene el formato esperado.",
       });
@@ -33,13 +33,25 @@ module.exports = async function CargarVentasStep(userId, excelRaw) {
     }
 
     const { date1, date2, dateDiff } = await getDatesFromExcel(fileName);
+    const { data: proyeccion, error: proyeccionError } =
+      await proyeccionController.create({
+        fechaInicio: new Date(date1),
+        fechaFin: new Date(date2),
+        linkStock: stockDriveUrl || null,
+        linkVentas: ventasDriveUrl || null,
+      });
 
-    const ventasExcelData = limpiarDatosVentas(data);
+    if (proyeccionError) {
+      throw new Error(proyeccionError);
+    }
+
+    const ventasExcelData = limpiarDatosVentas(excelData);
     const stockProyeccion = await proyectarStock(
       stockExcelData,
       ventasExcelData,
       dateDiff,
-      GOOGLE_SHEET_ID
+      GOOGLE_SHEET_ID,
+      proyeccion._id
     );
 
     // await updateProyeccionToSheet(

@@ -3,10 +3,13 @@ const botSingleton = require("../../../Utiles/botSingleton");
 
 module.exports = async function VerificarTipoExcelStep(userId, data) {
   const sock = botSingleton.getSock();
+  const { type } = data.data;
+
+  console.log("data", data);
 
   const mensaje =
-    `📊 *Archivo ${data.type} Detectado* 📊\n\n` +
-    `Hemos recibido tu archivo ${data.type} correctamente. Para procesarlo de la manera adecuada, necesitamos saber qué tipo de información contiene.\n\n` +
+    `📊 *Archivo ${type} Detectado* 📊\n\n` +
+    `Hemos recibido tu archivo ${type} correctamente. Para procesarlo de la manera adecuada, necesitamos saber qué tipo de información contiene.\n\n` +
     `Por favor, selecciona una opción:\n\n` +
     `*1.* 🏦 *Reporte Banco*\n` +
     `*2.* 💰 *Reporte Financiera*\n` +
@@ -19,8 +22,9 @@ module.exports = async function VerificarTipoExcelStep(userId, data) {
   });
 
   FlowManager.setFlow(userId, "EXCEL", "ElegirTipoExcelStep", {
-    excelJson: data.data,
+    excelJson: data.data.data,
     fileName: data.fileName,
-    type: data.type,
+    type: type,
+    driveUrl: data.driveUrl,
   });
 };

@@ -9,7 +9,8 @@ const StockFlow = require("../../Stock/StockFlow");
 
 module.exports = async function ElegirTipoExcelStep(userId, message) {
   const sock = botSingleton.getSock();
-  const { excelJson, fileName } = FlowManager.userFlows[userId].flowData;
+  const { excelJson, fileName, driveUrl } =
+    FlowManager.userFlows[userId].flowData;
 
   if (message == "1") {
     console.log("file name", fileName);
@@ -21,7 +22,7 @@ module.exports = async function ElegirTipoExcelStep(userId, message) {
     console.log("movimientosExcel", movimientosExcel);
     ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "3") {
-    StockFlow.start(userId, excelJson, sock);
+    StockFlow.start(userId, { excelJson, driveUrl });
   } else if (message == "4") {
     await sock.sendMessage(userId, {
       text: "❌ Has cancelado el proceso de confirmación.",

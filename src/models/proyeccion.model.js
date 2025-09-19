@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
 
 const proyeccionSchema = new mongoose.Schema({
   fechaInicio: {
@@ -9,15 +10,19 @@ const proyeccionSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
-  linkVenta: {
+  linkStock: {
     type: String,
     required: true,
   },
-  linkProyeccion: {
+  linkVentas: {
     type: String,
     required: true,
+  },
+  fechaCreacion: {
+    type: Date,
+    default: getFechaArgentina,
   },
 });
 
-const Caja = mongoose.model("Proyeccion", proyeccionSchema);
+const Proyeccion = mongoose.model("Proyeccion", proyeccionSchema);
 module.exports = Proyeccion;

@@ -2,8 +2,11 @@ const FlowManager = require("../../../FlowControl/FlowManager");
 const botSingleton = require("../../../Utiles/botSingleton");
 
 module.exports = async function CargarStockStep(userId, data) {
+  console.log("dataCargarStockStep", data);
   const sock = botSingleton.getSock();
-  const stockArray = Array.isArray(data) ? data : Object.values(data);
+  const stockArray = Array.isArray(data.excelJson)
+    ? data.excelJson
+    : Object.values(data.excelJson);
 
   if (!stockArray || stockArray.length === 0) {
     await sock.sendMessage(userId, {
@@ -24,7 +27,10 @@ module.exports = async function CargarStockStep(userId, data) {
     return;
   }
 
-  FlowManager.setFlow(userId, "STOCK", "CargarVentasStep", { stockArray });
+  FlowManager.setFlow(userId, "STOCK", "CargarVentasStep", {
+    stockArray,
+    driveUrl: data.driveUrl,
+  });
 
   await sock.sendMessage(userId, {
     text:

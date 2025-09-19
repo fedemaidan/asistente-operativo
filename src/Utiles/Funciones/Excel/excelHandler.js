@@ -2,6 +2,7 @@ const { downloadMediaMessage } = require("@whiskeysockets/baileys");
 const XLSX = require("xlsx");
 
 async function parseExcelToJson(docMessage) {
+  console.log("dockMessage", docMessage);
   if (docMessage && typeof docMessage === "object" && "data" in docMessage) {
     return {
       success: true,

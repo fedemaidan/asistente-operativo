@@ -20,6 +20,7 @@ const defaultFlow = {
       } else if (messageType == "excel") {
         result.accion = "Excel";
         result.data = message;
+        result.driveUrl = message.driveUrl;
       } else if (messageType == "csv") {
         result.accion = "Excel";
         result.data = message;
@@ -42,7 +43,10 @@ const defaultFlow = {
           break;
 
         case "Excel":
-          ExcelFlow.start(userId, result.data);
+          ExcelFlow.start(userId, {
+            data: result.data,
+            driveUrl: result.driveUrl,
+          });
           break;
 
         case "NoRegistrado":
@@ -57,6 +61,7 @@ const defaultFlow = {
   },
 
   async handle(userId, message) {
+    const sock = botSingleton.getSock();
     await sock.sendMessage(userId, {
       text: "No entendi tu mensaje, porfavor repitelo",
     });

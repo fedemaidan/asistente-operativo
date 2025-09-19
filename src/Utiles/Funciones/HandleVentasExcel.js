@@ -34,7 +34,8 @@ const proyectarStock = async (
   dataStock,
   dataVentas,
   dateDiff,
-  GOOGLE_SHEET_ID
+  GOOGLE_SHEET_ID,
+  proyeccionId
 ) => {
   // const articulosIgnorados = await getArticulosIgnoradosFromSheet(
   //   GOOGLE_SHEET_ID
@@ -80,6 +81,7 @@ const proyectarStock = async (
       ventasPeriodo: itemVentas.Cantidad,
       ventasProyectadas: Math.round(ventasDiarias * 90),
       diasSinStock: Math.round(diasSinStock),
+      proyeccionId,
     };
     stockProyeccion.push(itemStockProyeccion);
   }

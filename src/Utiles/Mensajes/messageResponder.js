@@ -4,6 +4,7 @@ const { saveImageToStorage } = require("../Chatgpt/storageHandler");
 const botSingleton = require("../botSingleton");
 const { parseCsvToJson } = require("../Funciones/Csv/csvHandler");
 const { parseExcelToJson } = require("../Funciones/Excel/excelHandler");
+const { subirExcelADrive } = require("../Funciones/Excel/excelToDrive");
 
 const messageResponder = async (messageType, msg, sender) => {
   const phoneNumber = sender.split("@")[0];
@@ -203,10 +204,10 @@ const messageResponder = async (messageType, msg, sender) => {
           if ("drive" === users.get(phoneNumber).perfil.name) {
             return;
           }
+
           const { data, fileName, success, error } = await parseExcelToJson(
             docMessage
           );
-          console.log("parseExcelToJson", data);
 
           if (!success) {
             await sock.sendMessage(sender, {
@@ -216,9 +217,25 @@ const messageResponder = async (messageType, msg, sender) => {
             return;
           }
 
+          const carpetaId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+          const driveResult = await subirExcelADrive(docMessage, carpetaId);
+
+          let driveInfo = {};
+          if (driveResult.success) {
+            driveInfo = {
+              driveFileId: driveResult.driveFileId,
+              driveUrl: driveResult.driveUrl,
+              driveFileName: driveResult.fileName,
+            };
+            console.log("Excel subido a Drive:", driveInfo);
+          } else {
+            console.warn("No se pudo subir Excel a Drive:", driveResult.error);
+            throw new Error(driveResult.error);
+          }
+
           await FlowMapper.handleMessage(
             sender,
-            { data, fileName, type: "Excel" },
+            { data, fileName, type: "Excel", ...driveInfo },
             "excel"
           );
         } else if (mimetype.endsWith("csv")) {
