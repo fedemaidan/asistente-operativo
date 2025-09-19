@@ -9,13 +9,14 @@ const {
   ejecutarMigracion,
 } = require("../Utiles/Funciones/Migracion/migracion.js");
 const migrarCuentasPendientesConCliente = require("../Utiles/Funciones/Migracion/migracionCuentasPendientes.js");
+const proyeccionRouter = require("./proyeccion.routes.js");
 const router = express.Router();
 
 router.use("/movimientos", movimientosRouter);
 router.use("/cajas", cajasRouter);
 router.use("/clientes", clientesRouter);
 router.use("/cuentas-pendientes", cuentasPendientesRouter);
-
+router.use("/proyeccion", proyeccionRouter);
 router.get("/dolar", async (req, res) => {
   const dolar = await DolarService.obtenerValoresDolar();
   res.json({
