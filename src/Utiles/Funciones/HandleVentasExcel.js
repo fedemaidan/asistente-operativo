@@ -1,3 +1,4 @@
+const productosIgnorarController = require("../../controllers/productosIgnorarController");
 const {
   getArticulosIgnoradosFromSheet,
 } = require("../GoogleServices/Sheets/proyeccionStock");
@@ -35,9 +36,13 @@ const proyectarStock = async (
   dateDiff,
   GOOGLE_SHEET_ID
 ) => {
-  const articulosIgnorados = await getArticulosIgnoradosFromSheet(
-    GOOGLE_SHEET_ID
-  );
+  // const articulosIgnorados = await getArticulosIgnoradosFromSheet(
+  //   GOOGLE_SHEET_ID
+  // );
+
+  const { data: articulosIgnorados, error } =
+    await productosIgnorarController.getAll();
+  console.log("articulosIgnorados", articulosIgnorados);
 
   const codigosIgnorados = new Set(
     articulosIgnorados.map((item) => item.codigo)
@@ -72,7 +77,7 @@ const proyectarStock = async (
       codigo: itemStock.Codigo,
       descripcion: itemStock.Descripcion,
       cantidad: itemStock.Cantidad,
-      ventas15Dias: itemVentas.Cantidad,
+      ventasPeriodo: itemVentas.Cantidad,
       ventasProyectadas: Math.round(ventasDiarias * 90),
       diasSinStock: Math.round(diasSinStock),
     };

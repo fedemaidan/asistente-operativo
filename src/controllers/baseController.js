@@ -15,6 +15,15 @@ class BaseController {
     }
   }
 
+  async createMany(data) {
+    try {
+      const savedDocuments = await this.model.insertMany(data);
+      return { success: true, data: savedDocuments };
+    } catch (error) {
+      return { success: false, error: error };
+    }
+  }
+
   async getAllPaginado({
     filter = {},
     populate = "",

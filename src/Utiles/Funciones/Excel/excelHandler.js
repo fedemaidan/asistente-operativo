@@ -2,12 +2,19 @@ const { downloadMediaMessage } = require("@whiskeysockets/baileys");
 const XLSX = require("xlsx");
 
 async function parseExcelToJson(docMessage) {
+  if (docMessage && typeof docMessage === "object" && "data" in docMessage) {
+    return {
+      success: true,
+      data: docMessage.data,
+      fileName: docMessage.fileName,
+    };
+  }
+
   try {
     const buffer = await downloadMediaMessage(
       { message: { documentMessage: docMessage } },
       "buffer"
     );
-
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
@@ -19,6 +26,7 @@ async function parseExcelToJson(docMessage) {
     };
   } catch (error) {
     console.error("Error procesando archivo Excel:", error.message);
+    console.log("error", error);
     return { success: false, error: error.message };
   }
 }
