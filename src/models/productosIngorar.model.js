@@ -8,7 +8,7 @@ const productosIgnorarSchema = new mongoose.Schema({
   },
   descripcion: {
     type: String,
-    required: true,
+    default: null,
   },
 });
 

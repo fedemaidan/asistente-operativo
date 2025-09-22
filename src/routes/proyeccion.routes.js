@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const proyeccionController = require("../controllers/proyeccionController");
 const stockProyeccionController = require("../controllers/stockProyeccionController");
+const productosIgnorarController = require("../controllers/productosIgnorarController");
 
 const router = express.Router();
 
@@ -36,6 +37,45 @@ router.get("/", async (req, res) => {
       error: error.message,
     });
     console.error(error);
+  }
+});
+
+router.get("/ignorar", async (req, res) => {
+  try {
+    const result = await productosIgnorarController.getAll();
+    return res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/ignorar", async (req, res) => {
+  try {
+    console.log("req.body", req.body);
+    const { codigos } = req.body;
+    const result = await productosIgnorarController.createMany(
+      codigos.map((codigo) => {
+        return { codigo: codigo.trim() };
+      })
+    );
+    if (result.error) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+    return res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete("/ignorar", async (req, res) => {
+  try {
+    const { id } = req.body;
+    const result = await productosIgnorarController.delete(id);
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
