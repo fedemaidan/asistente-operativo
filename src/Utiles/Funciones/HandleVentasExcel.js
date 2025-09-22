@@ -85,7 +85,6 @@ const proyectarStock = async (
     };
     stockProyeccion.push(itemStockProyeccion);
   }
-  console.log("STOCK PROYECCION 1", stockProyeccion);
   return stockProyeccion;
 };
 
