@@ -3,6 +3,7 @@ const multer = require("multer");
 const proyeccionController = require("../controllers/proyeccionController");
 const stockProyeccionController = require("../controllers/stockProyeccionController");
 const productosIgnorarController = require("../controllers/productosIgnorarController");
+const productoProyeccionController = require("../controllers/productoProyeccionController");
 
 const router = express.Router();
 
@@ -73,6 +74,16 @@ router.delete("/ignorar", async (req, res) => {
   try {
     const { id } = req.body;
     const result = await productosIgnorarController.delete(id);
+    return res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete("/producto", async (req, res) => {
+  try {
+    const { id } = req.body;
+    const result = await productoProyeccionController.delete(id);
     return res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
