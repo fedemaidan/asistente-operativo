@@ -357,12 +357,26 @@ class MovimientoController extends BaseController {
 
   async getByFechaRange(fechaInicio, fechaFin, includeInactive = false) {
     try {
-      const filters = {
-        fechaFactura: {
-          $gte: new Date(fechaInicio),
-          $lte: new Date(fechaFin),
-        },
-      };
+      const startDate = fechaInicio ? new Date(fechaInicio) : null;
+      const endDateRaw = fechaFin ? new Date(fechaFin) : null;
+      const endDate = endDateRaw ? new Date(endDateRaw.getTime()) : null;
+      if (endDate) {
+        // si vino solo día, asegurar fin de día
+        if (!fechaFin.includes("T")) endDate.setHours(23, 59, 59, 999);
+      }
+
+      const dateFilter = {};
+      if (startDate) dateFilter.$gte = startDate;
+      if (endDate) dateFilter.$lte = endDate;
+
+      const filters = Object.keys(dateFilter).length
+        ? {
+            $or: [
+              { fechaFactura: dateFilter },
+              { fechaFactura: null, fechaCreacion: dateFilter },
+            ],
+          }
+        : {};
 
       if (!includeInactive) {
         filters.active = true;
@@ -372,7 +386,7 @@ class MovimientoController extends BaseController {
         .find(filters)
         .populate("cliente")
         .populate("caja")
-        .sort({ fechaFactura: -1 });
+        .sort({ fechaFactura: -1, fechaCreacion: -1 });
       return { success: true, data: movimientos };
     } catch (error) {
       return { success: false, error: error.message };
@@ -543,30 +557,25 @@ class MovimientoController extends BaseController {
     }
   }
 
-  async getArqueoTotal() {
+  async getArqueoTotal({ fechaInicio, fechaFin, cajaNombre } = {}) {
     try {
-      const cajaEfectivo = await Caja.findOne({ nombre: "EFECTIVO" });
-      if (!cajaEfectivo) {
+      const cajaDoc = await Caja.findOne({ nombre: cajaNombre || "EFECTIVO" });
+      if (!cajaDoc) {
         return {
           success: false,
-          error: "No se encontró la caja EFECTIVO",
+          error: `No se encontró la caja ${cajaNombre || "EFECTIVO"}`,
         };
       }
 
-      const pipeline = [
-        {
-          $match: {
-            active: true,
-            caja: cajaEfectivo._id,
-          },
-        },
+      const baseMatch = { active: true, caja: cajaDoc._id };
+
+      const pipelineGeneral = [
+        { $match: baseMatch },
         {
           $group: {
             _id: null,
             totalARS: {
-              $sum: {
-                $cond: [{ $eq: ["$moneda", "ARS"] }, "$total.ars", 0],
-              },
+              $sum: { $cond: [{ $eq: ["$moneda", "ARS"] }, "$total.ars", 0] },
             },
             totalUSD: {
               $sum: {
@@ -586,23 +595,87 @@ class MovimientoController extends BaseController {
         },
       ];
 
-      const result = await this.model.aggregate(pipeline);
-
-      if (result.length === 0) {
-        return {
-          success: true,
-          data: {
-            totalARS: 0,
-            totalUSD: 0,
-            totalMovimientos: 0,
-          },
+      // Rango de fechas opcional (sobre fechaFactura/fechaCreacion)
+      let pipelineFiltrado = null;
+      if (fechaInicio || fechaFin) {
+        const parseFlexible = (value, endOfDay = false) => {
+          if (!value) return null;
+          let d = new Date(value);
+          if (isNaN(d.getTime())) {
+            const [y, m, rest] = String(value).split("-");
+            const day = parseInt((rest || "").slice(0, 2));
+            if (y && m && day) {
+              d = new Date(parseInt(y), parseInt(m) - 1, day);
+            }
+          }
+          if (isNaN(d.getTime())) return null;
+          if (endOfDay) d.setHours(23, 59, 59, 999);
+          else d.setHours(0, 0, 0, 0);
+          return d;
         };
+
+        const startDate = parseFlexible(fechaInicio, false);
+        const endDate = parseFlexible(fechaFin, true);
+
+        const dateExpr = {};
+        if (startDate) dateExpr.$gte = startDate;
+        if (endDate) dateExpr.$lte = endDate;
+
+        if (Object.keys(dateExpr).length > 0) {
+          pipelineFiltrado = [
+            {
+              $match: {
+                ...baseMatch,
+                $or: [
+                  { fechaFactura: dateExpr },
+                  { fechaFactura: null, fechaCreacion: dateExpr },
+                ],
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalARS: {
+                  $sum: {
+                    $cond: [{ $eq: ["$moneda", "ARS"] }, "$total.ars", 0],
+                  },
+                },
+                totalUSD: {
+                  $sum: {
+                    $cond: [{ $eq: ["$moneda", "USD"] }, "$total.usdBlue", 0],
+                  },
+                },
+                totalMovimientos: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                totalARS: { $round: ["$totalARS", 2] },
+                totalUSD: { $round: ["$totalUSD", 2] },
+                totalMovimientos: 1,
+              },
+            },
+          ];
+        }
       }
 
-      return {
-        success: true,
-        data: result[0],
-      };
+      const [generalRes, filtradoRes] = await Promise.all([
+        this.model.aggregate(pipelineGeneral),
+        pipelineFiltrado
+          ? this.model.aggregate(pipelineFiltrado)
+          : Promise.resolve([]),
+      ]);
+
+      const general =
+        generalRes && generalRes.length > 0
+          ? generalRes[0]
+          : { totalARS: 0, totalUSD: 0, totalMovimientos: 0 };
+
+      const filtrado =
+        filtradoRes && filtradoRes.length > 0 ? filtradoRes[0] : null;
+
+      return { success: true, data: { general, filtrado } };
     } catch (error) {
       return { success: false, error: error.message };
     }

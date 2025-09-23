@@ -40,11 +40,13 @@ class BaseController {
       let queryBuilder = this.model.find(filter);
 
       if (sort) {
-        // Mapear campos del frontend a campos de la base de datos
         const mappedSort = {};
         Object.keys(sort).forEach((key) => {
           if (key === "montoCC") {
             mappedSort["montoTotal.ars"] = sort[key];
+          } else if (key === "fecha") {
+            mappedSort["fechaFactura"] = sort[key];
+            mappedSort["fechaCreacion"] = sort[key];
           } else {
             mappedSort[key] = sort[key];
           }

@@ -66,6 +66,7 @@ router.get("/", async (req, res) => {
       clienteNombre,
       tipoFactura,
       cajaNombre,
+      moneda,
       estado,
       fecha,
       fechaInicio,
@@ -96,6 +97,7 @@ router.get("/", async (req, res) => {
       };
     }
     if (estado) filters.estado = estado;
+    if (moneda) filters.moneda = moneda;
 
     if (tipoFactura) filters.tipoFactura = tipoFactura;
 
@@ -184,46 +186,41 @@ router.get("/", async (req, res) => {
     if (fechaInicio || fechaFin) {
       const dateFilter = {};
 
-      if (fechaInicio) {
-        const [year, month, day] = fechaInicio.split("-");
-        const startDate = new Date(
-          parseInt(year),
-          parseInt(month) - 1,
-          parseInt(day),
-          0,
-          0,
-          0,
-          0
-        );
-        dateFilter.$gte = startDate;
-      }
+      const parseFlexible = (value, endOfDay = false) => {
+        if (!value) return null;
+        // Intentar parseo directo (acepta YYYY-MM-DD y YYYY-MM-DDTHH:mm)
+        let d = new Date(value);
+        if (isNaN(d.getTime())) {
+          // Fallback a YYYY-MM-DD
+          const [y, m, rest] = String(value).split("-");
+          const day = parseInt((rest || "").slice(0, 2));
+          if (y && m && day) {
+            d = new Date(parseInt(y), parseInt(m) - 1, day);
+          }
+        }
+        if (isNaN(d.getTime())) return null;
+        if (endOfDay) {
+          d.setHours(23, 59, 59, 999);
+        }
+        return d;
+      };
 
-      if (fechaFin) {
-        const [year, month, day] = fechaFin.split("-");
-        const endDate = new Date(
-          parseInt(year),
-          parseInt(month) - 1,
-          parseInt(day),
-          23,
-          59,
-          59,
-          999
-        );
-        dateFilter.$lte = endDate;
-      }
+      const startDate = parseFlexible(fechaInicio, false);
+      const endDate = parseFlexible(fechaFin, true);
 
-      // Aplicar filtro a fechaFactura con fallback a fechaCreacion
+      if (startDate) dateFilter.$gte = startDate;
+      if (endDate) dateFilter.$lte = endDate;
+
       if (Object.keys(dateFilter).length > 0) {
         filters.$or = [
           { fechaFactura: dateFilter },
-          {
-            fechaFactura: null,
-            fechaCreacion: dateFilter,
-          },
+          { fechaFactura: null, fechaCreacion: dateFilter },
         ];
 
         console.log(
-          `Filtro de rango: ${fechaInicio || "inicio"} - ${fechaFin || "fin"}`
+          `Filtro de rango flexible: ${fechaInicio || "inicio"} - ${
+            fechaFin || "fin"
+          }`
         );
         console.log(`Fechas aplicadas:`, dateFilter);
       }
@@ -231,8 +228,16 @@ router.get("/", async (req, res) => {
 
     const sort = {};
     if (sortField) {
-      const realSortField = sortField === "cuentaDestino" ? "caja" : sortField;
-      sort[realSortField] = sortDirection === "asc" ? 1 : -1;
+      const dir = sortDirection === "asc" ? 1 : -1;
+      if (sortField === "cuentaDestino") {
+        sort["caja"] = dir;
+      } else if (sortField === "fecha") {
+        // Ordenar por fechaFactura y como secundario fechaCreacion
+        sort["fechaFactura"] = dir;
+        sort["fechaCreacion"] = dir;
+      } else {
+        sort[sortField] = dir;
+      }
     }
 
     const options = {
@@ -436,8 +441,17 @@ router.post("/confirmar", async (req, res) => {
 });
 
 router.get("/arqueo/total-general", async (req, res) => {
-  const result = await movimientoController.getArqueoTotal();
-  res.json(result);
+  try {
+    const { fechaInicio, fechaFin, cajaNombre } = req.query;
+    const result = await movimientoController.getArqueoTotal({
+      fechaInicio,
+      fechaFin,
+      cajaNombre,
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 router.post("/migracion/pagos", async (req, res) => {
