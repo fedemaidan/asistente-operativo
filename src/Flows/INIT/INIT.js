@@ -21,6 +21,7 @@ const defaultFlow = {
         result.accion = "Excel";
         result.data = message;
         result.driveUrl = message.driveUrl;
+        result.fileName = message.fileName;
       } else if (messageType == "csv") {
         result.accion = "Excel";
         result.data = message;
@@ -46,6 +47,7 @@ const defaultFlow = {
           ExcelFlow.start(userId, {
             data: result.data,
             driveUrl: result.driveUrl,
+            fileName: result.fileName,
           });
           break;
 

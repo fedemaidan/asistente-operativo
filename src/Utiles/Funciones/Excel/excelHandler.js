@@ -22,8 +22,6 @@ function excelBufferToJson(buffer, fileNameFromSource) {
  * - Objeto `documentMessage` de Baileys (se descarga con downloadMediaMessage)
  */
 async function parseExcelToJson(input) {
-  console.log("parseExcelToJson input keys:", input && Object.keys(input));
-
   // Caso 1: ya viene parseado (contrato previo)
   if (input && typeof input === "object" && "data" in input) {
     return {
