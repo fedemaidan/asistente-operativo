@@ -111,6 +111,10 @@ const movimientosSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  categoria: {
+    type: String,
+    default: null,
+  },
   camposBusqueda: {
     type: String,
     default: "",
@@ -189,6 +193,7 @@ function buildLogs(originalDoc, effectiveUpdate, actor) {
     "concepto",
     "active",
     "total",
+    "categoria",
   ]);
 
   const logsToAdd = [];
@@ -337,6 +342,12 @@ function preUpdateWithLogs(next) {
           return 0;
         })();
 
+        const categoria = String(
+          effectiveUpdate.categoria !== undefined
+            ? effectiveUpdate.categoria
+            : originalDoc?.categoria || ""
+        );
+
         const camposBusqueda = [
           descripcion,
           clienteNombre,
@@ -348,6 +359,7 @@ function preUpdateWithLogs(next) {
           String(tipoDeCambio),
           String(montoCC),
           String(montoEnviado),
+          String(categoria),
         ]
           .filter(
             (v) => v !== undefined && v !== null && String(v).trim().length > 0
