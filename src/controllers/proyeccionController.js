@@ -10,6 +10,8 @@ const {
   limpiarDatosVentas,
 } = require("../Utiles/Funciones/HandleVentasExcel");
 const stockProyeccionController = require("./stockProyeccionController");
+const Tag = require("../models/tag.model");
+const ProductoProyeccion = require("../models/productoProyeccion.model");
 
 class ProyeccionController extends BaseController {
   constructor() {
@@ -117,6 +119,60 @@ class ProyeccionController extends BaseController {
         proyeccion,
       },
     };
+  }
+
+  async agregarTags(productosProyeccionId, tag, persist = false) {
+    try {
+      if (persist) {
+        const productos = await ProductoProyeccion.find(
+          { _id: { $in: productosProyeccionId } },
+          {
+            codigo: 1,
+          }
+        );
+        const codigos = Array.from(
+          new Set(
+            productos
+              .map((p) => (p?.codigo || "").toString().trim())
+              .filter((c) => c && c.length > 0)
+          )
+        );
+
+        if (codigos.length === 0) {
+          return {
+            success: false,
+            error: "No se encontraron códigos para los productos seleccionados",
+          };
+        }
+
+        const upsertRes = await Tag.updateOne(
+          { nombre: tag },
+          { $addToSet: { codigos: { $each: codigos } } },
+          { upsert: true }
+        );
+
+        return { success: true, data: { tagUpsert: upsertRes } };
+      }
+
+      const updatedProductosProyeccion = await ProductoProyeccion.updateMany(
+        { _id: { $in: productosProyeccionId } },
+        { $addToSet: { tags: tag } }
+      );
+
+      return { success: true, data: updatedProductosProyeccion };
+    } catch (error) {
+      console.error(error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getTags() {
+    try {
+      const tags = await Tag.find({});
+      return { success: true, data: tags };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 const downloadMedia = require("../Chatgpt/downloadMedia");
 const transcribeImage = require("../Chatgpt/transcribeImage");
+const transcribeAudio = require("../Chatgpt/transcribeAudio");
 const { saveImageToStorage } = require("../Chatgpt/storageHandler");
 const botSingleton = require("../botSingleton");
 const { parseCsvToJson } = require("../Funciones/Csv/csvHandler");
@@ -106,9 +107,6 @@ const messageResponder = async (messageType, msg, sender) => {
         if ("drive" === users.get(phoneNumber).perfil.name) {
           return;
         }
-        await sock.sendMessage(sender, {
-          text: "⏳ Escuchando tu mensaje... ⏳",
-        });
         if (!msg.message || !msg.message.audioMessage) {
           await sock.sendMessage(sender, {
             text: "❌ No se encontró un audio en el mensaje.",
@@ -116,14 +114,12 @@ const messageResponder = async (messageType, msg, sender) => {
           return;
         }
 
-        // Pasar el mensaje completo
         const filePath = await downloadMedia(msg, "audio");
 
         const transcripcion = await transcribeAudio(filePath);
 
-        console.log("Esta es la transcripcion");
-        console.log(transcripcion);
-        await FlowMapper.handleMessage(sender, transcripcion, messageType);
+        console.log("Esta es la transcripcion", transcripcion);
+        console.log("Esta es la ruta del archivo", filePath);
       } catch (error) {
         console.error("Error al procesar el audio:", error);
         await sock.sendMessage(sender, {

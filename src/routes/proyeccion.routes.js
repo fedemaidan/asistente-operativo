@@ -4,6 +4,7 @@ const proyeccionController = require("../controllers/proyeccionController");
 const stockProyeccionController = require("../controllers/stockProyeccionController");
 const productosIgnorarController = require("../controllers/productosIgnorarController");
 const productoProyeccionController = require("../controllers/productoProyeccionController");
+const Tag = require("../models/tag.model");
 
 const router = express.Router();
 
@@ -90,6 +91,33 @@ router.delete("/producto", async (req, res) => {
   }
 });
 
+router.get("/tags", async (req, res) => {
+  try {
+    const result = await proyeccionController.getTags();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/tags", async (req, res) => {
+  try {
+    const { productosProyeccionId, tag, persist = false } = req.body;
+    const result = await proyeccionController.agregarTags(
+      productosProyeccionId,
+      tag,
+      persist
+    );
+    if (result.error) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+    console.error(error);
+  }
+});
+
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -99,6 +127,7 @@ router.get("/:id", async (req, res) => {
       offset = 0,
       sortField = "codigo",
       sortDirection = "asc",
+      tag = "",
     } = req.query;
 
     const sort = {};
@@ -114,8 +143,67 @@ router.get("/:id", async (req, res) => {
       sort,
     };
 
+    if (tag && tag !== "Todos") {
+      const tagsByName = await Tag.find({ nombre: tag }, { codigos: 1 }).lean();
+      const codigosSet = new Set(
+        tagsByName.flatMap((t) => (Array.isArray(t.codigos) ? t.codigos : []))
+      );
+      const orConds = [{ tags: tag }];
+      if (codigosSet.size > 0) {
+        orConds.push({ codigo: { $in: Array.from(codigosSet) } });
+      }
+      options.filter = { $and: [options.filter, { $or: orConds }] };
+    }
+
     const result = await stockProyeccionController.getAllPaginado(options);
-    res.json(result);
+
+    const items = Array.isArray(result?.data) ? result.data : [];
+    const codigos = Array.from(
+      new Set(
+        items.map((p) => (p?.codigo || "").toString().trim()).filter(Boolean)
+      )
+    );
+
+    let codeToTagNames = {};
+    if (codigos.length > 0) {
+      const tagsDocs = await Tag.find(
+        { codigos: { $in: codigos } },
+        { nombre: 1, codigos: 1 }
+      ).lean();
+      for (const t of tagsDocs) {
+        const nombre = t?.nombre;
+        const lista = Array.isArray(t?.codigos) ? t.codigos : [];
+        for (const c of lista) {
+          if (!codigos.includes(c)) continue;
+          if (!codeToTagNames[c]) codeToTagNames[c] = [];
+          if (nombre && !codeToTagNames[c].includes(nombre))
+            codeToTagNames[c].push(nombre);
+        }
+      }
+      var tagsDisponiblesSet = new Set(
+        tagsDocs.map((t) => t?.nombre).filter(Boolean)
+      );
+    } else {
+      var tagsDisponiblesSet = new Set();
+    }
+
+    const enriched = items.map((p) => {
+      const existing = Array.isArray(p?.tags)
+        ? p.tags
+        : typeof p?.tags === "string" && p.tags.trim() !== ""
+        ? [p.tags]
+        : [];
+      const permanentes = codeToTagNames[p?.codigo] || [];
+      const merged = Array.from(new Set([...existing, ...permanentes]));
+      merged.forEach((t) => tagsDisponiblesSet.add(t));
+      return { ...p, tags: merged };
+    });
+
+    res.json({
+      ...result,
+      data: enriched,
+      tagsDisponibles: Array.from(tagsDisponiblesSet).sort(),
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

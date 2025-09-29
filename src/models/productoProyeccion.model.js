@@ -30,6 +30,10 @@ const productoProyeccionSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  tags: {
+    type: [String],
+    default: [],
+  },
 });
 
 const ProductoProyeccion = mongoose.model(

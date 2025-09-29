@@ -37,7 +37,7 @@ class BaseController {
     try {
       const total = await this.model.countDocuments(filter);
 
-      let queryBuilder = this.model.find(filter);
+      let queryBuilder = this.model.find(filter).lean();
 
       if (sort) {
         const mappedSort = {};
@@ -76,7 +76,7 @@ class BaseController {
     try {
       const filter = { ...query, ...options.filter };
 
-      let queryBuilder = this.model.find(filter);
+      let queryBuilder = this.model.find(filter).lean();
 
       if (options.sort) {
         queryBuilder = queryBuilder.sort(options.sort);
@@ -117,7 +117,7 @@ class BaseController {
         });
       }
 
-      const document = await queryBuilder;
+      const document = await queryBuilder.lean();
       if (!document) {
         return { success: false, error: "Documento no encontrado" };
       }
@@ -175,7 +175,7 @@ class BaseController {
 
       const filter = { $text: { $search: searchText } };
       const [data, total] = await Promise.all([
-        this.model.find(filter).skip(offset).limit(limit),
+        this.model.find(filter).skip(offset).limit(limit).lean(),
         this.model.countDocuments(filter),
       ]);
       return { success: true, data, total };
@@ -199,7 +199,7 @@ class BaseController {
           ? { $and: [filter, textExpr] }
           : textExpr;
 
-      let query = this.model.find(finalFilter).skip(offset).limit(limit);
+      let query = this.model.find(finalFilter).skip(offset).limit(limit).lean();
       if (sort && Object.keys(sort).length > 0) {
         query = this._applySorting(query, sort);
       }
