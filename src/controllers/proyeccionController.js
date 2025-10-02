@@ -1,17 +1,17 @@
-const BaseController = require("./baseController");
-const Proyeccion = require("../models/proyeccion.model");
-const { excelBufferToJson } = require("../Utiles/Funciones/Excel/excelHandler");
+const BaseController = require('./baseController');
+const Proyeccion = require('../models/proyeccion.model');
+const { excelBufferToJson } = require('../Utiles/Funciones/Excel/excelHandler');
 const {
   subirExcelBufferADrive,
-} = require("../Utiles/Funciones/Excel/excelToDrive");
-const getDatesFromExcel = require("../Utiles/Chatgpt/getDatesFromExcel");
+} = require('../Utiles/Funciones/Excel/excelToDrive');
+const getDatesFromExcel = require('../Utiles/Chatgpt/getDatesFromExcel');
 const {
   proyectarStock,
   limpiarDatosVentas,
-} = require("../Utiles/Funciones/HandleVentasExcel");
-const stockProyeccionController = require("./stockProyeccionController");
-const Tag = require("../models/tag.model");
-const ProductoProyeccion = require("../models/productoProyeccion.model");
+} = require('../Utiles/Funciones/HandleVentasExcel');
+const stockProyeccionController = require('./stockProyeccionController');
+const Tag = require('../models/tag.model');
+const ProductoProyeccion = require('../models/productoProyeccion.model');
 
 class ProyeccionController extends BaseController {
   constructor() {
@@ -20,7 +20,7 @@ class ProyeccionController extends BaseController {
 
   async createProyeccion({ fechaInicio, fechaFin, ventasFile, stockFile }) {
     if (!ventasFile || !stockFile) {
-      throw new Error("Faltan archivos ventas/stock");
+      throw new Error('Faltan archivos ventas/stock');
     }
 
     const {
@@ -39,7 +39,7 @@ class ProyeccionController extends BaseController {
     if (!ventasSuccess || !stockSuccess) {
       const errorPayload = {
         success: false,
-        error: "No se pudieron procesar los archivos Excel",
+        error: 'No se pudieron procesar los archivos Excel',
         ventasError: ventasSuccess ? null : ventasError,
         stockError: stockSuccess ? null : stockError,
       };
@@ -98,7 +98,7 @@ class ProyeccionController extends BaseController {
     });
 
     if (proyeccionError) {
-      const err = new Error("Error al crear la proyección");
+      const err = new Error('Error al crear la proyección');
       err.payload = { success: false, proyeccionError };
       throw err;
     }
@@ -107,7 +107,7 @@ class ProyeccionController extends BaseController {
       stockParsed,
       ventasParsed,
       computedDateDiff,
-      "GOOGLE_SHEET_ID",
+      'GOOGLE_SHEET_ID',
       proyeccion._id
     );
 
@@ -133,7 +133,7 @@ class ProyeccionController extends BaseController {
         const codigos = Array.from(
           new Set(
             productos
-              .map((p) => (p?.codigo || "").toString().trim())
+              .map((p) => (p?.codigo || '').toString().trim())
               .filter((c) => c && c.length > 0)
           )
         );
@@ -141,7 +141,7 @@ class ProyeccionController extends BaseController {
         if (codigos.length === 0) {
           return {
             success: false,
-            error: "No se encontraron códigos para los productos seleccionados",
+            error: 'No se encontraron códigos para los productos seleccionados',
           };
         }
 
@@ -171,6 +171,48 @@ class ProyeccionController extends BaseController {
       const tags = await Tag.find({});
       return { success: true, data: tags };
     } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async eliminarTags(productosProyeccionId) {
+    try {
+      console.log('productosProyeccionId', productosProyeccionId);
+
+      const productos = await ProductoProyeccion.find(
+        { _id: { $in: productosProyeccionId } },
+        { codigo: 1 }
+      );
+
+      const codigos = Array.from(
+        new Set(
+          productos
+            .map((p) => (p?.codigo || '').toString().trim())
+            .filter((c) => c && c.length > 0)
+        )
+      );
+
+      console.log('codigos encontrados:', codigos);
+
+      const updatedProductosProyeccion = await ProductoProyeccion.updateMany(
+        { _id: { $in: productosProyeccionId } },
+        { $set: { tags: [] } }
+      );
+
+      const updatedTags = await Tag.updateMany(
+        { codigos: { $in: codigos } },
+        { $pull: { codigos: { $in: codigos } } }
+      );
+
+      console.log('updatedProductosProyeccion', updatedProductosProyeccion);
+      console.log('updatedTags', updatedTags);
+
+      return {
+        success: true,
+        data: { updatedProductosProyeccion, updatedTags },
+      };
+    } catch (error) {
+      console.error('Error en eliminarTags:', error);
       return { success: false, error: error.message };
     }
   }

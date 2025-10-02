@@ -1,26 +1,26 @@
-const express = require("express");
-const multer = require("multer");
-const proyeccionController = require("../controllers/proyeccionController");
-const stockProyeccionController = require("../controllers/stockProyeccionController");
-const productosIgnorarController = require("../controllers/productosIgnorarController");
-const productoProyeccionController = require("../controllers/productoProyeccionController");
-const Tag = require("../models/tag.model");
+const express = require('express');
+const multer = require('multer');
+const proyeccionController = require('../controllers/proyeccionController');
+const stockProyeccionController = require('../controllers/stockProyeccionController');
+const productosIgnorarController = require('../controllers/productosIgnorarController');
+const productoProyeccionController = require('../controllers/productoProyeccionController');
+const Tag = require('../models/tag.model');
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const {
-      populate = "",
+      populate = '',
       limit = 20,
       offset = 0,
-      sortField = "fechaCreacion",
-      sortDirection = "desc",
+      sortField = 'fechaCreacion',
+      sortDirection = 'desc',
     } = req.query;
 
     const sort = {};
     if (sortField) {
-      sort[sortField] = sortDirection === "asc" ? 1 : -1;
+      sort[sortField] = sortDirection === 'asc' ? 1 : -1;
     }
 
     const options = {
@@ -42,7 +42,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/ignorar", async (req, res) => {
+router.get('/ignorar', async (req, res) => {
   try {
     const result = await productosIgnorarController.getAll();
     return res.json(result);
@@ -52,9 +52,9 @@ router.get("/ignorar", async (req, res) => {
   }
 });
 
-router.post("/ignorar", async (req, res) => {
+router.post('/ignorar', async (req, res) => {
   try {
-    console.log("req.body", req.body);
+    console.log('req.body', req.body);
     const { codigos } = req.body;
     const result = await productosIgnorarController.createMany(
       codigos.map((codigo) => {
@@ -71,7 +71,7 @@ router.post("/ignorar", async (req, res) => {
   }
 });
 
-router.delete("/ignorar", async (req, res) => {
+router.delete('/ignorar', async (req, res) => {
   try {
     const { id } = req.body;
     const result = await productosIgnorarController.delete(id);
@@ -81,7 +81,7 @@ router.delete("/ignorar", async (req, res) => {
   }
 });
 
-router.delete("/producto", async (req, res) => {
+router.delete('/producto', async (req, res) => {
   try {
     const { id } = req.body;
     const result = await productoProyeccionController.delete(id);
@@ -91,16 +91,7 @@ router.delete("/producto", async (req, res) => {
   }
 });
 
-router.get("/tags", async (req, res) => {
-  try {
-    const result = await proyeccionController.getTags();
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-router.post("/tags", async (req, res) => {
+router.post('/tags', async (req, res) => {
   try {
     const { productosProyeccionId, tag, persist = false } = req.body;
     const result = await proyeccionController.agregarTags(
@@ -118,21 +109,33 @@ router.post("/tags", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.delete('/tags', async (req, res) => {
+  try {
+    const { productosProyeccionId } = req.body;
+    const result = await proyeccionController.eliminarTags(
+      productosProyeccionId
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const {
-      populate = "",
+      populate = '',
       limit = 20,
       offset = 0,
-      sortField = "codigo",
-      sortDirection = "asc",
-      tag = "",
+      sortField = 'codigo',
+      sortDirection = 'asc',
+      tag = '',
     } = req.query;
 
     const sort = {};
     if (sortField) {
-      sort[sortField] = sortDirection === "asc" ? 1 : -1;
+      sort[sortField] = sortDirection === 'asc' ? 1 : -1;
     }
 
     const options = {
@@ -143,7 +146,7 @@ router.get("/:id", async (req, res) => {
       sort,
     };
 
-    if (tag && tag !== "Todos") {
+    if (tag && tag !== 'Todos') {
       const tagsByName = await Tag.find({ nombre: tag }, { codigos: 1 }).lean();
       const codigosSet = new Set(
         tagsByName.flatMap((t) => (Array.isArray(t.codigos) ? t.codigos : []))
@@ -160,7 +163,7 @@ router.get("/:id", async (req, res) => {
     const items = Array.isArray(result?.data) ? result.data : [];
     const codigos = Array.from(
       new Set(
-        items.map((p) => (p?.codigo || "").toString().trim()).filter(Boolean)
+        items.map((p) => (p?.codigo || '').toString().trim()).filter(Boolean)
       )
     );
 
@@ -190,7 +193,7 @@ router.get("/:id", async (req, res) => {
     const enriched = items.map((p) => {
       const existing = Array.isArray(p?.tags)
         ? p.tags
-        : typeof p?.tags === "string" && p.tags.trim() !== ""
+        : typeof p?.tags === 'string' && p.tags.trim() !== ''
         ? [p.tags]
         : [];
       const permanentes = codeToTagNames[p?.codigo] || [];
@@ -215,10 +218,10 @@ router.get("/:id", async (req, res) => {
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post(
-  "/",
+  '/',
   upload.fields([
-    { name: "ventas", maxCount: 1 },
-    { name: "stock", maxCount: 1 },
+    { name: 'ventas', maxCount: 1 },
+    { name: 'stock', maxCount: 1 },
   ]),
   async (req, res) => {
     try {
