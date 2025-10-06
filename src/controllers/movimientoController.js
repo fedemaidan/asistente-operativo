@@ -681,6 +681,81 @@ class MovimientoController extends BaseController {
     }
   }
 
+  async getTotalesAgrupados(filters = {}) {
+    try {
+      console.log(
+        "[getTotalesAgrupados] Filtros recibidos:",
+        JSON.stringify(filters, null, 2)
+      );
+
+      // Determinar si se debe agrupar por categoría o caja basándose en los filtros
+      const hasCategoriasFilter = filters.categoria && filters.categoria.$in;
+      const hasCajasFilter = filters.caja && filters.caja.$in;
+
+      const movimientos = await this.model.find(filters).lean();
+
+      console.log(
+        `[getTotalesAgrupados] Movimientos encontrados: ${movimientos.length}`
+      );
+
+      const agrupadosPorCategoria = {};
+      const agrupadosPorCaja = {};
+
+      movimientos.forEach((mov) => {
+        // Agrupar por categoría si hay filtro de categorías
+        if (hasCategoriasFilter) {
+          const catKey = mov.categoria || "sin-categoria";
+          if (!agrupadosPorCategoria[catKey]) {
+            agrupadosPorCategoria[catKey] = { totalARS: 0, totalUSD: 0 };
+          }
+          if (mov.moneda === "ARS") {
+            agrupadosPorCategoria[catKey].totalARS += mov.total?.ars || 0;
+          } else if (mov.moneda === "USD") {
+            agrupadosPorCategoria[catKey].totalUSD += mov.total?.usdBlue || 0;
+          }
+        }
+
+        // Agrupar por caja si hay filtro de cajas
+        if (hasCajasFilter) {
+          const cajaKey = mov.caja ? mov.caja.toString() : "sin-caja";
+          if (!agrupadosPorCaja[cajaKey]) {
+            agrupadosPorCaja[cajaKey] = { totalARS: 0, totalUSD: 0 };
+          }
+          if (mov.moneda === "ARS") {
+            agrupadosPorCaja[cajaKey].totalARS += mov.total?.ars || 0;
+          } else if (mov.moneda === "USD") {
+            agrupadosPorCaja[cajaKey].totalUSD += mov.total?.usdBlue || 0;
+          }
+        }
+      });
+
+      const porCategoria = Object.entries(agrupadosPorCategoria).map(
+        ([key, totals]) => ({
+          key,
+          totalARS: Math.round(totals.totalARS),
+          totalUSD: Math.round(totals.totalUSD),
+        })
+      );
+
+      const porCaja = Object.entries(agrupadosPorCaja).map(([key, totals]) => ({
+        key,
+        totalARS: Math.round(totals.totalARS),
+        totalUSD: Math.round(totals.totalUSD),
+      }));
+
+      return {
+        success: true,
+        data: {
+          porCategoria,
+          porCaja,
+        },
+      };
+    } catch (error) {
+      console.error("[getTotalesAgrupados] ERROR:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async getArqueoDiario(options = {}) {
     try {
       const match = { active: true, ...options.filter } || { active: true };

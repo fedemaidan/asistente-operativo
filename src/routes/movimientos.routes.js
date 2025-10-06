@@ -6,6 +6,56 @@ const Movimiento = require("../models/movimiento.model");
 
 const router = express.Router();
 
+// Helper para normalizar arrays desde query params
+const toArray = (val, altKey, reqQuery) => {
+  if (!val && altKey && reqQuery[altKey]) val = reqQuery[altKey];
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    if (val.includes(","))
+      return val
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    return [val];
+  }
+  return undefined;
+};
+
+const parseFlexible = (value, endOfDay = false) => {
+  if (!value) return null;
+
+  const [y, m, d] = String(value).split("-").map(Number);
+
+  if (!y || !m || !d) return null;
+
+  if (endOfDay) {
+    return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+  } else {
+    return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  }
+};
+
+// Helper para construir filtros de fecha consistentes
+const buildDateFilter = (fechaInicio, fechaFin) => {
+  if (!fechaInicio && !fechaFin) return null;
+
+  const dateFilter = {};
+  const startDate = parseFlexible(fechaInicio, false);
+  const endDate = parseFlexible(fechaFin, true);
+
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
+  if (Object.keys(dateFilter).length === 0) return null;
+
+  return {
+    $or: [
+      { fechaFactura: dateFilter },
+      { fechaFactura: null, fechaCreacion: dateFilter },
+    ],
+  };
+};
+
 router.post("/", async (req, res) => {
   const { movimiento, montoEnviado } = req.body;
 
@@ -75,8 +125,11 @@ router.get("/", async (req, res) => {
       totalMoneda = false,
       text,
       nombreUsuario,
+      cajasIds,
+      categorias,
     } = req.query;
 
+    console.log("req.query", req.query);
     const isNumberSearch =
       text && String(text).trim().length > 0 && !isNaN(Number(text));
     const filters = { active: true }; // Por defecto solo mostrar movimientos activos
@@ -137,6 +190,17 @@ router.get("/", async (req, res) => {
       }
     }
 
+    const cajasIdsArr = toArray(cajasIds, "cajasIds[]", req.query);
+    const categoriasArr = toArray(categorias, "categorias[]", req.query);
+
+    if (cajasIdsArr && cajasIdsArr.length > 0) {
+      filters.caja = { $in: cajasIdsArr };
+    }
+
+    if (categoriasArr && categoriasArr.length > 0) {
+      filters.categoria = { $in: categoriasArr };
+    }
+
     if (fecha) {
       // Crear fecha en zona horaria local (no UTC)
       // Formato esperado: "YYYY-MM-DD"
@@ -184,45 +248,14 @@ router.get("/", async (req, res) => {
 
     // Filtro por rango de fechas (fechaInicio a fechaFin)
     if (fechaInicio || fechaFin) {
-      const dateFilter = {};
-
-      const parseFlexible = (value, endOfDay = false) => {
-        if (!value) return null;
-        // Intentar parseo directo (acepta YYYY-MM-DD y YYYY-MM-DDTHH:mm)
-        let d = new Date(value);
-        if (isNaN(d.getTime())) {
-          // Fallback a YYYY-MM-DD
-          const [y, m, rest] = String(value).split("-");
-          const day = parseInt((rest || "").slice(0, 2));
-          if (y && m && day) {
-            d = new Date(parseInt(y), parseInt(m) - 1, day);
-          }
-        }
-        if (isNaN(d.getTime())) return null;
-        if (endOfDay) {
-          d.setHours(23, 59, 59, 999);
-        }
-        return d;
-      };
-
-      const startDate = parseFlexible(fechaInicio, false);
-      const endDate = parseFlexible(fechaFin, true);
-
-      if (startDate) dateFilter.$gte = startDate;
-      if (endDate) dateFilter.$lte = endDate;
-
-      if (Object.keys(dateFilter).length > 0) {
-        filters.$or = [
-          { fechaFactura: dateFilter },
-          { fechaFactura: null, fechaCreacion: dateFilter },
-        ];
-
+      const dateFilterObj = buildDateFilter(fechaInicio, fechaFin);
+      if (dateFilterObj) {
+        Object.assign(filters, dateFilterObj);
         console.log(
           `Filtro de rango flexible: ${fechaInicio || "inicio"} - ${
             fechaFin || "fin"
           }`
         );
-        console.log(`Fechas aplicadas:`, dateFilter);
       }
     }
 
@@ -399,6 +432,44 @@ router.get("/:id/logs", async (req, res) => {
   }
 });
 
+router.get("/totales-agrupados", async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin, categorias, cajasIds, type, moneda } =
+      req.query;
+
+    // Construir filtros base (igual que en GET /)
+    const filters = { active: true };
+    if (type) filters.type = type;
+    if (moneda) filters.moneda = moneda;
+
+    // Normalizar arrays
+    const cajasIdsArr = toArray(cajasIds, "cajasIds[]", req.query);
+    const categoriasArr = toArray(categorias, "categorias[]", req.query);
+
+    if (cajasIdsArr && cajasIdsArr.length > 0) {
+      filters.caja = { $in: cajasIdsArr };
+    }
+
+    if (categoriasArr && categoriasArr.length > 0) {
+      filters.categoria = { $in: categoriasArr };
+    }
+
+    // Aplicar filtro de fechas (igual que en GET /)
+    if (fechaInicio || fechaFin) {
+      const dateFilterObj = buildDateFilter(fechaInicio, fechaFin);
+      if (dateFilterObj) {
+        Object.assign(filters, dateFilterObj);
+      }
+    }
+
+    const result = await movimientoController.getTotalesAgrupados(filters);
+    res.json(result);
+  } catch (error) {
+    console.error("Error al obtener los totales agrupados:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -442,11 +513,14 @@ router.post("/confirmar", async (req, res) => {
 
 router.get("/arqueo/total-general", async (req, res) => {
   try {
-    const { fechaInicio, fechaFin, cajaNombre } = req.query;
+    const { fechaInicio, fechaFin, cajaNombre, categorias, cajasIds } =
+      req.query;
     const result = await movimientoController.getArqueoTotal({
       fechaInicio,
       fechaFin,
       cajaNombre,
+      categorias,
+      cajasIds,
     });
     res.json(result);
   } catch (error) {
