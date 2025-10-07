@@ -513,14 +513,11 @@ router.post("/confirmar", async (req, res) => {
 
 router.get("/arqueo/total-general", async (req, res) => {
   try {
-    const { fechaInicio, fechaFin, cajaNombre, categorias, cajasIds } =
-      req.query;
+    const { fechaInicio, fechaFin, cajaNombre } = req.query;
     const result = await movimientoController.getArqueoTotal({
       fechaInicio,
       fechaFin,
       cajaNombre,
-      categorias,
-      cajasIds,
     });
     res.json(result);
   } catch (error) {
