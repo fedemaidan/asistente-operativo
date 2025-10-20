@@ -353,6 +353,75 @@ router.get("/clientes-totales", async (req, res) => {
   }
 });
 
+router.get("/clientes-totales-v2", async (req, res) => {
+  try {
+    const result = await movimientoController.getClientesTotalesV2();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/clientes-totales/compare", async (req, res) => {
+  try {
+    const startV1 = Date.now();
+    const resultV1 = await movimientoController.getClientesTotales();
+    const endV1 = Date.now();
+    const timeV1 = (endV1 - startV1) / 1000; 
+
+    const startV2 = Date.now();
+    const resultV2 = await movimientoController.getClientesTotalesV2();
+    const endV2 = Date.now();
+    const timeV2 = (endV2 - startV2) / 1000;
+
+    // Calcular totales globales de la versión original
+    let totalesV1 = {
+      ARS: 0,
+      "USD BLUE": 0,
+      "USD OFICIAL": 0,
+    };
+    if (resultV1.success && Array.isArray(resultV1.data)) {
+      resultV1.data.forEach((cliente) => {
+        totalesV1.ARS += cliente.ARS || 0;
+        totalesV1["USD BLUE"] += cliente["USD BLUE"] || 0;
+        totalesV1["USD OFICIAL"] += cliente["USD OFICIAL"] || 0;
+      });
+    }
+
+    // Calcular totales globales de la versión optimizada
+    let totalesV2 = {
+      ARS: 0,
+      "USD BLUE": 0,
+      "USD OFICIAL": 0,
+    };
+    if (resultV2.success && Array.isArray(resultV2.data)) {
+      resultV2.data.forEach((cliente) => {
+        totalesV2.ARS += cliente.ARS || 0;
+        totalesV2["USD BLUE"] += cliente["USD BLUE"] || 0;
+        totalesV2["USD OFICIAL"] += cliente["USD OFICIAL"] || 0;
+      });
+    }
+
+    res.json({
+      success: true,
+      comparacion: {
+        version1_original: {
+          tiempoSegundos: timeV1,
+          cantidadClientes: resultV1.success ? resultV1.data.length : 0,
+          totales: totalesV1,
+        },
+        version2_optimizada: {
+          tiempoSegundos: timeV2,
+          cantidadClientes: resultV2.success ? resultV2.data.length : 0,
+          totales: totalesV2,
+        },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get("/cliente/:clienteId", async (req, res) => {
   try {
     const { clienteId } = req.params;

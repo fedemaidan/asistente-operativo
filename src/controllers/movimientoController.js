@@ -393,6 +393,166 @@ class MovimientoController extends BaseController {
     }
   }
 
+  async getClientesTotalesV2() {
+    try {
+      const CuentaPendiente = require("../models/cuentaPendiente.model.js");
+
+      const cuentasPendientesAgrupadas = await CuentaPendiente.aggregate([
+        {
+          $match: {
+            active: true,
+            cliente: { $ne: null, $exists: true },
+          },
+        },
+        {
+          $group: {
+            _id: "$cliente",
+            totalARS: {
+              $sum: {
+                $cond: [{ $eq: ["$cc", "ARS"] }, "$montoTotal.ars", 0],
+              },
+            },
+            totalUSDBlue: {
+              $sum: {
+                $cond: [{ $eq: ["$cc", "USD BLUE"] }, "$montoTotal.usdBlue", 0],
+              },
+            },
+            totalUSDOficial: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$cc", "USD OFICIAL"] },
+                  "$montoTotal.usdOficial",
+                  0,
+                ],
+              },
+            },
+            fechaUltimaEntrega: { $max: "$fechaCuenta" },
+          },
+        },
+      ]);
+
+      const movimientosAgrupados = await this.model.aggregate([
+        {
+          $match: {
+            active: true,
+            clienteId: { $ne: null, $exists: true },
+          },
+        },
+        {
+          $group: {
+            _id: "$clienteId",
+            totalARS: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$cuentaCorriente", "ARS"] },
+                  {
+                    $cond: [
+                      { $eq: ["$type", "INGRESO"] },
+                      "$total.ars",
+                      { $multiply: ["$total.ars", -1] },
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+            totalUSDBlue: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$cuentaCorriente", "USD BLUE"] },
+                  {
+                    $cond: [
+                      { $eq: ["$type", "INGRESO"] },
+                      "$total.usdBlue",
+                      { $multiply: ["$total.usdBlue", -1] },
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+            totalUSDOficial: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$cuentaCorriente", "USD OFICIAL"] },
+                  {
+                    $cond: [
+                      { $eq: ["$type", "INGRESO"] },
+                      "$total.usdOficial",
+                      { $multiply: ["$total.usdOficial", -1] },
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+            fechaUltimoPago: {
+              $max: {
+                $cond: [{ $eq: ["$type", "INGRESO"] }, "$fechaFactura", null],
+              },
+            },
+          },
+        },
+      ]);
+
+      const cuentasMap = new Map();
+      cuentasPendientesAgrupadas.forEach((cuenta) => {
+        cuentasMap.set(cuenta._id.toString(), {
+          totalARS: cuenta.totalARS || 0,
+          totalUSDBlue: cuenta.totalUSDBlue || 0,
+          totalUSDOficial: cuenta.totalUSDOficial || 0,
+          fechaUltimaEntrega: cuenta.fechaUltimaEntrega || null,
+        });
+      });
+
+      const movimientosMap = new Map();
+      movimientosAgrupados.forEach((mov) => {
+        movimientosMap.set(mov._id.toString(), {
+          totalARS: mov.totalARS || 0,
+          totalUSDBlue: mov.totalUSDBlue || 0,
+          totalUSDOficial: mov.totalUSDOficial || 0,
+          fechaUltimoPago: mov.fechaUltimoPago || null,
+        });
+      });
+
+      const clientes = await Cliente.find({});
+
+      const clientesTotales = clientes.map((cliente) => {
+        const clienteId = cliente._id.toString();
+
+        const cuentaData = cuentasMap.get(clienteId) || {
+          totalARS: 0,
+          totalUSDBlue: 0,
+          totalUSDOficial: 0,
+          fechaUltimaEntrega: null,
+        };
+
+        const movData = movimientosMap.get(clienteId) || {
+          totalARS: 0,
+          totalUSDBlue: 0,
+          totalUSDOficial: 0,
+          fechaUltimoPago: null,
+        };
+
+        return {
+          _id: cliente._id,
+          cliente: cliente.nombre,
+          ARS: cuentaData.totalARS + movData.totalARS,
+          "USD BLUE": cuentaData.totalUSDBlue + movData.totalUSDBlue,
+          "USD OFICIAL": cuentaData.totalUSDOficial + movData.totalUSDOficial,
+          fechaUltimoPago: movData.fechaUltimoPago,
+          fechaUltimaEntrega: cuentaData.fechaUltimaEntrega,
+        };
+      });
+
+      clientesTotales.sort((a, b) => a.cliente.localeCompare(b.cliente));
+
+      return { success: true, data: clientesTotales };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   async getClientesTotales() {
     try {
       const clientes = await Cliente.find({});

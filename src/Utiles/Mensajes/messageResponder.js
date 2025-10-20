@@ -48,6 +48,7 @@ const messageResponder = async (messageType, msg, sender) => {
         }
 
         const imageUrl = await saveImageToStorage(msg, sender);
+        console.log('imageUrl', imageUrl);
         const incomingCaption = msg?.message?.imageMessage?.caption;
         if (incomingCaption) {
           botSingleton.updateAlbumCaption(sender, incomingCaption);

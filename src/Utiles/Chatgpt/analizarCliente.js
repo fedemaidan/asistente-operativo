@@ -3,7 +3,7 @@ const clienteController = require("../../controllers/clienteController");
 
 module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
   const clientesMongo = await clienteController.getAll();
-  const clientesArr = clientesMongo?.data.map((c) => ({
+  const clientesArr = clientesMongo?.data?.map((c) => ({
     nombre: c.nombre,
     ccActivas: c.ccActivas,
   }));
