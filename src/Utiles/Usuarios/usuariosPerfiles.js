@@ -21,7 +21,11 @@ Para obtener el destino debes usar el atributo nombre unicamente de una de las s
   {
     "nombre": "ENSHOP SRL",
     "cuit": "30-71519047-4",
-    "cbu": "0720044120000000414890"
+    "cvu": "0720044120000000414890"
+  }, {
+        "nombre": "SERCOB SA",
+        "cuit": "30-70828227-4",
+        "cvu": "0000133100000000568579"
   }
 ]
 
@@ -36,7 +40,7 @@ Aclaracion:
         {
             numero_comprobante: "numero de comprobante de la transferencia",
             monto: "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
-            destino: "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL o NO ENCONTRADO",            
+            destino: "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL, SERCOB SA o NO ENCONTRADO",            
             fecha: "Es la fecha del comprobante o de transferencia. Formato dd/mm/yyyy. Si no la encuentras, devolve -",  
             hora: "Es la hora del comprobante o de transferencia. Formato hh:mm 24hs. Si no la encuentras, devolve -",
         }

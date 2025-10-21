@@ -34,9 +34,12 @@ Si el usuario quiere cambiar el atributo destino, debes elegir uno de los 4 dest
   {
     "nombre": "ENSHOP SRL",
     "cuit": "30-71519047-4",
-    "cbu": "0720044120000000414890"
-  },
-  {
+    "cvu": "0720044120000000414890"
+  }, {
+        "nombre": "SERCOB SA",
+        "cuit": "30-70828227-4",
+        "cvu": "0000133100000000568579"
+  }, {
     "nombre": "EZE",
   }, {
     "nombre": "NICO"

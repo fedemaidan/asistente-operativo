@@ -15,7 +15,11 @@ const opciones = [
         {
           "nombre": "ENSHOP SRL",
           "cuit": "30-71519047-4",
-          "cbu": "0720044120000000414890"
+          "cvu": "0720044120000000414890"
+        }, {
+        "nombre": "SERCOB SA",
+        "cuit": "30-70828227-4",
+        "cvu": "0000133100000000568579"
         }
       ]
       En el caso de que falten algunos atributos, devolve un - en el campo correspondiente  
@@ -25,7 +29,7 @@ const opciones = [
       monto:
         "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
       destino:
-        "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL o NO ENCONTRADO",
+        "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL, SERCOB SA o NO ENCONTRADO",
       fecha:
         "fecha de la transferencia, en formato dd/mm/yyyy o devolve un - si no se encuentra",
       hora: "hora de la transferencia en formato HH:MM, si no podes obtener la hora devolve un - si no se encuentra",
