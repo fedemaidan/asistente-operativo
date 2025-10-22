@@ -2,6 +2,7 @@ const FlowManager = require("../../../FlowControl/FlowManager");
 const botSingleton = require("../../../Utiles/botSingleton");
 const {
   parseJsonBancoToMovimiento,
+  parseNewJsonFinancieraToMovimiento,
   parseJsonFinancieraToMovimiento,
 } = require("../../../Utiles/Funciones/Excel/excelMovimientos");
 const ConciliacionFlow = require("../../Conciliacion/ConciliacionFlow");
@@ -18,7 +19,7 @@ module.exports = async function ElegirTipoExcelStep(userId, message) {
     console.log("movimientosExcel", movimientosExcel);
     ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "2") {
-    const movimientosExcel = parseJsonFinancieraToMovimiento(excelJson);
+    const movimientosExcel = parseNewJsonFinancieraToMovimiento(excelJson);
     console.log("movimientosExcel", movimientosExcel);
     ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "3") {
