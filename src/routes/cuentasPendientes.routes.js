@@ -87,6 +87,9 @@ router.get("/", async (req, res) => {
       includeInactive = false,
       descuentoMayorQue,
       descuentoMenorQue,
+      montoDesde,
+      montoHasta,
+      montoTipo, // 'cc' | 'enviado'
     } = req.query;
 
     console.log("req.query", req.query);
@@ -109,6 +112,67 @@ router.get("/", async (req, res) => {
 
     if (usuario) {
       filters.usuario = usuario;
+    }
+
+    // Filtro por monto (montoDesde/montoHasta) según tipo (cc|enviado)
+    const hasMontoDesde =
+      montoDesde !== undefined && montoDesde !== null && String(montoDesde).trim() !== "";
+    const hasMontoHasta =
+      montoHasta !== undefined && montoHasta !== null && String(montoHasta).trim() !== "";
+    if (hasMontoDesde || hasMontoHasta) {
+      const minVal = hasMontoDesde ? Number(montoDesde) : null;
+      const maxVal = hasMontoHasta ? Number(montoHasta) : null;
+      const exprField =
+        montoTipo === "cc"
+          ? {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$cc", "ARS"] }, then: "$montoTotal.ars" },
+                  { case: { $eq: ["$cc", "USD BLUE"] }, then: "$montoTotal.usdBlue" },
+                  { case: { $eq: ["$cc", "USD OFICIAL"] }, then: "$montoTotal.usdOficial" },
+                ],
+                default: 0,
+              },
+            }
+          : {
+              // monto enviado sobre subTotal
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$moneda", "ARS"] }, then: "$subTotal.ars" },
+                  {
+                    case: {
+                      $and: [{ $eq: ["$moneda", "USD"] }, { $eq: ["$cc", "USD BLUE"] }],
+                    },
+                    then: "$subTotal.usdBlue",
+                  },
+                  {
+                    case: {
+                      $and: [{ $eq: ["$moneda", "USD"] }, { $eq: ["$cc", "USD OFICIAL"] }],
+                    },
+                    then: "$subTotal.usdOficial",
+                  },
+                  {
+                    // Caso moneda USD y CC ARS: usar usdBlue por consistencia
+                    case: {
+                      $and: [{ $eq: ["$moneda", "USD"] }, { $eq: ["$cc", "ARS"] }],
+                    },
+                    then: "$subTotal.usdBlue",
+                  },
+                ],
+                default: 0,
+              },
+            };
+
+      const amountConds = [];
+      if (minVal !== null) {
+        amountConds.push({ $gte: [exprField, minVal] });
+      }
+      if (maxVal !== null) {
+        amountConds.push({ $lte: [exprField, maxVal] });
+      }
+      if (amountConds.length > 0) {
+        filters.$expr = amountConds.length === 1 ? amountConds[0] : { $and: amountConds };
+      }
     }
 
     if (text && String(text).trim().length > 0) {
