@@ -193,7 +193,7 @@ async function getLastRow(sheetId, sheetName) {
   return rows.length === 0 ? 1 : rows.length;
 }
 
-async function getRowsValues(sheetId, sheetName, range) {
+async function getRowsValues(sheetId, sheetName) {
   try {
     const sheetExists = await checkIfSheetExists(sheetId, sheetName);
     if (!sheetExists) {
@@ -203,10 +203,10 @@ async function getRowsValues(sheetId, sheetName, range) {
 
     const request = {
       spreadsheetId: sheetId,
-      range: `${sheetName}!${range}`,
+      range: `${sheetName}!A1:Z10000`,
     };
 
-    console.log(`Requesting range: ${sheetName}!${range}`);
+    console.log(`Requesting range: ${sheetName}!A1:Z10000`);
     const response = await sheets.spreadsheets.values.get(request);
 
     const rows = response.data.values || [];

@@ -117,6 +117,7 @@ router.get("/", async (req, res) => {
       tipoFactura,
       cajaNombre,
       moneda,
+      cuentaCorriente,
       estado,
       fecha,
       fechaInicio,
@@ -127,6 +128,9 @@ router.get("/", async (req, res) => {
       nombreUsuario,
       cajasIds,
       categorias,
+      montoDesde,
+      montoHasta,
+      montoTipo, // 'cc' | 'enviado'
     } = req.query;
 
     console.log("req.query", req.query);
@@ -150,9 +154,70 @@ router.get("/", async (req, res) => {
       };
     }
     if (estado) filters.estado = estado;
-    if (moneda) filters.moneda = moneda;
+    if (moneda) filters.moneda = String(moneda).toUpperCase();
+    if (cuentaCorriente) filters.cuentaCorriente = String(cuentaCorriente).toUpperCase();
 
     if (tipoFactura) filters.tipoFactura = tipoFactura;
+
+    // Filtro por monto (montoDesde/montoHasta) según tipo (cc|enviado)
+    const hasMontoDesde = montoDesde !== undefined && montoDesde !== null && String(montoDesde).trim() !== "";
+    const hasMontoHasta = montoHasta !== undefined && montoHasta !== null && String(montoHasta).trim() !== "";
+    if (hasMontoDesde || hasMontoHasta) {
+      const minVal = hasMontoDesde ? Number(montoDesde) : null;
+      const maxVal = hasMontoHasta ? Number(montoHasta) : null;
+      const exprField =
+        montoTipo === "cc"
+          ? {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$cuentaCorriente", "ARS"] }, then: "$total.ars" },
+                  { case: { $eq: ["$cuentaCorriente", "USD BLUE"] }, then: "$total.usdBlue" },
+                  { case: { $eq: ["$cuentaCorriente", "USD OFICIAL"] }, then: "$total.usdOficial" },
+                ],
+                default: 0,
+              },
+            }
+          : {
+              // monto enviado
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$moneda", "ARS"] }, then: "$total.ars" },
+                  // Moneda USD: elegir según CC
+                  {
+                    case: {
+                      $and: [{ $eq: ["$moneda", "USD"] }, { $eq: ["$cuentaCorriente", "USD BLUE"] }],
+                    },
+                    then: "$total.usdBlue",
+                  },
+                  {
+                    case: {
+                      $and: [{ $eq: ["$moneda", "USD"] }, { $eq: ["$cuentaCorriente", "USD OFICIAL"] }],
+                    },
+                    then: "$total.usdOficial",
+                  },
+                  {
+                    // Caso moneda USD y CC ARS: usamos usdBlue (criterio consistente con parse)
+                    case: {
+                      $and: [{ $eq: ["$moneda", "USD"] }, { $eq: ["$cuentaCorriente", "ARS"] }],
+                    },
+                    then: "$total.usdBlue",
+                  },
+                ],
+                default: 0,
+              },
+            };
+
+      const amountConds = [];
+      if (minVal !== null) {
+        amountConds.push({ $gte: [exprField, minVal] });
+      }
+      if (maxVal !== null) {
+        amountConds.push({ $lte: [exprField, maxVal] });
+      }
+      if (amountConds.length > 0) {
+        filters.$expr = amountConds.length === 1 ? amountConds[0] : { $and: amountConds };
+      }
+    }
 
     if (text && String(text).trim().length > 0) {
       if (isNumberSearch) {
