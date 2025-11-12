@@ -120,8 +120,11 @@ router.get("/", async (req, res) => {
     const hasMontoHasta =
       montoHasta !== undefined && montoHasta !== null && String(montoHasta).trim() !== "";
     if (hasMontoDesde || hasMontoHasta) {
-      const minVal = hasMontoDesde ? Number(montoDesde) : null;
-      const maxVal = hasMontoHasta ? Number(montoHasta) : null;
+      // Comparar absoluto con absoluto y ser tolerantes con inputs (ej. "hasta -10000")
+      const desdeNum = hasMontoDesde ? Number(montoDesde) : null;
+      const hastaNum = hasMontoHasta ? Number(montoHasta) : null;
+      const desdeAbs = desdeNum !== null ? Math.abs(desdeNum) : null;
+      const hastaAbs = hastaNum !== null ? Math.abs(hastaNum) : null;
       const exprField =
         montoTipo === "cc"
           ? {
@@ -164,11 +167,20 @@ router.get("/", async (req, res) => {
             };
 
       const amountConds = [];
-      if (minVal !== null) {
-        amountConds.push({ $gte: [exprField, minVal] });
-      }
-      if (maxVal !== null) {
-        amountConds.push({ $lte: [exprField, maxVal] });
+      if (hasMontoDesde && hasMontoHasta) {
+        const lower = Math.min(desdeAbs, hastaAbs);
+        const upper = Math.max(desdeAbs, hastaAbs);
+        amountConds.push({ $gte: [{ $abs: exprField }, lower] });
+        amountConds.push({ $lte: [{ $abs: exprField }, upper] });
+      } else if (hasMontoDesde) {
+        // Si sólo vino "desde": si es negativo, interpretar como "hasta abs(desde)"
+        if (desdeNum !== null && desdeNum < 0) {
+          amountConds.push({ $lte: [{ $abs: exprField }, desdeAbs] });
+        } else if (desdeAbs !== null) {
+          amountConds.push({ $gte: [{ $abs: exprField }, desdeAbs] });
+        }
+      } else if (hasMontoHasta && hastaAbs !== null) {
+        amountConds.push({ $lte: [{ $abs: exprField }, hastaAbs] });
       }
       if (amountConds.length > 0) {
         filters.$expr = amountConds.length === 1 ? amountConds[0] : { $and: amountConds };
