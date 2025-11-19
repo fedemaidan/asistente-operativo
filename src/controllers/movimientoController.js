@@ -148,6 +148,252 @@ class MovimientoController extends BaseController {
     }
   }
 
+  async createCompuesto(
+    movimientoData1,
+    montoEnviado1,
+    movimientoData2,
+    montoEnviado2,
+    saveToSheet = true,
+    calcular = true
+  ) {
+    try {
+      // Crear primer movimiento
+      const res1 = await this.createMovimiento(
+        movimientoData1,
+        montoEnviado1,
+        saveToSheet,
+        calcular
+      );
+      if (!res1?.success || !res1?.data?._id) {
+        return {
+          success: false,
+          error:
+            res1?.error ||
+            "No se pudo crear el primer movimiento del compuesto",
+        };
+      }
+
+      // Crear segundo movimiento
+      const res2 = await this.createMovimiento(
+        movimientoData2,
+        montoEnviado2,
+        saveToSheet,
+        calcular
+      );
+      if (!res2?.success || !res2?.data?._id) {
+        // Rollback del primero si falla el segundo
+        try {
+          await this.delete(res1.data._id, movimientoData1?.nombreUsuario || "Sistema");
+        } catch (rbError) {
+          console.error("Rollback fallido del primer movimiento:", rbError);
+        }
+        return {
+          success: false,
+          error:
+            res2?.error ||
+            "No se pudo crear el segundo movimiento del compuesto",
+        };
+      }
+
+      const id1 = res1.data._id;
+      const id2 = res2.data._id;
+
+      // Enlazar ambos movimientos como complementarios
+      const [upd1, upd2] = await Promise.all([
+        this.model.findByIdAndUpdate(
+          id1,
+          { movimientoComplementario: id2 },
+          { new: true }
+        ),
+        this.model.findByIdAndUpdate(
+          id2,
+          { movimientoComplementario: id1 },
+          { new: true }
+        ),
+      ]);
+
+      // Retornar con populate de caja para consistencia
+      const [mov1, mov2] = await Promise.all([
+        this.model.findById(upd1._id).populate("caja"),
+        this.model.findById(upd2._id).populate("caja"),
+      ]);
+
+      return {
+        success: true,
+        data: {
+          movimiento1: mov1 || upd1,
+          movimiento2: mov2 || upd2,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: error?.message || error };
+    }
+  }
+
+  /**
+   * Edita dos movimientos en conjunto. Si falla la actualización del segundo,
+   * intenta revertir los cambios del primero usando los valores originales de los
+   * campos modificados.
+   */
+  async editarCompuesto(id1, data1, id2, data2, nombreUsuario = "Sistema") {
+    try {
+      const [original1, original2] = await Promise.all([
+        this.model.findById(id1).lean(),
+        this.model.findById(id2).lean(),
+      ]);
+      if (!original1) return { success: false, error: "Movimiento 1 no encontrado" };
+      if (!original2) return { success: false, error: "Movimiento 2 no encontrado" };
+
+      // Inyectar actor para logs
+      const payload1 = { ...(data1 || {}), nombreUsuario };
+
+      // Guardar signos originales
+      const getMontoFirmado = (mov) => {
+        if (!mov) return 0;
+        const moneda = mov.moneda;
+        if (moneda === "ARS") return Number(mov.total?.ars || 0);
+        if (mov.moneda === "USD") {
+          return Number(
+            mov.total?.usdBlue !== undefined && mov.total?.usdBlue !== null
+              ? mov.total.usdBlue
+              : mov.total?.usdOficial || 0
+          );
+        }
+        return Number(mov.total?.ars || 0);
+      };
+      const s1Orig = Math.sign(getMontoFirmado(original1));
+      const s2Orig = Math.sign(getMontoFirmado(original2));
+
+      // 1) Actualizar primer movimiento
+      const res1 = await this.updateMovimiento(id1, payload1);
+      if (!res1?.success) {
+        return { success: false, error: res1?.error || "Error al actualizar movimiento 1" };
+      }
+
+      // Obtener nuevo monto absoluto del movimiento 1 post-actualización
+      const updated1After = await this.model.findById(id1).lean();
+      const nuevoAbsMonto1 = Math.abs(getMontoFirmado(updated1After));
+
+      // 2) Actualizar segundo movimiento con el mismo monto (magnitud) preservando su signo previo
+      // updateMovimiento para EGRESO preserva signo del original y para INGRESO usa positivo
+      const payload2 = {
+        ...(data2 || {}),
+        montoEnviado: nuevoAbsMonto1,
+        nombreUsuario,
+      };
+      const res2 = await this.updateMovimiento(id2, payload2);
+      if (!res2?.success) {
+        // 3) Rollback del primero: solo de los campos modificados en data1
+        try {
+          const revertData = {};
+          const setNested = (obj, path, value) => {
+            const parts = path.split(".");
+            let ref = obj;
+            for (let i = 0; i < parts.length - 1; i++) {
+              const p = parts[i];
+              if (!ref[p] || typeof ref[p] !== "object") ref[p] = {};
+              ref = ref[p];
+            }
+            ref[parts[parts.length - 1]] = value;
+          };
+          const flattenKeys = (prefix, val, acc) => {
+            if (val && typeof val === "object" && !Array.isArray(val)) {
+              for (const k of Object.keys(val)) {
+                flattenKeys(prefix ? `${prefix}.${k}` : k, val[k], acc);
+              }
+            } else {
+              acc.push(prefix);
+            }
+          };
+          const changedPaths = [];
+          flattenKeys("", data1 || {}, changedPaths);
+          for (const path of changedPaths) {
+            // recuperar valor original del path
+            const getVal = (obj, p) =>
+              p.split(".").reduce((a, key) => (a ? a[key] : undefined), obj);
+            const originalValue = getVal(original1, path);
+            setNested(revertData, path, originalValue === undefined ? null : originalValue);
+          }
+          await this.model.findByIdAndUpdate(id1, revertData, { new: true });
+        } catch (rbError) {
+          console.error("Error en rollback de edición compuesta:", rbError);
+        }
+        return { success: false, error: res2?.error || "Error al actualizar movimiento 2" };
+      }
+
+      // 3.1) Validación: ambos mantienen el mismo signo que tenían antes
+      const updated1 = await this.model.findById(id1).lean();
+      const updated2 = await this.model.findById(id2).lean();
+      const s1New = Math.sign(getMontoFirmado(updated1));
+      const s2New = Math.sign(getMontoFirmado(updated2));
+
+      if (!(s1New === s1Orig && s2New === s2Orig)) {
+        // Si no son signos opuestos, revertir ambos a los valores originales en campos modificados
+        try {
+          const buildRevert = (original, changes) => {
+            const revert = {};
+            const flattenKeys = (prefix, val, acc) => {
+              if (val && typeof val === "object" && !Array.isArray(val)) {
+                for (const k of Object.keys(val)) {
+                  flattenKeys(prefix ? `${prefix}.${k}` : k, val[k], acc);
+                }
+              } else {
+                acc.push(prefix);
+              }
+            };
+            const changedPaths = [];
+            flattenKeys("", changes || {}, changedPaths);
+            const setNested = (obj, path, value) => {
+              const parts = path.split(".");
+              let ref = obj;
+              for (let i = 0; i < parts.length - 1; i++) {
+                const p = parts[i];
+                if (!ref[p] || typeof ref[p] !== "object") ref[p] = {};
+                ref = ref[p];
+              }
+              ref[parts[parts.length - 1]] = value;
+            };
+            const getVal = (obj, p) =>
+              p.split(".").reduce((a, key) => (a ? a[key] : undefined), obj);
+            for (const path of changedPaths) {
+              const originalValue = getVal(original, path);
+              setNested(revert, path, originalValue === undefined ? null : originalValue);
+            }
+            // Restaurar totales originales si hubo cambio de monto
+            if (changes?.montoEnviado !== undefined || changes?.total !== undefined) {
+              if (original?.total) {
+                revert.total = original.total;
+              }
+            }
+            return revert;
+          };
+          const revert1 = buildRevert(original1, data1);
+          const revert2 = buildRevert(original2, payload2);
+          // Asegurar restaurar monto/total del complementario
+          if (original2?.total) {
+            revert2.total = original2.total;
+          }
+          await Promise.all([
+            this.model.findByIdAndUpdate(id1, { ...revert1, _actor: nombreUsuario }, { new: true }),
+            this.model.findByIdAndUpdate(id2, { ...revert2, _actor: nombreUsuario }, { new: true }),
+          ]);
+        } catch (rbErr) {
+          console.error("Error en rollback por validación de signos:", rbErr);
+        }
+        return { success: false, error: "Los movimientos deben mantener su signo original" };
+      }
+
+      // 4) Retornar ambos actualizados (populate caja para consistencia)
+      const [mov1, mov2] = await Promise.all([
+        this.model.findById(id1).populate("caja"),
+        this.model.findById(id2).populate("caja"),
+      ]);
+      return { success: true, data: { movimiento1: mov1, movimiento2: mov2 } };
+    } catch (error) {
+      return { success: false, error: error?.message || error };
+    }
+  }
+
   async updateMovimiento(id, movimientoData) {
     try {
       const movimientoActual = await this.model.findById(id);

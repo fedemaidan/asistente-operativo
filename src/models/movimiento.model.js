@@ -119,6 +119,11 @@ const movimientosSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  movimientoComplementario: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Movimiento",
+    default: null
+  },
   logs: [
     {
       campo: {

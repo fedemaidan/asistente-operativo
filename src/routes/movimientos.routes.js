@@ -73,6 +73,79 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.post("/compuesto", async (req, res) => {
+  try {
+    const {
+      movimiento1,
+      movimiento2,
+      saveToSheet = true,
+      calcular = true,
+    } = req.body;
+
+    if (
+      !movimiento1 ||
+      !movimiento2 ||
+      !movimiento1.movimiento ||
+      movimiento1.montoEnviado === undefined ||
+      !movimiento2.movimiento ||
+      movimiento2.montoEnviado === undefined
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Payload inválido. Se espera { movimiento1: { movimiento, montoEnviado }, movimiento2: { movimiento, montoEnviado } }",
+      });
+    }
+
+    const result = await movimientoController.createCompuesto(
+      movimiento1.movimiento,
+      movimiento1.montoEnviado,
+      movimiento2.movimiento,
+      movimiento2.montoEnviado,
+      saveToSheet,
+      calcular
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Editar movimientos compuestos (dos movimientos a la vez)
+router.put("/compuesto", async (req, res) => {
+  try {
+    const { id1, data1, id2, data2, nombreUsuario } = req.body;
+    if (!id1 || !id2 || !data1 || !data2) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Payload inválido. Se espera { id1, data1, id2, data2, nombreUsuario }",
+      });
+    }
+    if (!nombreUsuario) {
+      return res
+        .status(400)
+        .json({ success: false, error: "El nombreUsuario es requerido" });
+    }
+    const result = await movimientoController.editarCompuesto(
+      id1,
+      data1,
+      id2,
+      data2,
+      nombreUsuario
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 router.put("/pendiente", async (req, res) => {
   const result = await Movimiento.updateMany(
     { active: true },
