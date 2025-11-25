@@ -49,6 +49,10 @@ async function exportarPagosASheet(spreadsheetId) {
     }
     const pagos = Array.isArray(resp.data) ? resp.data : [];
 
+    let totalAExportarARS = 0;
+    let totalAExportarUSDBlue = 0;
+    let totalAExportarUSDOficial = 0;
+
     const dataRows = pagos.map((p) => {
       const idMovimiento = p?._id ? String(p._id) : "";
       const fecha = p?.fechaFactura.toISOString();
@@ -65,6 +69,10 @@ async function exportarPagosASheet(spreadsheetId) {
       const totOf = p?.total?.usdOficial != null ? p.total.usdOficial : 0;
       const camposBusqueda = p?.camposBusqueda || "";
       const movimientoComplementario = p?.movimientoComplementario ? String(p.movimientoComplementario) : "";
+      
+      totalAExportarARS += totARS;
+      totalAExportarUSDBlue += totBlue;
+      totalAExportarUSDOficial += totOf;
 
       return [
         idMovimiento,
@@ -85,6 +93,15 @@ async function exportarPagosASheet(spreadsheetId) {
       ];
     });
 
+    console.log(
+      "[Exportar Pagos] Totales a exportar:",
+      {
+        totalAExportarARS,
+        totalAExportarUSDBlue,
+        totalAExportarUSDOficial,
+      }
+    );
+
     await updateSheetWithBatchDelete(
       spreadsheetId,
       `${SHEET_NAME}!A2:Z100000`,
@@ -92,7 +109,7 @@ async function exportarPagosASheet(spreadsheetId) {
       8
     );
 
-    return { success: true, count: dataRows.length };
+    return { success: true, count: dataRows.length, totalAExportarARS, totalAExportarUSDBlue, totalAExportarUSDOficial };
   } catch (error) {
     return { success: false, error };
   }

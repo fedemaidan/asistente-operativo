@@ -1,5 +1,5 @@
 const { getRowsValues } = require("../Utiles/GoogleServices/General");
-const MovimientoController = require("../controllers/movimientoController");
+const Movimiento = require("../models/movimiento.model");
 const CajaController = require("../controllers/cajaController");
 
 function limpiarHeaders(rows) {
@@ -22,8 +22,11 @@ async function ensureCaja(nombre) {
 }
 
 async function importarPagosDesdeSheet(spreadsheetId) {
+  console.log("[Importar Pagos] Inicio", { spreadsheetId });
   const rows = await getRowsValues(spreadsheetId, "Pagos");
+  console.log("[Importar Pagos] Filas obtenidas:", Array.isArray(rows) ? rows.length : 0);
   const data = limpiarHeaders(rows);
+  console.log("[Importar Pagos] Filas tras limpiar headers:", Array.isArray(data) ? data.length : 0);
   let creados = 0;
 
   for (const row of data) {
@@ -40,23 +43,10 @@ async function importarPagosDesdeSheet(spreadsheetId) {
     const totBlue = Number(row[11] || 0) || 0;
     const totOf = Number(row[12] || 0) || 0;
 
-
-    console.log("totARS", totARS, Number(totARS));
-    console.log("totBlue", totBlue, Number(totBlue));
-    console.log("totOf", totOf, Number(totOf));
-
     const fecha = fechaISO ? new Date(fechaISO) : null;
     const caja = await ensureCaja(cajaNombre);
 
-    let montoEnviado = 0;
-    if (moneda === "ARS") montoEnviado = totARS;
-    else if (moneda === "USD") {
-      if (cc === "USD BLUE") montoEnviado = totBlue;
-      else if (cc === "USD OFICIAL") montoEnviado = totOf;
-      else montoEnviado = totBlue || totOf;
-    }
-
-    const movimientoData = {
+    const movimientoDoc = {
       type: "EGRESO",
       numeroFactura: null,
       fechaFactura: fecha || null,
@@ -77,16 +67,17 @@ async function importarPagosDesdeSheet(spreadsheetId) {
       tipoDeCambio,
       descripcion: descripcion || "",
       categoria: categoria || null,
+      total: {
+        ars: totARS,
+        usdOficial: totOf,
+        usdBlue: totBlue,
+      },
+      active: true,
     };
 
     try {
-      const res = await MovimientoController.createMovimiento(
-        movimientoData,
-        montoEnviado,
-        false,
-        true
-      );
-      if (res?.success) creados += 1;
+      const created = await Movimiento.create(movimientoDoc);
+      if (created?._id) creados += 1;
     } catch (e) {
       // continuar
     }

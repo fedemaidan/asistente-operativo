@@ -36,6 +36,10 @@ async function exportarComprobantesASheet(spreadsheetId) {
       }
     }
 
+    let totalAExportarARS = 0;
+    let totalAExportarUSDBlue = 0;
+    let totalAExportarUSDOficial = 0;
+
     const resp = await MovimientoController.getAll(
       {},
       "caja,cliente",
@@ -65,6 +69,10 @@ async function exportarComprobantesASheet(spreadsheetId) {
       const camposBusqueda = m?.camposBusqueda || "";
       const movimientoComplementario = m?.movimientoComplementario ? String(m.movimientoComplementario) : "";
     
+      totalAExportarARS += totARS;
+      totalAExportarUSDBlue += totBlue;
+      totalAExportarUSDOficial += totOf;
+
       return [
         numero,
         fecha,
@@ -86,6 +94,15 @@ async function exportarComprobantesASheet(spreadsheetId) {
       ];
     });
 
+    console.log(
+      "[Exportar Comprobantes] Totales a exportar:",
+      {
+        totalAExportarARS,
+        totalAExportarUSDBlue,
+        totalAExportarUSDOficial,
+      }
+    );
+
     await updateSheetWithBatchDelete(
       spreadsheetId,
       `${SHEET_NAME}!A2:Z100000`,
@@ -93,7 +110,7 @@ async function exportarComprobantesASheet(spreadsheetId) {
       8
     );
 
-    return { success: true, count: dataRows.length };
+    return { success: true, count: dataRows.length, totalAExportarARS, totalAExportarUSDBlue, totalAExportarUSDOficial };
   } catch (error) {
     return { success: false, error };
   }

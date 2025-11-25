@@ -1,5 +1,5 @@
 const { getRowsValues } = require("../Utiles/GoogleServices/General");
-const MovimientoController = require("../controllers/movimientoController");
+const Movimiento = require("../models/movimiento.model");
 const CajaController = require("../controllers/cajaController");
 const ClienteController = require("../controllers/clienteController");
 
@@ -40,16 +40,20 @@ async function ensureCliente(nombre) {
   const found = await ClienteController.getByNombre(nombre);
   if (found?.success && found?.data) return found.data;
   
+  // Si no existe, no creamos forzosamente: devolvemos estructura mínima para subdoc
   return {
     nombre: nombre,
     ccActivas: ["ARS"],
     descuento: 0,
-  }
+  };
 }
 
 async function importarComprobantesDesdeSheet(spreadsheetId) {
+  console.log("[Importar Comprobantes] Inicio", { spreadsheetId });
   const rows = await getRowsValues(spreadsheetId, "Comprobantes");
+  console.log("[Importar Comprobantes] Filas obtenidas:", Array.isArray(rows) ? rows.length : 0);
   const data = limpiarHeaders(rows);
+  console.log("[Importar Comprobantes] Filas tras limpiar headers:", Array.isArray(data) ? data.length : 0);
   let creados = 0;
 
   for (const row of data) {
@@ -73,16 +77,7 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
     const caja = await ensureCaja(cajaNombre);
     const cliente = await ensureCliente(clienteCell.nombre);
 
-    // Calcular monto enviado a partir de totales
-    let montoEnviado = 0;
-    if (moneda === "ARS") montoEnviado = totARS;
-    else if (moneda === "USD") {
-      if (cc === "USD BLUE") montoEnviado = totBlue;
-      else if (cc === "USD OFICIAL") montoEnviado = totOf;
-      else montoEnviado = totBlue || totOf;
-    }
-
-    const movimientoData = {
+    const movimientoDoc = {
       type: "INGRESO",
       numeroFactura: numero || null,
       fechaFactura: fecha || null,
@@ -103,21 +98,23 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
       tipoDeCambio,
       descripcion: descripcion || "",
       categoria: categoria || null,
+      total: {
+        ars: totARS,
+        usdOficial: totOf,
+        usdBlue: totBlue,
+      },
+      active: true,
     };
 
     try {
-      const res = await MovimientoController.createMovimiento(
-        movimientoData,
-        montoEnviado,
-        false,
-        true
-      );
-      if (res?.success) creados += 1;
+      const created = await Movimiento.create(movimientoDoc);
+      if (created?._id) creados += 1;
     } catch (e) {
       // continuar con el siguiente
     }
   }
 
+  console.log("[Importar Comprobantes] Finalizado, creados:", creados);
   return { success: true, count: creados };
 }
 
