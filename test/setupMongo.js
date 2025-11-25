@@ -2,11 +2,12 @@ const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 
 let mongoServer = null;
+let memoryUri = null;
 
 async function setupDB() {
   mongoServer = await MongoMemoryServer.create();
-  const uri = mongoServer.getUri();
-  await mongoose.connect(uri, {
+  memoryUri = mongoServer.getUri();
+  await mongoose.connect(memoryUri, {
     dbName: "test-db",
   });
 }
@@ -20,6 +21,7 @@ async function teardownDB() {
   if (mongoServer) {
     await mongoServer.stop();
     mongoServer = null;
+    memoryUri = null;
   }
 }
 
@@ -35,6 +37,10 @@ async function clearDB() {
   }
 }
 
-module.exports = { setupDB, teardownDB, clearDB };
+function getMemoryUri() {
+  return memoryUri;
+}
+
+module.exports = { setupDB, teardownDB, clearDB, getMemoryUri };
 
 
