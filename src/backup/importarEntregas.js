@@ -12,14 +12,17 @@ function limpiarHeaders(rows) {
 }
 
 function splitNombreId(v) {
-  const s = (v || "").toString();
-  const m = s.match(/-(\w{24})$/);
-  if (m) {
-    const id = m[1];
-    const nombre = s.slice(0, s.length - (id.length + 1));
-    return { nombre: nombre.trim(), id };
+  const s = (v || "").toString().trim();
+  const idx = s.lastIndexOf("-");
+  if (idx > -1) {
+    const suf = s.slice(idx + 1).trim();
+    const esHex24 = /^[a-fA-F0-9]{24}$/.test(suf);
+    const esUndefinedONull = /^(undefined|null)$/i.test(suf);
+    if (esHex24 || esUndefinedONull) {
+      return { nombre: s.slice(0, idx).trim(), id: esHex24 ? suf : null };
+    }
   }
-  return { nombre: s.trim(), id: null };
+  return { nombre: s, id: null };
 }
 
 async function ensureCliente(nombre) {
@@ -27,14 +30,16 @@ async function ensureCliente(nombre) {
   const found = await ClienteController.getByNombre(nombre);
   if (found?.success && found?.data) return found.data;
 
-
   console.log("[Importar Entregas] No se encontro el cliente ", nombre, ". creando nuevo cliente...");
-  const created = await ClienteController.createCliente({
-    nombre,
-    usuario: "Sistema",
-    ccActivas: ["ARS"],
-    descuento: 0,
-  });
+  const created = await ClienteController.createCliente(
+    {
+      nombre,
+      usuario: "Sistema",
+      ccActivas: ["ARS"],
+      descuento: 0,
+    },
+    { syncToSheet: false } 
+  );
   if (created?.success) return created.data;
   return null;
 }
@@ -64,13 +69,16 @@ async function importarEntregasDesdeSheet(spreadsheetId) {
     const totOf = Number(row[14] || 0) || 0;
 
     const fecha = fechaISO ? new Date(fechaISO) : new Date();
-    const cliente = await ensureCliente(clienteCell.nombre);
+    const clienteId = clienteCell.id || null;
+    const cliente = clienteId ? null : await ensureCliente(clienteCell.nombre);
 
     const cuentaData = {
       descripcion: numeroEntrega || "",
       fechaCuenta: fecha,
       fechaCreacion: fecha,
-      proveedorOCliente: cliente?.nombre || clienteCell.nombre || "-",
+      proveedorOCliente: clienteId
+        ? (clienteCell.nombre || "-")
+        : (cliente?.nombre || clienteCell.nombre || "-"),
       descuentoAplicado,
       subTotal: { ars: subARS, usdOficial: subOf, usdBlue: subBlue },
       montoTotal: { ars: totARS, usdOficial: totOf, usdBlue: totBlue },
@@ -78,7 +86,7 @@ async function importarEntregasDesdeSheet(spreadsheetId) {
       cc,
       tipoDeCambio,
       usuario,
-      cliente: cliente?._id || null,
+      cliente: clienteId || (cliente?._id || null),
       empresaId: "celulandia",
       active: true,
     };

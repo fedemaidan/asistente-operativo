@@ -36,7 +36,8 @@ async function exportarClientesASheet(spreadsheetId) {
 
     // Escribir filas
     const dataRows = clientes.map((c) => {
-      const nombre = c?.nombre || "";
+      const nombre =
+        c && c._id && c.nombre ? `${c.nombre}-${c._id}` : (c?.nombre || "");
       const descuento = c?.descuento != null ? Number(c.descuento) : 0;
       const ccActivas = Array.isArray(c?.ccActivas) ? c.ccActivas.join(", ") : "";
       return [nombre, descuento, ccActivas];

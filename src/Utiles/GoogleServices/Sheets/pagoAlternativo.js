@@ -1,5 +1,6 @@
-const { getRowsValues } = require("../General");
+const { getRowsValues, clearSheetDataExceptHeader } = require("../General");
 const MovimientoController = require("../../../controllers/movimientoController");
+const Movimiento = require("../../../models/movimiento.model");
 const { getFechaArgentina } = require("../../Funciones/HandleDates");
 const CajaController = require("../../../controllers/cajaController");
 
@@ -21,13 +22,24 @@ async function importarPagosAlternativo() {
     }
     const SHEET_NAME = "Pagos";
     const rows = await getRowsValues(sheetId, SHEET_NAME);
+    try {
+      console.log(`[ALT SHEET] ${SHEET_NAME} total rows:`, Array.isArray(rows) ? rows.length : 0);
+      if (Array.isArray(rows) && rows.length > 0) {
+        console.log(`[ALT SHEET] ${SHEET_NAME} headers (row 1):`, rows[0]);
+        console.log(
+          `[ALT SHEET] ${SHEET_NAME} sample rows (2..4):`,
+          rows.slice(1, 4)
+        );
+      }
+    } catch (_) {}
     if (!Array.isArray(rows) || rows.length <= 1) {
-      return { success: true, created: 0, errors: [] };
+      return { success: true, created: 0, errors: [], createdDocs: [] };
     }
 
     const dataRows = rows.slice(1);
     let created = 0;
     const errors = [];
+    const createdDocs = [];
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i] || [];
@@ -38,6 +50,12 @@ async function importarPagosAlternativo() {
       const cajaNombre = String(cuentaOrigenRaw || "").trim();
       const moneda = String(monedaRaw || "").trim().toUpperCase();
       let monto = Number(String(montoRaw || "0").toString().replace(/[^0-9.-]/g, ""));
+      try {
+        console.log(`[ALT SHEET] ${SHEET_NAME} row ${rowNum} raw:`, row);
+        console.log(
+          `[ALT SHEET] ${SHEET_NAME} row ${rowNum} parsed -> concepto: "${descripcion}", caja(origen): "${cajaNombre}", moneda: "${moneda}", monto: ${monto}`
+        );
+      } catch (_) {}
       if (!isFinite(monto) || monto === 0) {
         errors.push({ row: rowNum, error: "Monto inválido o cero" });
         continue;
@@ -59,6 +77,7 @@ async function importarPagosAlternativo() {
       try {
         const cajaResp = await CajaController.getByNombre(cajaNombre);
         if (!cajaResp?.success || !cajaResp?.data?._id) {
+          console.log(`[ALT SHEET] ${SHEET_NAME} row ${rowNum} caja no encontrada:`, cajaNombre);
           errors.push({ row: rowNum, error: `Caja no encontrada: ${cajaNombre}` });
           continue;
         }
@@ -73,6 +92,7 @@ async function importarPagosAlternativo() {
           fechaFactura,
           nombreUsuario: "Sistema",
           descripcion,
+          concepto: descripcion,
           estado: "CONFIRMADO",
           empresaId: "celulandia",
           active: false,
@@ -89,14 +109,21 @@ async function importarPagosAlternativo() {
           continue;
         }
         created += 1;
+        if (res?.data) {
+          const populated = await Movimiento.findById(res.data._id).populate("caja");
+          createdDocs.push(populated || res.data);
+        }
       } catch (e) {
         errors.push({ row: rowNum, error: e?.message || String(e) });
       }
     }
 
-    return { success: errors.length === 0, created, errors };
+    if (errors.length === 0) {
+      await clearSheetDataExceptHeader(sheetId, SHEET_NAME);
+    }
+    return { success: errors.length === 0, created, errors, createdDocs };
   } catch (error) {
-    return { success: false, error: error.message || error };
+    return { success: false, error: error.message || error, created: 0, errors: [String(error)], createdDocs: [] };
   }
 }
 

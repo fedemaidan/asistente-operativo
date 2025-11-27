@@ -9,6 +9,9 @@ class MovimientoController extends BaseController {
   constructor() {
     super(Movimiento);
   }
+  async confirmMovimientos(ids = []) {
+    return await this.activateMany(ids);
+  }
   async createMovimiento(
     movimientoData,
     montoEnviado,
@@ -45,24 +48,35 @@ class MovimientoController extends BaseController {
       movimientoData.tipoDeCambio = tipoDeCambio;
 
       if (type === "EGRESO") {
-        movimientoData.total = {
-          ars: montoEnviado,
-          usdOficial: montoEnviado,
-          usdBlue: montoEnviado,
-        };
+
+        if (moneda === "ARS") {
+          movimientoData.total = {
+            ars: montoEnviado,
+            usdOficial: montoEnviado / oficial.venta,
+            usdBlue: montoEnviado / blue.venta,
+          };
+        } else if (moneda === "USD") {
+          movimientoData.total = {
+            ars: montoEnviado * blue.venta,
+            usdOficial: montoEnviado,
+            usdBlue: montoEnviado,
+          };
+        } else {
+          movimientoData.total = {
+            ars: montoEnviado,
+            usdOficial: montoEnviado,
+            usdBlue: montoEnviado,
+          };
+        }
       } else if (moneda === "ARS") {
         movimientoData.total = {
           ars: montoEnviado,
-          usdOficial: calcular
-            ? montoEnviado / oficial.venta
-            : movimientoData?.montoTEST,
-          usdBlue: calcular
-            ? montoEnviado / blue.venta
-            : movimientoData?.montoTEST,
+          usdOficial: montoEnviado / oficial.venta,
+          usdBlue: montoEnviado / blue.venta,
         };
       } else if (moneda === "USD") {
         movimientoData.total = {
-          ars: calcular ? montoEnviado * blue.venta : movimientoData?.montoTEST,
+          ars: montoEnviado * blue.venta,
           usdOficial: montoEnviado,
           usdBlue: montoEnviado,
         };
@@ -428,7 +442,8 @@ class MovimientoController extends BaseController {
 
       const cambiaronTcOMonto =
         movimientoData.montoEnviado !== undefined ||
-        movimientoData.tipoDeCambio !== undefined;
+        movimientoData.tipoDeCambio !== undefined ||
+        movimientoData.total !== undefined;
 
       // Si solo cambió la caja y no hay otros cambios, no recalcular totales
       const soloCambioCaja =
@@ -464,29 +479,62 @@ class MovimientoController extends BaseController {
           ? Number(movimientoData.tipoDeCambio)
           : tcAuto();
 
-      // Reconstruir monto base si no vino explícito
-      let montoBase =
-        movimientoData.montoEnviado !== undefined
-          ? Number(movimientoData.montoEnviado)
-          : moneda === "ARS"
-          ? movimientoActual.total?.ars || 0
-          : movimientoActual.total?.usdBlue ||
-            movimientoActual.total?.usdOficial ||
-            0;
+      // Reconstruir monto base si no vino explícito:
+      // 1) Usar movimientoData.montoEnviado si llegó
+      // 2) Si no, y llegó 'total' desde el cliente, inferir según 'moneda'
+      // 3) Si no, usar total actual almacenado
+      let montoBase;
+      if (movimientoData.montoEnviado !== undefined) {
+        montoBase = Number(movimientoData.montoEnviado);
+      } else if (movimientoData.total !== undefined && movimientoData.total !== null) {
+        if (moneda === "ARS") {
+          montoBase = Number(movimientoData.total?.ars || 0);
+        } else if (moneda === "USD") {
+          const usdVal =
+            movimientoData.total?.usdBlue !== undefined &&
+            movimientoData.total?.usdBlue !== null
+              ? movimientoData.total.usdBlue
+              : movimientoData.total?.usdOficial;
+          montoBase = Number(usdVal || 0);
+        } else {
+          // Fallback si moneda desconocida
+          montoBase = Number(movimientoData.total?.ars || 0);
+        }
+      } else {
+        montoBase =
+          moneda === "ARS"
+            ? movimientoActual.total?.ars || 0
+            : movimientoActual.total?.usdBlue ||
+              movimientoActual.total?.usdOficial ||
+              0;
+      }
 
       if (cambiaronTcOMonto && !soloCambioCaja) {
         let nuevosTotales;
 
         if (type === "EGRESO") {
-          const montoOriginal = movimientoActual.total?.ars || 0;
-          const signo = montoOriginal < 0 ? -1 : 1;
-          const montoAbsoluto = Math.abs(montoBase);
-
-          nuevosTotales = {
-            ars: montoAbsoluto * signo,
-            usdOficial: montoAbsoluto * signo,
-            usdBlue: montoAbsoluto * signo,
-          };
+          // Recalcular equivalencias para pagos (EGRESO) igual que en createMovimiento,
+          // respetando el signo de montoBase.
+          if (moneda === "ARS") {
+            nuevosTotales = {
+              ars: montoBase,
+              usdOficial: montoBase / oficial.venta,
+              usdBlue: montoBase / blue.venta,
+            };
+          } else if (moneda === "USD") {
+            nuevosTotales = {
+              ars: montoBase * blue.venta,
+              usdBlue: montoBase,
+              usdOficial: montoBase,
+            };
+          } else {
+            // Fallback para moneda desconocida
+            nuevosTotales = {
+              ars: montoBase,
+              usdOficial: montoBase,
+              usdBlue: montoBase,
+            };
+          }
         } else if (moneda === "ARS") {
           // Si vino TC manual y CC es USD, usarlo para esa CC; el resto automático
           const usdOficial =

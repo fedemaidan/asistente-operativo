@@ -1,6 +1,44 @@
 require("dotenv").config();
 const { google } = require("googleapis");
 
+function sleep(ms) {
+  return new Promise((res) => setTimeout(res, ms));
+}
+
+function isQuota429(err) {
+  const code = err?.code || err?.response?.status;
+  const status = err?.status || err?.cause?.status;
+  const message = err?.message || err?.cause?.message || "";
+  return (
+    code === 429 ||
+    status === 429 ||
+    status === "RESOURCE_EXHAUSTED" ||
+    /quota/i.test(message) ||
+    /Too Many Requests/i.test(message)
+  );
+}
+
+async function withBackoff(fn, { retries = 6, baseMs = 500, maxMs = 10000 } = {}) {
+  let attempt = 0;
+  let lastErr;
+  while (attempt <= retries) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isQuota429(err)) {
+        throw err;
+      }
+      const delay =
+        Math.min(maxMs, baseMs * Math.pow(2, attempt)) *
+        (0.6 + Math.random() * 0.8); // jitter 0.6x - 1.4x
+      await sleep(delay);
+      attempt += 1;
+    }
+  }
+  throw lastErr;
+}
+
 async function getSheetsClient() {
   const credsRaw = process.env.GOOGLE_CREDENTIALS;
   if (!credsRaw) {
@@ -20,10 +58,12 @@ async function getSheetsClient() {
 }
 
 async function getSpreadsheetSheets(sheetsClient, spreadsheetId) {
-  const resp = await sheetsClient.spreadsheets.get({
-    spreadsheetId,
-    fields: "sheets.properties",
-  });
+  const resp = await withBackoff(() =>
+    sheetsClient.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets.properties",
+    })
+  );
   const list = resp.data?.sheets || [];
   return list.map((s) => s.properties);
 }
@@ -32,18 +72,20 @@ async function deleteSheetIfExists(sheetsClient, spreadsheetId, title) {
   const props = await getSpreadsheetSheets(sheetsClient, spreadsheetId);
   const found = props.find((p) => p.title === title);
   if (!found) return;
-  await sheetsClient.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      requests: [
-        {
-          deleteSheet: {
-            sheetId: found.sheetId,
+  await withBackoff(() =>
+    sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteSheet: {
+              sheetId: found.sheetId,
+            },
           },
-        },
-      ],
-    },
-  });
+        ],
+      },
+    })
+  );
 }
 
 async function main() {
@@ -58,6 +100,8 @@ async function main() {
     names.length > 0 ? names : ["Clientes", "Comprobantes", "Pagos", "Entregas"];
   for (const name of targets) {
     await deleteSheetIfExists(sheets, spreadsheetId, name);
+    // pequeña pausa entre operaciones para no golpear el rate-limit
+    await sleep(250);
   }
   console.log("Cleanup de sheets completado:", targets.join(", "));
 }

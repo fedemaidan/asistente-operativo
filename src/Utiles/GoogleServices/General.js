@@ -361,3 +361,21 @@ module.exports = {
   addFormattedHeaders,
   getLastRow,
 };
+
+
+async function clearSheetDataExceptHeader(sheetId, sheetName, endColumn = "Z", endRow = 100000) {
+  try {
+    const range = `${sheetName}!A2:${endColumn}${endRow}`;
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: sheetId,
+      range,
+    });
+    console.log(`Cleared data range ${range}`);
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to clear sheet data:", err);
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+module.exports.clearSheetDataExceptHeader = clearSheetDataExceptHeader;

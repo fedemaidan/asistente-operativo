@@ -11,6 +11,9 @@ class CuentaPendienteController extends BaseController {
   constructor() {
     super(CuentaPendiente);
   }
+  async confirmCuentas(ids = []) {
+    return await this.activateMany(ids);
+  }
 
   // Crear cuenta pendiente con validaciones específicas
   async createCuentaPendiente(cuentaData) {

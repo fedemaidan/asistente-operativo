@@ -1,4 +1,4 @@
-const { getRowsValues } = require("../General");
+const { getRowsValues, clearSheetDataExceptHeader } = require("../General");
 const { getFechaArgentina } = require("../../Funciones/HandleDates");
 const DolarService = require("../../../services/monedasService/dolarService");
 const ClienteController = require("../../../controllers/clienteController");
@@ -13,7 +13,7 @@ async function importarEntregasAlternativo() {
     const SHEET_NAME = "Entregas";
     const rows = await getRowsValues(sheetId, SHEET_NAME);
     if (!Array.isArray(rows) || rows.length <= 1) {
-      return { success: true, created: 0, errors: [] };
+      return { success: true, created: 0, errors: [], createdDocs: [] };
     }
 
     const cotizaciones = await DolarService.obtenerValoresDolar();
@@ -23,6 +23,7 @@ async function importarEntregasAlternativo() {
     const dataRows = rows.slice(1);
     let created = 0;
     const errors = [];
+    const createdDocs = [];
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i] || [];
@@ -161,14 +162,18 @@ async function importarEntregasAlternativo() {
           continue;
         }
         created += 1;
+        if (res?.data) createdDocs.push(res.data);
       } catch (e) {
         errors.push({ row: rowNum, error: e?.message || String(e) });
       }
     }
 
-    return { success: errors.length === 0, created, errors };
+    if (errors.length === 0) {
+      await clearSheetDataExceptHeader(sheetId, SHEET_NAME);
+    }
+    return { success: errors.length === 0, created, errors, createdDocs };
   } catch (error) {
-    return { success: false, error: error.message || error };
+    return { success: false, error: error.message || error, created: 0, errors: [String(error)], createdDocs: [] };
   }
 }
 

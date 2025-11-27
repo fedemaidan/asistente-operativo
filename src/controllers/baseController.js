@@ -24,6 +24,24 @@ class BaseController {
     }
   }
 
+
+  async activateMany(ids = [], actor = "Sistema") {
+    try {
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return { success: true, data: { matchedCount: 0, modifiedCount: 0 } };
+      }
+      const result = await this.model.updateMany(
+        { _id: { $in: ids } },
+        {
+          $set: { active: true },
+        }
+      );
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message || String(error) };
+    }
+  }
+
   async getAllPaginado({
     filter = {},
     populate = "",

@@ -42,7 +42,7 @@ async function exportarComprobantesASheet(spreadsheetId) {
 
     const resp = await MovimientoController.getAll(
       {},
-      "caja,cliente",
+      "caja,clienteId",
       { filter: { type: "INGRESO", active: true } }
     );
     if (!resp?.success) {
@@ -55,7 +55,10 @@ async function exportarComprobantesASheet(spreadsheetId) {
       const fecha = m?.fechaFactura.toISOString();
       const descripcion = m?.descripcion || "";
       const categoria = m?.categoria || "";
-      const clienteNombre = m?.cliente?.nombre + '-' + m?.clienteId?.toString();
+      const clienteNombre =
+        m?.clienteId && m?.clienteId?._id && m?.clienteId?.nombre
+          ? `${m.clienteId.nombre}-${m.clienteId._id}`
+          : (m?.cliente?.nombre || "");
       const cajaNombre = m?.caja?.nombre;
       const moneda = m?.moneda || "";
       const cc = m?.cuentaCorriente || "";

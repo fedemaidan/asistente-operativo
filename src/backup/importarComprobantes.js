@@ -14,13 +14,18 @@ function limpiarHeaders(rows) {
 
 function splitNombreId(v) {
   const s = (v || "").toString();
-  const m = s.match(/-(\w{24})$/);
-  if (m) {
-    const id = m[1];
-    const nombre = s.slice(0, s.length - (id.length + 1));
-    return { nombre: nombre.trim(), id };
+  const trimmed = s.trim();
+  const idx = trimmed.lastIndexOf("-");
+  if (idx > -1) {
+    const posibleSufijo = trimmed.slice(idx + 1).trim();
+    const esIdHex24 = /^[a-fA-F0-9]{24}$/.test(posibleSufijo);
+    const esUndefinedONull = /^(undefined|null)$/i.test(posibleSufijo);
+    if (esIdHex24 || esUndefinedONull) {
+      const nombre = trimmed.slice(0, idx).trim();
+      return { nombre, id: esIdHex24 ? posibleSufijo : null };
+    }
   }
-  return { nombre: s.trim(), id: null };
+  return { nombre: trimmed, id: null };
 }
 
 async function ensureCaja(nombre) {
@@ -75,17 +80,16 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
 
     const fecha = fechaISO ? new Date(fechaISO) : null;
     const caja = await ensureCaja(cajaNombre);
-    const cliente = await ensureCliente(clienteCell.nombre);
 
     const movimientoDoc = {
       type: "INGRESO",
       numeroFactura: numero || null,
       fechaFactura: fecha || null,
-      clienteId: cliente?._id || null,
+      clienteId: clienteCell.id || null,
       cliente: {
-        nombre: cliente?.nombre || clienteCell.nombre || "-",
-        ccActivas: cliente?.ccActivas || [],
-        descuento: cliente?.descuento || 0,
+        nombre: clienteCell.nombre || "-",
+        ccActivas: [],
+        descuento: 0,
       },
       cuentaCorriente: cc || "ARS",
       moneda,

@@ -15,8 +15,9 @@ class ClienteController extends BaseController {
     super(Cliente);
   }
 
-  async createCliente(clienteData) {
+  async createCliente(clienteData, options = {}) {
     try {
+      const { syncToSheet = true } = options;
       // Validar que el nombre sea único
       const existingCliente = await this.model.findOne({
         nombre: clienteData.nombre,
@@ -27,7 +28,7 @@ class ClienteController extends BaseController {
       }
 
       const result = await this.create(clienteData);
-      if (result?.success && result?.data) {
+      if (result?.success && result?.data && syncToSheet) {
         await syncClienteToAltSheet(result.data);
       }
       return result;

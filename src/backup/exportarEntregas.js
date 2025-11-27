@@ -50,7 +50,10 @@ async function exportarEntregasASheet(spreadsheetId) {
       const fechaDate = e?.fechaCuenta ? new Date(e.fechaCuenta) : null;
       const fecha = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.toISOString() : "";
       const numeroEntrega = e?.descripcion || "";
-      const clienteNombre = (e?.cliente?.nombre || e?.proveedorOCliente || "") + (e?.cliente?._id ? `-${e.cliente._id.toString()}` : "");
+      const clienteNombre =
+        e?.cliente && e?.cliente?._id && e?.cliente?.nombre
+          ? `${e.cliente.nombre}-${e.cliente._id}`
+          : (e?.cliente?.nombre || e?.proveedorOCliente || "");
       const moneda = e?.moneda || "";
       const cc = e?.cc || "";
       const tipoDeCambio = e?.tipoDeCambio != null ? e.tipoDeCambio : 1;
