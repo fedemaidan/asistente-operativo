@@ -11,6 +11,7 @@ const {
 const migrarCuentasPendientesConCliente = require('../Utiles/Funciones/Migracion/migracionCuentasPendientes.js');
 const proyeccionRouter = require('./proyeccion.routes.js');
 const tagRouter = require('./tag.routes.js');
+const backupRouter = require('./backup.routes.js');
 const router = express.Router();
 
 router.use('/movimientos', movimientosRouter);
@@ -19,6 +20,7 @@ router.use('/clientes', clientesRouter);
 router.use('/cuentas-pendientes', cuentasPendientesRouter);
 router.use('/proyeccion', proyeccionRouter);
 router.use('/tags', tagRouter);
+router.use('/backup', backupRouter);
 router.get('/dolar', async (req, res) => {
   const dolar = await DolarService.obtenerValoresDolar();
   res.json({

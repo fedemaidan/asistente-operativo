@@ -3,6 +3,12 @@ const Cliente = require("../models/cliente.model");
 const mongoose = require("mongoose");
 const Movimiento = require("../models/movimiento.model");
 const CuentaPendiente = require("../models/cuentaPendiente.model");
+const {
+  syncClienteToAltSheet,
+  updateClienteInAltSheetByName,
+  updateClienteCuentasActivasInAltSheet,
+  deleteClienteFromAltSheet,
+} = require("../Utiles/GoogleServices/Sheets/clienteAlternativo");
 
 class ClienteController extends BaseController {
   constructor() {
@@ -20,7 +26,11 @@ class ClienteController extends BaseController {
         return { success: false, error: "Ya existe un cliente con ese nombre" };
       }
 
-      return await this.create(clienteData);
+      const result = await this.create(clienteData);
+      if (result?.success && result?.data) {
+        await syncClienteToAltSheet(result.data);
+      }
+      return result;
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -216,6 +226,11 @@ class ClienteController extends BaseController {
 
   async updateCliente(id, clienteData) {
     try {
+      const clienteOriginal = await this.model.findById(id).lean();
+      if (!clienteOriginal) {
+        return { success: false, error: "Cliente no encontrado" };
+      }
+
       if (clienteData.nombre) {
         const existingCliente = await this.model.findOne({
           nombre: clienteData.nombre,
@@ -237,7 +252,11 @@ class ClienteController extends BaseController {
         usuario: usuario,
       };
 
-      return await this.update(id, updateData);
+      const result = await this.update(id, updateData);
+      if (result?.success && result?.data) {
+        await updateClienteInAltSheetByName(clienteOriginal.nombre, result.data);
+      }
+      return result;
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -285,10 +304,34 @@ class ClienteController extends BaseController {
       }
 
       // Usar el método update del BaseController - el middleware se encarga de los logs
-      return await this.update(id, {
+      const result = await this.update(id, {
         ccActivas: cuentasActivas,
         usuario: usuario, // Se usa solo para los logs
       });
+      if (result?.success) {
+        await updateClienteCuentasActivasInAltSheet(
+          clienteOriginal.nombre,
+          cuentasActivas
+        );
+      }
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deleteCliente(nombre) {
+    try {
+      if (!nombre || typeof nombre !== "string") {
+        return { success: false, error: "Nombre de cliente inválido" };
+      }
+      const cliente = await this.model.findOne({ nombre });
+      if (!cliente) {
+        return { success: false, error: "Cliente no encontrado" };
+      }
+      await this.model.deleteOne({ _id: cliente._id });
+      await deleteClienteFromAltSheet(nombre);
+      return { success: true, data: { nombre, _id: cliente._id } };
     } catch (error) {
       return { success: false, error: error.message };
     }
