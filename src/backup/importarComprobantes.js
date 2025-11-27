@@ -81,6 +81,10 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
     const fecha = fechaISO ? new Date(fechaISO) : null;
     const caja = await ensureCaja(cajaNombre);
 
+    const cajaNombreUpper = (cajaNombre || "").toString().toUpperCase().trim();
+    const esCheque = cajaNombreUpper === "CHEQUE" || cajaNombreUpper === "ECHEQ";
+    const tipoFactura = esCheque ? "cheque" : "transferencia";
+
     const movimientoDoc = {
       type: "INGRESO",
       numeroFactura: numero || null,
@@ -93,7 +97,7 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
       },
       cuentaCorriente: cc || "ARS",
       moneda,
-      tipoFactura: "transferencia",
+      tipoFactura,
       caja: caja?._id || null,
       urlImagen: imagen || "",
       estado,

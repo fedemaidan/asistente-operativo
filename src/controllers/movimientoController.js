@@ -511,28 +511,29 @@ class MovimientoController extends BaseController {
 
       if (cambiaronTcOMonto && !soloCambioCaja) {
         let nuevosTotales;
+        const signedBase = type === "EGRESO" ? -Math.abs(montoBase) : Math.abs(montoBase);
 
         if (type === "EGRESO") {
           // Recalcular equivalencias para pagos (EGRESO) igual que en createMovimiento,
           // respetando el signo de montoBase.
           if (moneda === "ARS") {
             nuevosTotales = {
-              ars: montoBase,
-              usdOficial: montoBase / oficial.venta,
-              usdBlue: montoBase / blue.venta,
+              ars: signedBase,
+              usdOficial: signedBase / oficial.venta,
+              usdBlue: signedBase / blue.venta,
             };
           } else if (moneda === "USD") {
             nuevosTotales = {
-              ars: montoBase * blue.venta,
-              usdBlue: montoBase,
-              usdOficial: montoBase,
+              ars: signedBase * blue.venta,
+              usdBlue: signedBase,
+              usdOficial: signedBase,
             };
           } else {
             // Fallback para moneda desconocida
             nuevosTotales = {
-              ars: montoBase,
-              usdOficial: montoBase,
-              usdBlue: montoBase,
+              ars: signedBase,
+              usdOficial: signedBase,
+              usdBlue: signedBase,
             };
           }
         } else if (moneda === "ARS") {
@@ -540,17 +541,17 @@ class MovimientoController extends BaseController {
           const usdOficial =
             cuentaCorriente === "USD OFICIAL" &&
             movimientoData.tipoDeCambio !== undefined
-              ? montoBase / tipoDeCambio
-              : montoBase / oficial.venta;
+              ? signedBase / tipoDeCambio
+              : signedBase / oficial.venta;
 
           const usdBlue =
             cuentaCorriente === "USD BLUE" &&
             movimientoData.tipoDeCambio !== undefined
-              ? montoBase / tipoDeCambio
-              : montoBase / blue.venta;
+              ? signedBase / tipoDeCambio
+              : signedBase / blue.venta;
 
           nuevosTotales = {
-            ars: montoBase,
+            ars: signedBase,
             usdOficial,
             usdBlue,
           };
@@ -558,13 +559,13 @@ class MovimientoController extends BaseController {
           const ars =
             cuentaCorriente === "ARS" &&
             movimientoData.tipoDeCambio !== undefined
-              ? montoBase * tipoDeCambio
-              : montoBase * blue.venta;
+              ? signedBase * tipoDeCambio
+              : signedBase * blue.venta;
 
           nuevosTotales = {
             ars,
-            usdBlue: montoBase,
-            usdOficial: montoBase,
+            usdBlue: signedBase,
+            usdOficial: signedBase,
           };
         }
 
