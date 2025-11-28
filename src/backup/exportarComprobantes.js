@@ -14,6 +14,7 @@ async function exportarComprobantesASheet(spreadsheetId) {
       "Fecha",
       "Hora",
       "Cliente",
+      "ID Cliente",
       "Caja",
       "Moneda",
       "CC",
@@ -56,9 +57,14 @@ async function exportarComprobantesASheet(spreadsheetId) {
       const descripcion = m?.descripcion || "";
       const categoria = m?.categoria || "";
       const clienteNombre =
-        m?.clienteId && m?.clienteId?._id && m?.clienteId?.nombre
-          ? `${m.clienteId.nombre}-${m.clienteId._id}`
-          : (m?.cliente?.nombre || "");
+        (m?.clienteId && m?.clienteId?.nombre) ? m.clienteId.nombre
+        : (m?.cliente?.nombre || "");
+      const clienteId =
+        m?.clienteId
+          ? (typeof m.clienteId === "string"
+              ? m.clienteId
+              : (m?.clienteId?._id ? String(m.clienteId._id) : ""))
+          : "";
       const cajaNombre = m?.caja?.nombre;
       const moneda = m?.moneda || "";
       const cc = m?.cuentaCorriente || "";
@@ -82,6 +88,7 @@ async function exportarComprobantesASheet(spreadsheetId) {
         descripcion,
         categoria,
         clienteNombre,
+        clienteId,
         cajaNombre,
         moneda,
         cc,

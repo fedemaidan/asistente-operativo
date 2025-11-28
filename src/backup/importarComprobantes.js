@@ -66,17 +66,19 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
     const fechaISO = row[1] || "";
     const descripcion = row[2] || "";
     const categoria = row[3] || "";
-    const clienteCell = splitNombreId(row[4]);
-    const cajaNombre = row[5] || "";
-    const moneda = (row[6] || "").toString().trim();
-    const cc = (row[7] || "").toString().trim();
-    const tipoDeCambio = Number(row[8] || 1) || 1;
-    const estado = (row[9] || "").toString().trim() || "CONFIRMADO";
-    const usuario = (row[10] || "").toString().trim() || "Sistema";
-    const totARS = Number(row[11] || 0) || 0;
-    const totBlue = Number(row[12] || 0) || 0;
-    const totOf = Number(row[13] || 0) || 0;
-    const imagen = row[14] || "";
+    const clienteNombre = (row[4] || "").toString().trim();
+    const posibleIdExplicito = (row[5] || "").toString().trim();
+    const idExplicito = /^[a-fA-F0-9]{24}$/.test(posibleIdExplicito) ? posibleIdExplicito : null;
+    const cajaNombre = row[6] || "";
+    const moneda = (row[7] || "").toString().trim();
+    const cc = (row[8] || "").toString().trim();
+    const tipoDeCambio = Number(row[9] || 1) || 1;
+    const estado = (row[10] || "").toString().trim() || "CONFIRMADO";
+    const usuario = (row[11] || "").toString().trim() || "Sistema";
+    const totARS = Number(row[12] || 0) || 0;
+    const totBlue = Number(row[13] || 0) || 0;
+    const totOf = Number(row[14] || 0) || 0;
+    const imagen = row[15] || "";
 
     const fecha = fechaISO ? new Date(fechaISO) : null;
     const caja = await ensureCaja(cajaNombre);
@@ -85,13 +87,24 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
     const esCheque = cajaNombreUpper === "CHEQUE" || cajaNombreUpper === "ECHEQ";
     const tipoFactura = esCheque ? "cheque" : "transferencia";
 
+    // Fallback: si no viene ID, intentar buscar por nombre para enlazar al cliente ya importado
+    let clienteIdFinal = idExplicito || null;
+    if (!clienteIdFinal && clienteNombre) {
+      try {
+        const found = await ClienteController.getByNombre(clienteNombre);
+        if (found?.success && found?.data?._id) {
+          clienteIdFinal = String(found.data._id);
+        }
+      } catch (_) {}
+    }
+
     const movimientoDoc = {
       type: "INGRESO",
       numeroFactura: numero || null,
       fechaFactura: fecha || null,
-      clienteId: clienteCell.id || null,
+      clienteId: clienteIdFinal,
       cliente: {
-        nombre: clienteCell.nombre || "-",
+        nombre: clienteNombre || "-",
         ccActivas: [],
         descuento: 0,
       },

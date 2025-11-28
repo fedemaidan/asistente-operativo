@@ -68,18 +68,44 @@ class MovimientoController extends BaseController {
             usdBlue: montoEnviado,
           };
         }
+      try {
+        let usdBalance =
+          moneda === "USD"
+            ? Number(montoEnviado || 0)
+            : moneda === "ARS"
+            ? Number(montoEnviado || 0) / Number(blue.venta || 1)
+            : 0;
+        usdBalance = type === "EGRESO" ? -Math.abs(usdBalance) : Math.abs(usdBalance);
+        movimientoData.montoDolarBalance = Number(usdBalance.toFixed(2));
+      } catch (_) {
+        movimientoData.montoDolarBalance = 0;
+      }
       } else if (moneda === "ARS") {
         movimientoData.total = {
           ars: montoEnviado,
           usdOficial: montoEnviado / oficial.venta,
           usdBlue: montoEnviado / blue.venta,
         };
+      try {
+        let usdBalance = Number(montoEnviado || 0) / Number(blue.venta || 1);
+        usdBalance = type === "EGRESO" ? -Math.abs(usdBalance) : Math.abs(usdBalance);
+        movimientoData.montoDolarBalance = Number(usdBalance.toFixed(2));
+      } catch (_) {
+        movimientoData.montoDolarBalance = 0;
+      }
       } else if (moneda === "USD") {
         movimientoData.total = {
           ars: montoEnviado * blue.venta,
           usdOficial: montoEnviado,
           usdBlue: montoEnviado,
         };
+      try {
+        let usdBalance = Number(montoEnviado || 0);
+        usdBalance = type === "EGRESO" ? -Math.abs(usdBalance) : Math.abs(usdBalance);
+        movimientoData.montoDolarBalance = Number(usdBalance.toFixed(2));
+      } catch (_) {
+        movimientoData.montoDolarBalance = 0;
+      }
       }
 
       // Normalizar fechaFactura: si no es Date válida, no enviar el campo
@@ -571,6 +597,25 @@ class MovimientoController extends BaseController {
 
         movimientoData.total = nuevosTotales;
         movimientoData.tipoDeCambio = tipoDeCambio;
+
+        // Recalcular y setear siempre montoDolarBalance alineado con total.usdBlue
+          let usdBalance = 0;
+          if (moneda === "USD") {
+            usdBalance = signedBase;
+          } else if (moneda === "ARS") {
+            const fromTotales =
+              nuevosTotales && typeof nuevosTotales.usdBlue === "number"
+                ? nuevosTotales.usdBlue
+                : (cuentaCorriente === "USD BLUE" &&
+                    movimientoData.tipoDeCambio !== undefined)
+                ? signedBase / tipoDeCambio
+                : signedBase / blue.venta;
+            usdBalance = fromTotales;
+          } else {
+            usdBalance = 0;
+          }
+          movimientoData.montoDolarBalance = Number(Number(usdBalance || 0).toFixed(2));
+      
       }
 
       if (movimientoData.caja) {
@@ -1161,26 +1206,28 @@ class MovimientoController extends BaseController {
         if (hasCategoriasFilter) {
           const catKey = mov.categoria || "sin-categoria";
           if (!agrupadosPorCategoria[catKey]) {
-            agrupadosPorCategoria[catKey] = { totalARS: 0, totalUSD: 0 };
+            agrupadosPorCategoria[catKey] = { totalARS: 0, totalUSD: 0, totalUSDBalance: 0 };
           }
           if (mov.moneda === "ARS") {
             agrupadosPorCategoria[catKey].totalARS += mov.total?.ars || 0;
           } else if (mov.moneda === "USD") {
             agrupadosPorCategoria[catKey].totalUSD += mov.total?.usdBlue || 0;
           }
+          agrupadosPorCategoria[catKey].totalUSDBalance += Number(mov.montoDolarBalance || 0);
         }
 
         // Agrupar por caja si hay filtro de cajas
         if (hasCajasFilter) {
           const cajaKey = mov.caja ? mov.caja.toString() : "sin-caja";
           if (!agrupadosPorCaja[cajaKey]) {
-            agrupadosPorCaja[cajaKey] = { totalARS: 0, totalUSD: 0 };
+            agrupadosPorCaja[cajaKey] = { totalARS: 0, totalUSD: 0, totalUSDBalance: 0 };
           }
           if (mov.moneda === "ARS") {
             agrupadosPorCaja[cajaKey].totalARS += mov.total?.ars || 0;
           } else if (mov.moneda === "USD") {
             agrupadosPorCaja[cajaKey].totalUSD += mov.total?.usdBlue || 0;
           }
+          agrupadosPorCaja[cajaKey].totalUSDBalance += Number(mov.montoDolarBalance || 0);
         }
       });
 
@@ -1189,6 +1236,7 @@ class MovimientoController extends BaseController {
           key,
           totalARS: Math.round(totals.totalARS),
           totalUSD: Math.round(totals.totalUSD),
+          totalUSDBalance: Math.round(totals.totalUSDBalance),
         })
       );
 
@@ -1196,6 +1244,7 @@ class MovimientoController extends BaseController {
         key,
         totalARS: Math.round(totals.totalARS),
         totalUSD: Math.round(totals.totalUSD),
+        totalUSDBalance: Math.round(totals.totalUSDBalance),
       }));
 
       return {

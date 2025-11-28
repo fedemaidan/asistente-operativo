@@ -15,6 +15,7 @@ async function exportarEntregasASheet(spreadsheetId) {
       "Número Entrega",
       "Fecha",
       "Cliente",
+      "ID Cliente",
       "Moneda",
       "CC",
       "Descuento Aplicado",
@@ -51,9 +52,15 @@ async function exportarEntregasASheet(spreadsheetId) {
       const fecha = fechaDate && !isNaN(fechaDate.getTime()) ? fechaDate.toISOString() : "";
       const numeroEntrega = e?.descripcion || "";
       const clienteNombre =
-        e?.cliente && e?.cliente?._id && e?.cliente?.nombre
-          ? `${e.cliente.nombre}-${e.cliente._id}`
+        (e?.cliente && e?.cliente?.nombre)
+          ? e.cliente.nombre
           : (e?.cliente?.nombre || e?.proveedorOCliente || "");
+      const clienteId =
+        e?.cliente
+          ? (typeof e.cliente === "string"
+              ? e.cliente
+              : (e?.cliente?._id ? String(e.cliente._id) : ""))
+          : "";
       const moneda = e?.moneda || "";
       const cc = e?.cc || "";
       const tipoDeCambio = e?.tipoDeCambio != null ? e.tipoDeCambio : 1;
@@ -77,6 +84,7 @@ async function exportarEntregasASheet(spreadsheetId) {
         numeroEntrega,
         fecha,
         clienteNombre,
+        clienteId,
         moneda,
         cc,
         descuentoAplicado,

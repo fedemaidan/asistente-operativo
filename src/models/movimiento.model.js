@@ -124,6 +124,11 @@ const movimientosSchema = new mongoose.Schema({
     ref: "Movimiento",
     default: null
   },
+  montoDolarBalance: {
+    type: Number,
+    default: 0,
+    required: true,
+  },
   logs: [
     {
       campo: {

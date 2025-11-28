@@ -53,32 +53,47 @@ async function importarEntregasDesdeSheet(spreadsheetId) {
     // Columns per export: [ID, Nro, Fecha, Cliente, Moneda, CC, Descuento, TipoCambio, Usuario, subARS, subBlue, subOf, totARS, totBlue, totOf, camposBusqueda]
     const numeroEntrega = (row[1] || "").toString().trim();
     const fechaISO = row[2] || "";
-    const clienteCell = splitNombreId(row[3]);
-    const moneda = (row[4] || "").toString().trim();
-    const cc = (row[5] || "").toString().trim();
-    const descuentoAplicado = Number(row[6] || 1) || 1;
-    const tipoDeCambio = Number(row[7] || 1) || 1;
-    const usuario = (row[8] || "").toString().trim() || "Sistema";
+    const clienteNombre = (row[3] || "").toString().trim();
+    const posibleIdExplicito = (row[4] || "").toString().trim();
+    const idExplicito = /^[a-fA-F0-9]{24}$/.test(posibleIdExplicito) ? posibleIdExplicito : null;
+    const moneda = (row[5] || "").toString().trim();
+    const cc = (row[6] || "").toString().trim();
+    const descuentoAplicado = Number(row[7] || 1) || 1;
+    const tipoDeCambio = Number(row[8] || 1) || 1;
+    const usuario = (row[9] || "").toString().trim() || "Sistema";
 
-    const subARS = Number(row[9] || 0) || 0;
-    const subBlue = Number(row[10] || 0) || 0;
-    const subOf = Number(row[11] || 0) || 0;
+    const subARS = Number(row[10] || 0) || 0;
+    const subBlue = Number(row[11] || 0) || 0;
+    const subOf = Number(row[12] || 0) || 0;
 
-    const totARS = Number(row[12] || 0) || 0;
-    const totBlue = Number(row[13] || 0) || 0;
-    const totOf = Number(row[14] || 0) || 0;
+    const totARS = Number(row[13] || 0) || 0;
+    const totBlue = Number(row[14] || 0) || 0;
+    const totOf = Number(row[15] || 0) || 0;
 
     const fecha = fechaISO ? new Date(fechaISO) : new Date();
-    const clienteId = clienteCell.id || null;
-    const cliente = clienteId ? null : await ensureCliente(clienteCell.nombre);
+    // Fallback: si no viene ID, intentar buscar por nombre o crear si no existe
+    let clienteId = idExplicito || null;
+    let cliente = null;
+    if (!clienteId && clienteNombre) {
+      try {
+        const found = await ClienteController.getByNombre(clienteNombre);
+        if (found?.success && found?.data?._id) {
+          clienteId = String(found.data._id);
+        }
+      } catch (_) {}
+    }
+    if (!clienteId) {
+      cliente = await ensureCliente(clienteNombre);
+      clienteId = cliente?._id || null;
+    }
 
     const cuentaData = {
       descripcion: numeroEntrega || "",
       fechaCuenta: fecha,
       fechaCreacion: fecha,
       proveedorOCliente: clienteId
-        ? (clienteCell.nombre || "-")
-        : (cliente?.nombre || clienteCell.nombre || "-"),
+        ? (clienteNombre || "-")
+        : (cliente?.nombre || clienteNombre || "-"),
       descuentoAplicado,
       subTotal: { ars: subARS, usdOficial: subOf, usdBlue: subBlue },
       montoTotal: { ars: totARS, usdOficial: totOf, usdBlue: totBlue },
@@ -86,7 +101,7 @@ async function importarEntregasDesdeSheet(spreadsheetId) {
       cc,
       tipoDeCambio,
       usuario,
-      cliente: clienteId || (cliente?._id || null),
+      cliente: clienteId || null,
       empresaId: "celulandia",
       active: true,
     };
