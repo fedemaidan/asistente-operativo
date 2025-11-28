@@ -203,10 +203,10 @@ async function getRowsValues(sheetId, sheetName) {
 
     const request = {
       spreadsheetId: sheetId,
-      range: `${sheetName}!A1:Z10000`,
+      range: `${sheetName}!A1:Z100000`,
     };
 
-    console.log(`Requesting range: ${sheetName}!A1:Z10000`);
+    console.log(`Requesting range: ${sheetName}!A1:Z100000`);
     const response = await sheets.spreadsheets.values.get(request);
 
     const rows = response.data.values || [];

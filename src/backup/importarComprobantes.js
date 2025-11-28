@@ -1,7 +1,6 @@
 const { getRowsValues } = require("../Utiles/GoogleServices/General");
 const Movimiento = require("../models/movimiento.model");
 const CajaController = require("../controllers/cajaController");
-const ClienteController = require("../controllers/clienteController");
 
 function limpiarHeaders(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
@@ -10,22 +9,6 @@ function limpiarHeaders(rows) {
     (h[0] || "").toString().toLowerCase().includes("numero") ||
     (h[3] || "").toString().toLowerCase().includes("cliente");
   return esHeader ? rows.slice(1) : rows;
-}
-
-function splitNombreId(v) {
-  const s = (v || "").toString();
-  const trimmed = s.trim();
-  const idx = trimmed.lastIndexOf("-");
-  if (idx > -1) {
-    const posibleSufijo = trimmed.slice(idx + 1).trim();
-    const esIdHex24 = /^[a-fA-F0-9]{24}$/.test(posibleSufijo);
-    const esUndefinedONull = /^(undefined|null)$/i.test(posibleSufijo);
-    if (esIdHex24 || esUndefinedONull) {
-      const nombre = trimmed.slice(0, idx).trim();
-      return { nombre, id: esIdHex24 ? posibleSufijo : null };
-    }
-  }
-  return { nombre: trimmed, id: null };
 }
 
 async function ensureCaja(nombre) {
@@ -38,19 +21,6 @@ async function ensureCaja(nombre) {
     return created?.data?.data || created?.data;
   }
   return null;
-}
-
-async function ensureCliente(nombre) {
-  if (!nombre) return null;
-  const found = await ClienteController.getByNombre(nombre);
-  if (found?.success && found?.data) return found.data;
-  
-  // Si no existe, no creamos forzosamente: devolvemos estructura mínima para subdoc
-  return {
-    nombre: nombre,
-    ccActivas: ["ARS"],
-    descuento: 0,
-  };
 }
 
 async function importarComprobantesDesdeSheet(spreadsheetId) {
@@ -87,16 +57,7 @@ async function importarComprobantesDesdeSheet(spreadsheetId) {
     const esCheque = cajaNombreUpper === "CHEQUE" || cajaNombreUpper === "ECHEQ";
     const tipoFactura = esCheque ? "cheque" : "transferencia";
 
-    // Fallback: si no viene ID, intentar buscar por nombre para enlazar al cliente ya importado
     let clienteIdFinal = idExplicito || null;
-    if (!clienteIdFinal && clienteNombre) {
-      try {
-        const found = await ClienteController.getByNombre(clienteNombre);
-        if (found?.success && found?.data?._id) {
-          clienteIdFinal = String(found.data._id);
-        }
-      } catch (_) {}
-    }
 
     const movimientoDoc = {
       type: "INGRESO",

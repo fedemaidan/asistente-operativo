@@ -1,6 +1,5 @@
 const { getRowsValues } = require("../Utiles/GoogleServices/General");
 const CuentaPendienteController = require("../controllers/cuentaPendienteController");
-const ClienteController = require("../controllers/clienteController");
 
 function limpiarHeaders(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
@@ -11,38 +10,6 @@ function limpiarHeaders(rows) {
   return esHeader ? rows.slice(1) : rows;
 }
 
-function splitNombreId(v) {
-  const s = (v || "").toString().trim();
-  const idx = s.lastIndexOf("-");
-  if (idx > -1) {
-    const suf = s.slice(idx + 1).trim();
-    const esHex24 = /^[a-fA-F0-9]{24}$/.test(suf);
-    const esUndefinedONull = /^(undefined|null)$/i.test(suf);
-    if (esHex24 || esUndefinedONull) {
-      return { nombre: s.slice(0, idx).trim(), id: esHex24 ? suf : null };
-    }
-  }
-  return { nombre: s, id: null };
-}
-
-async function ensureCliente(nombre) {
-  if (!nombre) return null;
-  const found = await ClienteController.getByNombre(nombre);
-  if (found?.success && found?.data) return found.data;
-
-  console.log("[Importar Entregas] No se encontro el cliente ", nombre, ". creando nuevo cliente...");
-  const created = await ClienteController.createCliente(
-    {
-      nombre,
-      usuario: "Sistema",
-      ccActivas: ["ARS"],
-      descuento: 0,
-    },
-    { syncToSheet: false } 
-  );
-  if (created?.success) return created.data;
-  return null;
-}
 
 async function importarEntregasDesdeSheet(spreadsheetId) {
   const rows = await getRowsValues(spreadsheetId, "Entregas");
@@ -71,29 +38,18 @@ async function importarEntregasDesdeSheet(spreadsheetId) {
     const totOf = Number(row[15] || 0) || 0;
 
     const fecha = fechaISO ? new Date(fechaISO) : new Date();
-    // Fallback: si no viene ID, intentar buscar por nombre o crear si no existe
+    // Si no viene ID explícito, omitir la entrega
     let clienteId = idExplicito || null;
-    let cliente = null;
-    if (!clienteId && clienteNombre) {
-      try {
-        const found = await ClienteController.getByNombre(clienteNombre);
-        if (found?.success && found?.data?._id) {
-          clienteId = String(found.data._id);
-        }
-      } catch (_) {}
-    }
     if (!clienteId) {
-      cliente = await ensureCliente(clienteNombre);
-      clienteId = cliente?._id || null;
+        console.log("[Importar Entregas] No se encontro el cliente ", clienteNombre, ". omitiendo entrega...");
+        continue;
     }
 
     const cuentaData = {
       descripcion: numeroEntrega || "",
       fechaCuenta: fecha,
       fechaCreacion: fecha,
-      proveedorOCliente: clienteId
-        ? (clienteNombre || "-")
-        : (cliente?.nombre || clienteNombre || "-"),
+      proveedorOCliente: clienteNombre || "-",
       descuentoAplicado,
       subTotal: { ars: subARS, usdOficial: subOf, usdBlue: subBlue },
       montoTotal: { ars: totARS, usdOficial: totOf, usdBlue: totBlue },
