@@ -65,10 +65,6 @@ async function crearSpreadsheetEnCarpeta(folderId, title) {
 
 async function backupDiario() {
   // 1) No correr en fin de semana
-  if (esFinDeSemana()) {
-    console.log("Es fin de semana. No se realiza el backup diario.");
-    return;
-  }
 
   // 2) Obtener carpeta destino y crear Sheet "BACKUP dd/mm/yy"
   const folderId = process.env.BACKUP_FOLDER;
