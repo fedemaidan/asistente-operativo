@@ -5,6 +5,16 @@ class BaseController {
     this.model = model;
   }
 
+  static normalizeDateInput(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    const dateValue = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(dateValue.getTime())) {
+      return undefined;
+    }
+    return dateValue;
+  }
+
   async create(data) {
     try {
       const newDocument = new this.model(data);

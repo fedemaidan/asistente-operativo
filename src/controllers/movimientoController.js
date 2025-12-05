@@ -108,28 +108,13 @@ class MovimientoController extends BaseController {
       }
       }
 
-      // Normalizar fechaFactura: si no es Date válida, no enviar el campo
-      if (
-        movimientoData.fechaFactura !== undefined &&
-        movimientoData.fechaFactura !== null
-      ) {
-        if (movimientoData.fechaFactura instanceof Date) {
-          if (isNaN(movimientoData.fechaFactura.getTime())) {
-            delete movimientoData.fechaFactura;
-          }
-        } else if (
-          typeof movimientoData.fechaFactura === "string" ||
-          typeof movimientoData.fechaFactura === "number"
-        ) {
-          const parsed = new Date(movimientoData.fechaFactura);
-          if (!isNaN(parsed.getTime())) {
-            movimientoData.fechaFactura = parsed;
-          } else {
-            delete movimientoData.fechaFactura;
-          }
-        } else {
-          delete movimientoData.fechaFactura;
-        }
+      const normalizedFechaFactura = BaseController.normalizeDateInput(
+        movimientoData.fechaFactura
+      );
+      if (normalizedFechaFactura === undefined) {
+        delete movimientoData.fechaFactura;
+      } else {
+        movimientoData.fechaFactura = normalizedFechaFactura;
       }
       if (cuentaCorriente === "ARS") {
         movimientoData.camposBusqueda =
@@ -439,6 +424,17 @@ class MovimientoController extends BaseController {
       const movimientoActual = await this.model.findById(id);
       if (!movimientoActual) {
         return { success: false, error: "Movimiento no encontrado" };
+      }
+
+      if (Object.prototype.hasOwnProperty.call(movimientoData, "fechaFactura")) {
+        const normalizedFecha = BaseController.normalizeDateInput(
+          movimientoData.fechaFactura
+        );
+        if (normalizedFecha === undefined) {
+          delete movimientoData.fechaFactura;
+        } else {
+          movimientoData.fechaFactura = normalizedFecha;
+        }
       }
 
       if (

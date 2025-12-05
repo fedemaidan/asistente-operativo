@@ -1,5 +1,6 @@
 const { getByChatGpt4o } = require("./Base");
-const FlowManager = require("../../FlowControl/FlowManager");
+const { formatDateToDDMMYYYY } = require("../Funciones/HandleDates");
+
 
 const opciones = [
   {
@@ -31,7 +32,9 @@ const opciones = [
       destino:
         "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL, SERCOB SA o NO ENCONTRADO",
       fecha:
-        "fecha de la transferencia, en formato dd/mm/yyyy o devolve un - si no se encuentra",
+        `fecha de la transferencia, en formato dd/mm/yyyy o devolve un - si no se encuentra. Tene en cuenta que la fecha de hoy es ${formatDateToDDMMYYYY(
+          new Date()
+        )}, por lo que la fecha de transferencia debe ser cercana a la fecha de hoy`,
       hora: "hora de la transferencia en formato HH:MM, si no podes obtener la hora devolve un - si no se encuentra",
     },
   },

@@ -164,6 +164,13 @@ router.put("/:id", async (req, res) => {
       .status(400)
       .json({ error: "El nombreUsuario es requerido para los logs" });
   }
+  if (
+    Object.prototype.hasOwnProperty.call(req.body, "fechaFactura") &&
+    typeof req.body.fechaFactura === "string" &&
+    !req.body.fechaFactura.trim()
+  ) {
+    req.body.fechaFactura = null;
+  }
 
   try {
     const { id } = req.params;
