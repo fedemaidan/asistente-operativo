@@ -182,7 +182,12 @@ function normalizeUpdate(raw) {
     if (!k.startsWith("$")) direct[k] = v;
   }
   const set = raw.$set || {};
-  return { ...direct, ...set };
+  const effective = { ...direct, ...set };
+  const unset = raw.$unset || {};
+  for (const key of Object.keys(unset)) {
+    effective[key] = null;
+  }
+  return effective;
 }
 
 function buildLogs(originalDoc, effectiveUpdate, actor) {
