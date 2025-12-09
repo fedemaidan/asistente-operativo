@@ -1,7 +1,3 @@
-const productosIgnorarController = require("../../controllers/productosIgnorarController");
-const {
-  getArticulosIgnoradosFromSheet,
-} = require("../GoogleServices/Sheets/proyeccionStock");
 
 const limpiarDatosVentas = (data) => {
   return Object.values(data).map((item) => {
@@ -37,27 +33,9 @@ const proyectarStock = async (
   GOOGLE_SHEET_ID,
   proyeccionId
 ) => {
-  // const articulosIgnorados = await getArticulosIgnoradosFromSheet(
-  //   GOOGLE_SHEET_ID
-  // );
-
-  const { data: articulosIgnorados, error } =
-    await productosIgnorarController.getAll();
-  console.log("articulosIgnorados", articulosIgnorados);
-
-  const codigosIgnorados = new Set(
-    articulosIgnorados.map((item) => item.codigo)
-  );
 
   const stockProyeccion = [];
   for (const itemStock of dataStock) {
-    if (codigosIgnorados.has(itemStock.Codigo)) {
-      console.log(
-        `Omitiendo artículo ignorado: ${itemStock.Codigo} - ${itemStock.Descripcion}`
-      );
-      continue;
-    }
-
     const itemVentas = dataVentas.find(
       (item) => item.Codigo === itemStock.Codigo
     );
