@@ -1,21 +1,22 @@
 const { diasHastaFecha } = require("./Funciones/HandleDates");
+const ProductoService = require("../services/productoService");
 
 const toNumber = (value, fallback = 0) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 };
 
-const buildDemandaPorCodigo = (ventasData = [], dateDiff) => {
-  const demanda = new Map();
+const buildVentasPorCodigo = (ventasData = [], dateDiff) => {
+  const ventas = new Map();
   ventasData.forEach((venta) => {
     const codigo = venta?.Codigo;
     if (!codigo) return;
     const cantidadPeriodo = toNumber(venta?.Cantidad);
-    const demandaDiaria =
+    const ventasDiarias =
       dateDiff && dateDiff > 0 ? cantidadPeriodo / dateDiff : 0;
-    demanda.set(codigo, { demandaDiaria, cantidadPeriodo });
+    ventas.set(codigo, { ventasDiarias, cantidadPeriodo });
   });
-  return demanda;
+  return ventas;
 };
 
 const buildStockPorCodigo = (stockData = []) => {
@@ -57,16 +58,16 @@ const buildArribosPorProducto = (lotesPendientes = [], getFechaArribo) => {
   return arribosPorProducto;
 };
 
-const consumirIntervalo = (stock, currentDay, demandaDiaria, diasIntervalo) => {
-  if (diasIntervalo <= 0 || demandaDiaria <= 0) {
+const consumirIntervalo = (stock, currentDay, ventasDiarias, diasIntervalo) => {
+  if (diasIntervalo <= 0 || ventasDiarias <= 0) {
     return { stock, currentDay, agotado: false, diasHastaAgotarStock: null };
   }
 
-  const demandaIntervalo = demandaDiaria * diasIntervalo;
-  const stockDespues = stock - demandaIntervalo;
+  const ventasIntervalo = ventasDiarias * diasIntervalo;
+  const stockDespues = stock - ventasIntervalo;
 
   if (stockDespues < 0) {
-    const diasParaCero = Math.ceil(stock / demandaDiaria);
+    const diasParaCero = Math.ceil(stock / ventasIntervalo);
     const diaAgotado = currentDay + diasParaCero;
     return {
       stock: 0,
@@ -87,7 +88,7 @@ const consumirIntervalo = (stock, currentDay, demandaDiaria, diasIntervalo) => {
 const simularProyeccion = ({
   horizonte = 90,
   stockInicial = 0,
-  demandaDiaria = 0,
+  ventasDiarias = 0,
   arribos = [],
 }) => {
   let stock = stockInicial;
@@ -104,7 +105,7 @@ const simularProyeccion = ({
     const result = consumirIntervalo(
       stock,
       currentDay,
-      demandaDiaria,
+      ventasDiarias,
       intervalo
     );
     stock = result.stock;
@@ -123,7 +124,7 @@ const simularProyeccion = ({
     const result = consumirIntervalo(
       stock,
       currentDay,
-      demandaDiaria,
+      ventasDiarias,
       restante
     );
     stock = result.stock;
@@ -141,9 +142,53 @@ const simularProyeccion = ({
   };
 };
 
+/**
+ * Crea productos faltantes a partir de los datos de stock del excel.
+ * Usa ProductoService y actualiza el mapa recibido para reutilizarlo.
+ */
+const ensureProductos = async ({
+  stockData = [],
+  productoPorCodigo = new Map(),
+}) => {
+  const productoService = new ProductoService();
+
+  const codigosConocidos = new Set(productoPorCodigo.keys());
+  const productosParaCrear = [];
+
+  stockData.forEach((item) => {
+    const codigo = item?.Codigo;
+    if (!codigo || codigosConocidos.has(codigo)) return;
+
+    codigosConocidos.add(codigo);
+    const cantidad = toNumber(item?.Cantidad);
+    productosParaCrear.push({
+      codigo,
+      nombre: item?.Descripcion || codigo,
+      stockActual: cantidad,
+      ventasPeriodo: 0,
+      ventasProyectadas: 0,
+      diasHastaAgotarStock: 0,
+      seAgota: false,
+      stockProyectado: cantidad,
+    });
+  });
+
+  if (productosParaCrear.length === 0) return productoPorCodigo;
+
+  const result = await productoService.createManyProductos(productosParaCrear);
+  if (result?.success && Array.isArray(result.data)) {
+    result.data.forEach((p) => {
+      if (p?.codigo) productoPorCodigo.set(p.codigo, p);
+    });
+  }
+
+  return productoPorCodigo;
+};
+
 module.exports = {
-  buildDemandaPorCodigo,
+  buildVentasPorCodigo,
   buildStockPorCodigo,
   buildArribosPorProducto,
   simularProyeccion,
+  ensureProductos,
 };

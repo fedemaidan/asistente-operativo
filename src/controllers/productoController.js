@@ -1,13 +1,7 @@
 const ProductoService = require("../services/productoService");
 const productoService = new ProductoService();
+const { sendResponse, parsePositiveInt } = require("../Utiles/controllerHelper");
 
-const parsePositiveInt = (value, defaultValue) => {
-  const parsed = parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 0) {
-    return defaultValue;
-  }
-  return parsed;
-};
 
 const getSortOptions = (sortField, sortOrder) => {
   const field = sortField || "createdAt";
@@ -15,11 +9,6 @@ const getSortOptions = (sortField, sortOrder) => {
   return { [field]: direction };
 };
 
-const sendResponse = (res, result, successStatus = 200) => {
-  const { statusCode, ...payload } = result;
-  const status = result.success ? successStatus : statusCode || 400;
-  return res.status(status).json(payload);
-};
 
 module.exports = {
   getProductos: async (req, res) => {

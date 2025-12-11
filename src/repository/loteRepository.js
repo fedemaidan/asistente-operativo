@@ -6,15 +6,9 @@ class LoteRepository extends BaseRepository {
     super(Lote);
   }
 
-  async findPendientesByProducto(productIds = []) {
-    const filter = {
-      recibido: false,
-      ...(productIds.length > 0 ? { producto: { $in: productIds } } : {}),
-    };
-
-    return this.find(filter, {
-      populate: { path: "contenedor", select: "fechaEstimadaLlegada" },
-    });
+  async createManyWithSession(dataArray = [], session) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0) return [];
+    return session ? this.model.insertMany(dataArray, { session }) : this.model.insertMany(dataArray);
   }
 }
 

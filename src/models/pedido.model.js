@@ -11,6 +11,9 @@ const pedidoSchema = new mongoose.Schema({
     type: String,
     enum: ["PENDIENTE", "ENTREGADO", "CANCELADO"],
     default: "PENDIENTE",
+  }, observaciones: {
+    type: String,
+    default: "",
   },
   productos: [{
     producto: {

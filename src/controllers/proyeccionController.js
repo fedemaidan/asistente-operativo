@@ -33,80 +33,93 @@ const parseFechas = async (ventasFileName, fechaInicio, fechaFin) => {
 };
 
 module.exports = {
-  createProyeccion: async ({ fechaInicio, fechaFin, ventasFile, stockFile, horizonte }) => {
-    if (!ventasFile || !stockFile) {
-      throw new Error("Faltan archivos ventas/stock");
-    }
+  createProyeccion: async (req, res) => {
+    try {
+      const { fechaInicio, fechaFin, horizonte } = req.body;
+      const ventasFile = req.files?.ventas?.[0];
+      const stockFile = req.files?.stock?.[0];
 
-    const {
-      data: ventasExcelData,
-      success: ventasSuccess,
-      error: ventasError,
-    } = excelBufferToJson(ventasFile.buffer);
-    const ventasParsed = limpiarDatosVentas(ventasExcelData);
+      if (!ventasFile || !stockFile) {
+        throw new Error("Faltan archivos ventas/stock");
+      }
 
-    const {
-      data: stockParsed,
-      success: stockSuccess,
-      error: stockError,
-    } = excelBufferToJson(stockFile.buffer);
+      const {
+        data: ventasExcelData,
+        success: ventasSuccess,
+        error: ventasError,
+      } = excelBufferToJson(ventasFile.buffer);
+      const ventasParsed = limpiarDatosVentas(ventasExcelData);
 
-    if (!ventasSuccess || !stockSuccess) {
-      const errorPayload = {
-        success: false,
-        error: "No se pudieron procesar los archivos Excel",
-        ventasError: ventasSuccess ? null : ventasError,
-        stockError: stockSuccess ? null : stockError,
-      };
-      const err = new Error(errorPayload.error);
-      err.payload = errorPayload;
-      throw err;
-    }
+      const {
+        data: stockParsed,
+        success: stockSuccess,
+        error: stockError,
+      } = excelBufferToJson(stockFile.buffer);
 
-    const carpetaId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    const driveVentas = await subirExcelBufferADrive(
-      ventasFile.buffer,
-      ventasFile.originalname,
-      carpetaId,
-      ventasFile.mimetype
-    );
-    const driveStock = await subirExcelBufferADrive(
-      stockFile.buffer,
-      stockFile.originalname,
-      carpetaId,
-      stockFile.mimetype
-    );
+      if (!ventasSuccess || !stockSuccess) {
+        const errorPayload = {
+          success: false,
+          error: "No se pudieron procesar los archivos Excel",
+          ventasError: ventasSuccess ? null : ventasError,
+          stockError: stockSuccess ? null : stockError,
+        };
+        const err = new Error(errorPayload.error);
+        err.payload = errorPayload;
+        throw err;
+      }
 
-    const fechas = await parseFechas(
-      ventasFile.originalname,
-      fechaInicio,
-      fechaFin
-    );
+      const carpetaId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+      const driveVentas = await subirExcelBufferADrive(
+        ventasFile.buffer,
+        ventasFile.originalname,
+        carpetaId,
+        ventasFile.mimetype
+      );
+      const driveStock = await subirExcelBufferADrive(
+        stockFile.buffer,
+        stockFile.originalname,
+        carpetaId,
+        stockFile.mimetype
+      );
 
-    const horizonteDias = horizonte
-      ? parseInt(horizonte, 10) || 90
-      : 90;
+      const fechas = await parseFechas(
+        ventasFile.originalname,
+        fechaInicio,
+        fechaFin
+      );
 
-    const proyeccion = await proyeccionService.generarProyeccion({
-      ventasData: ventasParsed,
-      stockData: stockParsed,
-      dateDiff: fechas.dateDiff,
-      horizonte: horizonteDias,
-    });
+      const horizonteDias = horizonte
+        ? parseInt(horizonte, 10) || 90
+        : 90;
 
-    return {
-      ...proyeccion,
-      links: {
-        ventas: driveVentas?.driveUrl,
-        stock: driveStock?.driveUrl,
-      },
-      fechas: {
-        fechaInicio: fechas.fechaInicio,
-        fechaFin: fechas.fechaFin,
+      const proyeccion = await proyeccionService.generarProyeccion({
+        ventasData: ventasParsed,
+        stockData: stockParsed,
         dateDiff: fechas.dateDiff,
-        horizonteDias,
-      },
-    };
+        horizonte: horizonteDias,
+      });
+
+      return res.json({
+        ...proyeccion,
+        links: {
+          ventas: driveVentas?.driveUrl,
+          stock: driveStock?.driveUrl,
+        },
+        fechas: {
+          fechaInicio: fechas.fechaInicio,
+          fechaFin: fechas.fechaFin,
+          dateDiff: fechas.dateDiff,
+          horizonteDias,
+        },
+      });
+    } catch (error) {
+      const payload = error?.payload;
+      if (payload) {
+        return res.status(400).json(payload);
+      }
+      console.error(error);
+      res.status(500).json({ success: false, error: error.message });
+    }
   },
   // Compatibilidad con flujos previos del bot
   create: async (payload) => {

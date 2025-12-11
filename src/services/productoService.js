@@ -93,6 +93,15 @@ class ProductoService {
       return { success: false, error: error.message };
     }
   }
+
+  async createManyProductos(productos = []) {
+    try {
+      const created = await this.productoRepository.createMany(productos);
+      return { success: true, data: created };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = ProductoService;
