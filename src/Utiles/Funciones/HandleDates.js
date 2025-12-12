@@ -2,6 +2,9 @@ const dayjs = require("dayjs");
 const customParseFormat = require("dayjs/plugin/customParseFormat");
 dayjs.extend(customParseFormat);
 
+const msInDay = 1000 * 60 * 60 * 24;
+
+
 const getDaysDiff = (
   comprobanteFechaStr,
   movimientoFechaSerial,
@@ -98,6 +101,12 @@ const formatDateToDDMMYYYY = (date) => {
   return `${day}/${month}/${year}`;
 };
 
+const diasHastaFecha = (fecha) => {
+  if (!fecha) return null;
+  const diff = fecha.getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / msInDay));
+}
+
 
 
 module.exports = {
@@ -107,4 +116,5 @@ module.exports = {
   getFechaArgentinaFormato,
   getHoraArgentinaFormato,
   formatDateToDDMMYYYY,
+  diasHastaFecha,
 };

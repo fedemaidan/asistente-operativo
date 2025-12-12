@@ -1,4 +1,4 @@
-const baileysAutoReporter = require("baileys-status-reporter");
+//const baileysAutoReporter = require("baileys-status-reporter");
 
 class BotSingleton {
   constructor() {
@@ -15,11 +15,11 @@ class BotSingleton {
   async setSock(sockInstance) {
     this.sock = sockInstance;
 
-    baileysAutoReporter.startAutoReport(
-      this.sock,
-      "asistente-operativo",
-      "http://localhost:4000/api/reportar"
-    );
+    //baileysAutoReporter.startAutoReport(
+    //  this.sock,
+    //  "asistente-operativo",
+    //  "http://localhost:4000/api/reportar"
+    //);
 
     // Escucha mensajes entrantes
     this.sock.ev.on("messages.upsert", async (message) => {
@@ -32,8 +32,8 @@ class BotSingleton {
           msg.message?.conversation === "TODO_OK" ||
           msg.message?.extendedTextMessage?.text === "TODO_OK"
         ) {
-          console.log("🟢 Mensaje TODO_OK recibido, marcando ping como OK.");
-          autoReporter.marcarPingOK();
+          //console.log("🟢 Mensaje TODO_OK recibido, marcando ping como OK.");
+          //autoReporter.marcarPingOK();
         }
       }
 

@@ -1,221 +1,134 @@
-const BaseController = require('./baseController');
-const Proyeccion = require('../models/proyeccion.model');
-const { excelBufferToJson } = require('../Utiles/Funciones/Excel/excelHandler');
+const { excelBufferToJson } = require("../Utiles/Funciones/Excel/excelHandler");
 const {
   subirExcelBufferADrive,
-} = require('../Utiles/Funciones/Excel/excelToDrive');
-const getDatesFromExcel = require('../Utiles/Chatgpt/getDatesFromExcel');
-const {
-  proyectarStock,
-  limpiarDatosVentas,
-} = require('../Utiles/Funciones/HandleVentasExcel');
-const stockProyeccionController = require('./stockProyeccionController');
-const Tag = require('../models/tag.model');
-const ProductoProyeccion = require('../models/productoProyeccion.model');
+} = require("../Utiles/Funciones/Excel/excelToDrive");
+const getDatesFromExcel = require("../Utiles/Chatgpt/getDatesFromExcel");
+const { limpiarDatosVentas } = require("../Utiles/Funciones/HandleVentasExcel");
+const ProyeccionService = require("../services/proyeccionService");
+const Proyeccion = require("../models/proyeccion.model");
 
-class ProyeccionController extends BaseController {
-  constructor() {
-    super(Proyeccion);
-  }
+const proyeccionService = new ProyeccionService();
 
-  async createProyeccion({ fechaInicio, fechaFin, ventasFile, stockFile }) {
-    if (!ventasFile || !stockFile) {
-      throw new Error('Faltan archivos ventas/stock');
-    }
+const parseFechas = async (ventasFileName, fechaInicio, fechaFin) => {
+  const { date1, date2, dateDiff } = await getDatesFromExcel(ventasFileName);
 
-    const {
-      data: ventasExcelData,
-      success: ventasSuccess,
-      error: ventasError,
-    } = excelBufferToJson(ventasFile.buffer);
-    const ventasParsed = limpiarDatosVentas(ventasExcelData);
-
-    const {
-      data: stockParsed,
-      success: stockSuccess,
-      error: stockError,
-    } = excelBufferToJson(stockFile.buffer);
-
-    if (!ventasSuccess || !stockSuccess) {
-      const errorPayload = {
-        success: false,
-        error: 'No se pudieron procesar los archivos Excel',
-        ventasError: ventasSuccess ? null : ventasError,
-        stockError: stockSuccess ? null : stockError,
-      };
-      const err = new Error(errorPayload.error);
-      err.payload = errorPayload;
-      throw err;
-    }
-
-    const carpetaId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    const driveVentas = await subirExcelBufferADrive(
-      ventasFile.buffer,
-      ventasFile.originalname,
-      carpetaId,
-      ventasFile.mimetype
-    );
-    const driveStock = await subirExcelBufferADrive(
-      stockFile.buffer,
-      stockFile.originalname,
-      carpetaId,
-      stockFile.mimetype
-    );
-
-    const { date1, date2, dateDiff } = await getDatesFromExcel(
-      ventasFile.originalname
-    );
-
-    let computedFechaInicio, computedFechaFin, computedDateDiff;
-
-    // Si ambas fechas son válidas y fechaInicio < fechaFin, usamos esas
-    if (fechaInicio && fechaFin) {
-      const inicio = new Date(fechaInicio);
-      const fin = new Date(fechaFin);
-      if (!isNaN(inicio) && !isNaN(fin) && inicio < fin) {
-        computedFechaInicio = new Date(inicio);
-        computedFechaInicio.setHours(13, 0, 0, 0);
-        computedFechaFin = new Date(fin);
-        computedFechaFin.setHours(13, 0, 0, 0);
-        computedDateDiff = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
-      }
-    }
-
-    // Si no tenemos fechas válidas, usamos las del nombre del archivo
-    if (!computedFechaInicio || !computedFechaFin) {
-      computedFechaInicio = new Date(date1);
-      computedFechaInicio.setHours(13, 0, 0, 0);
-      computedFechaFin = new Date(date2);
-      computedFechaFin.setHours(13, 0, 0, 0);
-      computedDateDiff = dateDiff;
-    }
-
-    const { data: proyeccion, error: proyeccionError } = await this.create({
-      fechaInicio: computedFechaInicio,
-      fechaFin: computedFechaFin,
-      linkStock: driveStock.driveUrl,
-      linkVentas: driveVentas.driveUrl,
-    });
-
-    if (proyeccionError) {
-      const err = new Error('Error al crear la proyección');
-      err.payload = { success: false, proyeccionError };
-      throw err;
-    }
-
-    const stockProyeccion = await proyectarStock(
-      stockParsed,
-      ventasParsed,
-      computedDateDiff,
-      'GOOGLE_SHEET_ID',
-      proyeccion._id
-    );
-
-    await stockProyeccionController.createMany(stockProyeccion);
-
-    return {
-      success: true,
-      data: {
-        proyeccion,
-      },
-    };
-  }
-
-  async agregarTags(productosProyeccionId, tag, persist = false) {
-    try {
-      if (persist) {
-        const productos = await ProductoProyeccion.find(
-          { _id: { $in: productosProyeccionId } },
-          {
-            codigo: 1,
-          }
-        );
-        const codigos = Array.from(
-          new Set(
-            productos
-              .map((p) => (p?.codigo || '').toString().trim())
-              .filter((c) => c && c.length > 0)
-          )
-        );
-
-        if (codigos.length === 0) {
-          return {
-            success: false,
-            error: 'No se encontraron códigos para los productos seleccionados',
-          };
-        }
-
-        const upsertRes = await Tag.updateOne(
-          { nombre: tag },
-          { $addToSet: { codigos: { $each: codigos } } },
-          { upsert: true }
-        );
-
-        return { success: true, data: { tagUpsert: upsertRes } };
-      }
-
-      const updatedProductosProyeccion = await ProductoProyeccion.updateMany(
-        { _id: { $in: productosProyeccionId } },
-        { $addToSet: { tags: tag } }
-      );
-
-      return { success: true, data: updatedProductosProyeccion };
-    } catch (error) {
-      console.error(error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getTags() {
-    try {
-      const tags = await Tag.find({});
-      return { success: true, data: tags };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  async eliminarTags(productosProyeccionId) {
-    try {
-      console.log('productosProyeccionId', productosProyeccionId);
-
-      const productos = await ProductoProyeccion.find(
-        { _id: { $in: productosProyeccionId } },
-        { codigo: 1 }
-      );
-
-      const codigos = Array.from(
-        new Set(
-          productos
-            .map((p) => (p?.codigo || '').toString().trim())
-            .filter((c) => c && c.length > 0)
-        )
-      );
-
-      console.log('codigos encontrados:', codigos);
-
-      const updatedProductosProyeccion = await ProductoProyeccion.updateMany(
-        { _id: { $in: productosProyeccionId } },
-        { $set: { tags: [] } }
-      );
-
-      const updatedTags = await Tag.updateMany(
-        { codigos: { $in: codigos } },
-        { $pull: { codigos: { $in: codigos } } }
-      );
-
-      console.log('updatedProductosProyeccion', updatedProductosProyeccion);
-      console.log('updatedTags', updatedTags);
-
+  if (fechaInicio && fechaFin) {
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    if (!isNaN(inicio) && !isNaN(fin) && inicio < fin) {
+      const computedDateDiff = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
       return {
-        success: true,
-        data: { updatedProductosProyeccion, updatedTags },
+        fechaInicio: new Date(inicio.setHours(13, 0, 0, 0)),
+        fechaFin: new Date(fin.setHours(13, 0, 0, 0)),
+        dateDiff: computedDateDiff,
       };
-    } catch (error) {
-      console.error('Error en eliminarTags:', error);
-      return { success: false, error: error.message };
     }
   }
-}
 
-module.exports = new ProyeccionController();
+  return {
+    fechaInicio: new Date(new Date(date1).setHours(13, 0, 0, 0)),
+    fechaFin: new Date(new Date(date2).setHours(13, 0, 0, 0)),
+    dateDiff,
+  };
+};
+
+module.exports = {
+  createProyeccion: async (req, res) => {
+    try {
+      const { fechaInicio, fechaFin, horizonte } = req.body;
+      const ventasFile = req.files?.ventas?.[0];
+      const stockFile = req.files?.stock?.[0];
+
+      if (!ventasFile || !stockFile) {
+        throw new Error("Faltan archivos ventas/stock");
+      }
+
+      const {
+        data: ventasExcelData,
+        success: ventasSuccess,
+        error: ventasError,
+      } = excelBufferToJson(ventasFile.buffer);
+      const ventasParsed = limpiarDatosVentas(ventasExcelData);
+
+      const {
+        data: stockParsed,
+        success: stockSuccess,
+        error: stockError,
+      } = excelBufferToJson(stockFile.buffer);
+
+      if (!ventasSuccess || !stockSuccess) {
+        const errorPayload = {
+          success: false,
+          error: "No se pudieron procesar los archivos Excel",
+          ventasError: ventasSuccess ? null : ventasError,
+          stockError: stockSuccess ? null : stockError,
+        };
+        const err = new Error(errorPayload.error);
+        err.payload = errorPayload;
+        throw err;
+      }
+
+      const carpetaId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+      const driveVentas = await subirExcelBufferADrive(
+        ventasFile.buffer,
+        ventasFile.originalname,
+        carpetaId,
+        ventasFile.mimetype
+      );
+      const driveStock = await subirExcelBufferADrive(
+        stockFile.buffer,
+        stockFile.originalname,
+        carpetaId,
+        stockFile.mimetype
+      );
+
+      const fechas = await parseFechas(
+        ventasFile.originalname,
+        fechaInicio,
+        fechaFin
+      );
+
+      const horizonteDias = horizonte
+        ? parseInt(horizonte, 10) || 90
+        : 90;
+
+      const proyeccion = await proyeccionService.generarProyeccion({
+        ventasData: ventasParsed,
+        stockData: stockParsed,
+        dateDiff: fechas.dateDiff,
+        horizonte: horizonteDias,
+        fechaBase: fechas.fechaFin,
+      });
+
+      return res.json({
+        ...proyeccion,
+        links: {
+          ventas: driveVentas?.driveUrl,
+          stock: driveStock?.driveUrl,
+        },
+        fechas: {
+          fechaInicio: fechas.fechaInicio,
+          fechaFin: fechas.fechaFin,
+          dateDiff: fechas.dateDiff,
+          horizonteDias,
+        },
+      });
+    } catch (error) {
+      const payload = error?.payload;
+      if (payload) {
+        return res.status(400).json(payload);
+      }
+      console.error(error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+  // Compatibilidad con flujos previos del bot
+  create: async (payload) => {
+    try {
+      const doc = await Proyeccion.create(payload);
+      return { success: true, data: doc };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+};
