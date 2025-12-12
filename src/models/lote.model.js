@@ -21,15 +21,33 @@ const loteSchema = new mongoose.Schema({
     required: true,
     min: 1,
   },
-  recibido: { type: Boolean, default: false },
-
-
+  estado: {
+    type: String,
+    enum: ["PENDIENTE", "ENTREGADO", "CANCELADO"],
+    default: "PENDIENTE",
+  },
+  fechaEntrega: {
+    type: Date,
+    default: null,
+  },
   // solo se usa cuando NO hay contenedor
   fechaEstimadaDeLlegada: {
     type: Date, 
     default: null,
   }
 }, { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt", currentTime: getFechaArgentina }, });
+
+// Compatibilidad: virtual recibido (true si estado === ENTREGADO)
+loteSchema.virtual("recibido")
+  .get(function () {
+    return this.estado === "ENTREGADO";
+  })
+  .set(function (val) {
+    this.estado = val ? "ENTREGADO" : "PENDIENTE";
+  });
+
+loteSchema.set("toJSON", { virtuals: true });
+loteSchema.set("toObject", { virtuals: true });
 
 loteSchema.index({ pedido: 1, contenedor: 1 });
 

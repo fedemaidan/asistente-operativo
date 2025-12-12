@@ -15,6 +15,7 @@ const backupRouter = require('./backup.routes.js');
 const productoRouter = require('./producto.routes.js');
 const pedidoRouter = require('./pedido.routes.js');
 const contenedorRouter = require('./contenedor.routes.js');
+const lotesRouter = require('./lotes.routes.js');
 const router = express.Router();
 
 router.use('/movimientos', movimientosRouter);
@@ -27,6 +28,7 @@ router.use('/backup', backupRouter);
 router.use('/productos', productoRouter);
 router.use('/pedidos', pedidoRouter);
 router.use('/contenedores', contenedorRouter);
+router.use('/lotes', lotesRouter);
 router.get('/dolar', async (req, res) => {
   const dolar = await DolarService.obtenerValoresDolar();
   res.json({

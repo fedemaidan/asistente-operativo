@@ -34,7 +34,7 @@ class ProductoService {
     }
   }
 
-  async updateProducto(id, data = {}) {
+  async updateProducto(id, data = {}, options = {}) {
     try {
       if (!id) {
         return {
@@ -44,7 +44,7 @@ class ProductoService {
         };
       }
 
-      if (Object.keys(data).length === 0) {
+      if (!data || Object.keys(data).length === 0) {
         return {
           success: false,
           error: "No hay campos válidos para actualizar",
@@ -52,7 +52,7 @@ class ProductoService {
         };
       }
 
-      const updated = await this.productoRepository.updateProducto(id, data);
+      const updated = await this.productoRepository.updateById(id, data, options);
 
       if (!updated) {
         return {

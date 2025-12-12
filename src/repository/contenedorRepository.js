@@ -22,14 +22,6 @@ class ContenedorRepository extends BaseRepository {
     if (!codigo) return null;
     return this.findOne({ codigo });
   }
-
-  async createWithSession(data, session) {
-    if (session) {
-      return this.model.create([data], { session }).then((docs) => docs[0]);
-    }
-    const doc = new this.model(data);
-    return doc.save();
-  }
 }
 
 module.exports = ContenedorRepository;

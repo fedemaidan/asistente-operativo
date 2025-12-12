@@ -37,6 +37,25 @@ module.exports = {
       });
     }
   },
+  asociarContenedorExistente: async (req, res) => {
+    try {
+      const { pedidoId } = req.params;
+      const { contenedorId } = req.body;
+
+      const result = await pedidoService.asociarContenedorExistente(
+        pedidoId,
+        contenedorId
+      );
+
+      return sendResponse(res, result, result?.statusCode || 200);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Error al asociar contenedor al pedido",
+        details: error.message,
+      });
+    }
+  },
   getPedidosResumen: async (req, res) => {
     try {
       const { limit, offset, sortField, sortOrder } = req.query;
@@ -84,6 +103,21 @@ module.exports = {
       return res.status(500).json({
         success: false,
         error: "Error al crear el pedido",
+        details: error.message,
+      });
+    }
+  },
+  setEstadoPedido: async (req, res) => {
+    try {
+      const { pedidoId } = req.params;
+      const { estado } = req.body;
+
+      const result = await pedidoService.setEstadoPedido(pedidoId, estado);
+      return sendResponse(res, result, result?.statusCode || 200);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Error al actualizar estado del pedido",
         details: error.message,
       });
     }

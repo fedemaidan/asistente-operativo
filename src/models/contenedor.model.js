@@ -12,6 +12,10 @@ const contenedorSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    observaciones: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: {

@@ -97,6 +97,7 @@ module.exports = {
         stockData: stockParsed,
         dateDiff: fechas.dateDiff,
         horizonte: horizonteDias,
+        fechaBase: fechas.fechaFin,
       });
 
       return res.json({

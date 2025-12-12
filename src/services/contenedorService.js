@@ -1,8 +1,75 @@
 const ContenedorRepository = require("../repository/contenedorRepository");
+const LoteService = require("./loteService");
+const PedidoService = require("./pedidoService");
 
 class ContenedorService {
   constructor() {
     this.contenedorRepository = new ContenedorRepository();
+    this.loteService = new LoteService();
+    this.pedidoService = new PedidoService();
+  }
+
+  /**
+   * Marca un contenedor como ENTREGADO/PENDIENTE y sincroniza:
+   * - Lotes del contenedor (recibido=true/false)
+   * - Stock proyectado (por transiciones reales)
+   * - Estado de pedidos afectados
+   */
+  async setEstadoContenedor(contenedorId, estado) {
+    try {
+      if (!contenedorId) {
+        return { success: false, error: "contenedorId es requerido", statusCode: 400 };
+      }
+      if (!estado || !["PENDIENTE", "ENTREGADO", "CANCELADO"].includes(estado)) {
+        return { success: false, error: "estado inválido", statusCode: 400 };
+      }
+
+      const contenedor = await this.contenedorRepository.findById(contenedorId);
+      if (!contenedor) {
+        return { success: false, error: "Contenedor no encontrado", statusCode: 404 };
+      }
+
+      const esNoPendiente = estado === "ENTREGADO" || estado === "CANCELADO";
+
+      const lotesResult = await this.loteService.setEstadoPorContenedor(
+        contenedorId,
+        esNoPendiente ? estado : "PENDIENTE"
+      );
+      if (!lotesResult.success) {
+        return { success: false, error: lotesResult.error, statusCode: lotesResult.statusCode || 500 };
+      }
+
+      const totalResult = await this.loteService.countLotesPorContenedor(contenedorId);
+      if (!totalResult.success) {
+        return { success: false, error: totalResult.error, statusCode: totalResult.statusCode || 500 };
+      }
+
+      // Recalcular estado real del contenedor según lotes pendientes
+      const pendientesResult = await this.loteService.countPendientesPorContenedor(contenedorId);
+      if (!pendientesResult.success) {
+        return { success: false, error: pendientesResult.error, statusCode: pendientesResult.statusCode || 500 };
+      }
+
+      const total = totalResult.data || 0;
+      const pendientes = pendientesResult.data || 0;
+      // Estado derivado: si no hay lotes, PENDIENTE
+      const estadoDerivado = total > 0 && pendientes === 0 ? "ENTREGADO" : "PENDIENTE";
+
+      return {
+        success: true,
+        data: {
+          ...contenedor.toObject(),
+          estado: estadoDerivado,
+        },
+        meta: {
+          pedidosAfectados: (lotesResult.meta?.pedidoIds || []).length,
+          lotesCambiados: lotesResult.meta?.changedCount || 0,
+          estadoDerivado,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 
   async getAllPaginated(options = {}) {

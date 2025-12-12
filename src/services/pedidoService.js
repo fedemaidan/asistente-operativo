@@ -1,13 +1,12 @@
-const mongoose = require("mongoose");
 const PedidoRepository = require("../repository/pedidoRepository");
 const ContenedorRepository = require("../repository/contenedorRepository");
-const LoteRepository = require("../repository/loteRepository");
+const LoteService = require("./loteService");
 
 class PedidoService {
   constructor() {
     this.pedidoRepository = new PedidoRepository();
     this.contenedorRepository = new ContenedorRepository();
-    this.loteRepository = new LoteRepository();
+    this.loteService = new LoteService();
   }
 
   async getAllPedidos(options = {}) {
@@ -69,15 +68,16 @@ class PedidoService {
 
       const pedidoIds = pedidos.map((p) => p._id);
 
-      const lotes = await this.loteRepository.find(
+      const lotesResult = await this.loteService.findLotes(
         { pedido: { $in: pedidoIds } },
         {
-          populate: [
-            { path: "contenedor" },
-            { path: "producto" },
-          ],
+          populate: [{ path: "contenedor" }, { path: "producto" }],
         }
       );
+      if (!lotesResult.success) {
+        return { success: false, error: lotesResult.error };
+      }
+      const lotes = lotesResult.data || [];
 
       const lotesPorPedido = new Map();
       pedidos.forEach((p) => lotesPorPedido.set(p._id.toString(), []));
@@ -110,10 +110,10 @@ class PedidoService {
           entry.productos.push({
             producto: lote.producto,
             cantidad: lote.cantidad,
-            recibido: lote.recibido,
+            recibido: lote.estado === "ENTREGADO",
             fechaEstimadaDeLlegada: lote.fechaEstimadaDeLlegada,
           });
-          if (!lote.recibido) {
+          if (lote.estado !== "ENTREGADO") {
             entry.recibido = false;
           }
         });
@@ -173,6 +173,126 @@ class PedidoService {
     }
   }
 
+  async setEstadoPedido(pedidoId, estado) {
+    try {
+      if (!pedidoId) {
+        return { success: false, error: "pedidoId es requerido", statusCode: 400 };
+      }
+      if (!estado || !["PENDIENTE", "ENTREGADO", "CANCELADO"].includes(estado)) {
+        return { success: false, error: "estado inválido", statusCode: 400 };
+      }
+
+      const pedido = await this.pedidoRepository.findById(pedidoId);
+      if (!pedido) {
+        return { success: false, error: "Pedido no encontrado", statusCode: 404 };
+      }
+
+      const lotesResult = await this.loteService.setEstadoPorPedido(pedidoId, estado);
+      if (!lotesResult.success) {
+        return { success: false, error: lotesResult.error, statusCode: lotesResult.statusCode || 500 };
+      }
+
+      const totalResult = await this.loteService.countLotesPorPedido(pedidoId);
+      const pendResult = await this.loteService.countPendientesPorPedido(pedidoId);
+      if (!totalResult.success || !pendResult.success) {
+        return {
+          success: false,
+          error: (totalResult.error || pendResult.error) || "Error al derivar estado",
+          statusCode: (totalResult.statusCode || pendResult.statusCode) || 500,
+        };
+      }
+
+      const total = totalResult.data || 0;
+      const pendientes = pendResult.data || 0;
+      const estadoDerivado = total > 0 && pendientes === 0 ? "ENTREGADO" : "PENDIENTE";
+
+      // Cache opcional en el pedido (si se quiere persistir)
+      const updatedPedido = await this.pedidoRepository.updateById(
+        pedidoId,
+        { estado: estadoDerivado },
+        { new: true }
+      );
+
+      return {
+        success: true,
+        data: {
+          ...(updatedPedido?.toObject ? updatedPedido.toObject() : updatedPedido),
+          estado: estadoDerivado,
+        },
+        meta: {
+          lotesCambiados: lotesResult.meta?.changedCount || 0,
+          estadoDerivado,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async asociarContenedorExistente(pedidoId, contenedorId) {
+    try {
+      if (!pedidoId || !contenedorId) {
+        return {
+          success: false,
+          error: "pedidoId y contenedorId son requeridos",
+          statusCode: 400,
+        };
+      }
+
+      const pedido = await this.pedidoRepository.findById(pedidoId);
+      if (!pedido) {
+        return {
+          success: false,
+          error: "Pedido no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      const contenedor = await this.contenedorRepository.findById(contenedorId);
+      if (!contenedor) {
+        return {
+          success: false,
+          error: "Contenedor no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      if (!pedido.productos || pedido.productos.length === 0) {
+        return {
+          success: false,
+          error: "El pedido no tiene productos para asociar",
+          statusCode: 400,
+        };
+      }
+
+      const lotesData = pedido.productos.map((p) => ({
+        pedido: pedido._id,
+        producto: p.producto,
+        cantidad: p.cantidad,
+        contenedor: contenedor._id,
+        fechaEstimadaDeLlegada: null,
+        estado: "PENDIENTE",
+      }));
+
+      const lotesResult = await this.loteService.createManyLotes(lotesData);
+      if (!lotesResult.success) {
+        return { success: false, error: lotesResult.error, statusCode: lotesResult.statusCode || 500 };
+      }
+      const lotes = lotesResult.data || [];
+
+      return {
+        success: true,
+        data: {
+          pedido,
+          contenedor,
+          lotes,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   async getAllContenedores(options = {}) {
     try {
       const {
@@ -187,9 +307,32 @@ class PedidoService {
         sort,
       });
 
+      const contenedores = result.data || [];
+
+      // Derivar estado desde lotes (si no hay lotes => PENDIENTE)
+      const enriched = await Promise.all(
+        contenedores.map(async (c) => {
+          const contId = c?._id;
+          if (!contId) return { ...c.toObject?.() ? c.toObject() : c, estado: "PENDIENTE" };
+
+          const totalRes = await this.loteService.countLotesPorContenedor(contId);
+          const pendRes = await this.loteService.countPendientesPorContenedor(contId);
+          const total = totalRes.success ? totalRes.data || 0 : 0;
+          const pendientes = pendRes.success ? pendRes.data || 0 : 0;
+          const estado = total > 0 && pendientes === 0 ? "ENTREGADO" : "PENDIENTE";
+
+          return {
+            ...(c.toObject?.() ? c.toObject() : c),
+            estado,
+            lotesTotal: total,
+            lotesPendientes: pendientes,
+          };
+        })
+      );
+
       return {
         success: true,
-        data: result.data,
+        data: enriched,
         pagination: {
           total: result.total,
           limit: result.limit,
@@ -222,7 +365,7 @@ class PedidoService {
 
       const existingPedido = await this.pedidoRepository.findByNumero(numeroPedido);
       if (existingPedido) {
-        return { success: false, error: "numeroPedido ya existe", statusCode: 409 };
+        return { success: false, error: "El numero de pedido ya existe", statusCode: 409 };
       }
 
       let contenedorDoc = null;
@@ -251,25 +394,19 @@ class PedidoService {
             };
           }
 
-          contenedorDoc = await this.contenedorRepository.createWithSession(
-            {
-              codigo,
-              fechaEstimadaLlegada: fechaParaContenedor,
-            },
-            undefined
-          );
+          contenedorDoc = await this.contenedorRepository.create({
+            codigo,
+            fechaEstimadaLlegada: fechaParaContenedor,
+          });
           contenedorId = contenedorDoc._id;
         }
       }
 
-      const pedido = await this.pedidoRepository.createWithSession(
-        {
-          numeroPedido,
-          observaciones,
-          productos: productos.map((p) => ({ producto: p.productoId, cantidad: p.cantidad })),
-        },
-        undefined
-      );
+      const pedido = await this.pedidoRepository.create({
+        numeroPedido,
+        observaciones,
+        productos: productos.map((p) => ({ producto: p.productoId, cantidad: p.cantidad })),
+      });
 
       const lotesData = productos.map((p) => ({
         pedido: pedido._id,
@@ -277,10 +414,14 @@ class PedidoService {
         cantidad: p.cantidad,
         contenedor: contenedorId || null,
         fechaEstimadaDeLlegada: contenedorId ? null : fechaEstimadaLlegada,
-        recibido: false,
+        estado: "PENDIENTE",
       }));
 
-      const lotes = await this.loteRepository.createManyWithSession(lotesData, undefined);
+      const lotesResult = await this.loteService.createManyLotes(lotesData);
+      if (!lotesResult.success) {
+        return { success: false, error: lotesResult.error, statusCode: lotesResult.statusCode || 500 };
+      }
+      const lotes = lotesResult.data || [];
 
       return {
         success: true,
@@ -294,6 +435,8 @@ class PedidoService {
       return { success: false, error: error.message };
     }
   }
+
+  
 }
 
 module.exports = PedidoService;

@@ -3,19 +3,20 @@
 Objetivo: estimar agotamiento y stock proyectado por producto a un horizonte (default 90 días) usando:
 - Ventas recientes (Excel de ventas) → demanda diaria.
 - Stock inicial (Excel de stock; si no está o es 0 y existe en DB, se usa el stock del producto).
-- Arribos futuros desde lotes no recibidos (lote + contenedor).
+- Arribos futuros desde lotes pendientes (estado PENDIENTE).
 - Persistencia de resultados en `producto.model`.
 
-## Modelos clave
+## Modelos clave (estado real en Lote)
 - Producto
-  - Campos relevantes: `codigo`, `nombre`, `stockActual`, `ventasPeriodo`, `ventasProyectadas`, `stockProyectado`, `diasHastaAgotarStock`, `seAgota`, `active`.
-  - `stockActual` solo cambia al recibir lotes; los campos de proyección se recalculan con el servicio.
+  - `codigo`, `nombre`, `stockActual`, `ventasPeriodo`, `ventasProyectadas`, `stockProyectado`, `diasHastaAgotarStock`, `seAgota`, `active`.
+  - `stockActual` cambia al recibir lotes; `stockProyectado` se ajusta al crear/cambiar estado de lotes.
 - Pedido
-  - `numeroPedido`, `estado`, `productos[{producto, cantidad}]`.
+  - `numeroPedido`, `estado` (cache), `productos[{producto, cantidad}]` como intención original; las operaciones se basan en lotes.
 - Contenedor
-  - `codigo`, `fechaEstimadaLlegada`.
-- Lote (nodo central)
-  - `pedido`, `contenedor` (opcional), `producto`, `cantidad`, `recibido`, `fechaEstimadaDeLlegada` (si no hay contenedor).
+  - `codigo`, `fechaEstimadaLlegada`. **No guarda estado**; el estado se deriva: `ENTREGADO` si tiene lotes y ninguno pendiente, si no, `PENDIENTE`.
+- Lote (fuente de verdad)
+  - `pedido`, `contenedor` (opcional), `producto`, `cantidad`, `estado: ["PENDIENTE","ENTREGADO","CANCELADO"]`, `fechaEntrega` (cuando pasa a ENTREGADO), `fechaEstimadaDeLlegada` (si no hay contenedor).
+  - Virtual `recibido`: true ⇔ `estado==="ENTREGADO"` (compatibilidad).
   - Fecha de arribo:
     - Si tiene contenedor → `contenedor.fechaEstimadaLlegada`.
     - Si no tiene contenedor → `lote.fechaEstimadaDeLlegada`.
@@ -29,10 +30,10 @@ Objetivo: estimar agotamiento y stock proyectado por producto a un horizonte (de
    - Devuelve resultado + links de los archivos en Drive.
 
 2) **Service (`proyeccionService`)**
-   - Repos: `ProductoRepository`, `LoteRepository` (lotes pendientes con contenedor poblado).
+   - Repos: `ProductoRepository`, `LoteRepository` (lotes con `estado="PENDIENTE"` y contenedor poblado).
    - Demanda: por código → `demandaDiaria = ventasPeriodo / dateDiff` (solo datos del Excel).
    - Stock inicial: prioridad Excel; si no existe, usa `stockActual` del producto (o 0 si no hay producto).
-   - Arribos: lotes con `recibido=false`; cada lote aporta `{dia, cantidad}` donde `dia` es la diferencia en días desde hoy hasta la fecha de arribo.
+   - Arribos: lotes con `estado="PENDIENTE"`; cada lote aporta `{dia, cantidad}` donde `dia` es la diferencia en días desde hoy hasta la fecha de arribo.
    - Simulación por producto (event-based):
      - Recorre días hasta horizonte consumiendo `demandaDiaria`.
      - Suma arribos en su día.
@@ -45,15 +46,20 @@ Objetivo: estimar agotamiento y stock proyectado por producto a un horizonte (de
 
 ## Repositorios
 - `productoRepository`: findByCodigos, updateProyeccionFields.
-- `loteRepository`: findPendientesByProducto (recibido=false, popula contenedor).
-- `pedidoRepository`, `contenedorRepository`: creados para mantener la capa de acceso a datos (ampliables).
+- `loteRepository`: findPendientesByProducto (usa `estado="PENDIENTE"`, popula contenedor).
+- `pedidoRepository`, `contenedorRepository`: capa de acceso a datos; el estado de contenedor se deriva en servicios.
 
 ## Reglas prácticas
 - Horizonte default: 90 días, parametrizable.
-- Solo se consideran lotes `recibido=false`.
+- Solo se consideran lotes con `estado="PENDIENTE"`.
 - El Excel de ventas siempre define la demanda; no se calculan promedios fuera de ese rango.
 - El Excel de stock manda: si no hay stock en DB o es 0, se usa el del Excel; si el Excel trae valor, se prioriza ese valor.
 - Campos guardados en `Producto`: `stockProyectado`, `ventasProyectadas`, `diasHastaAgotarStock`, `seAgota`.
+- Ajustes de `stockProyectado` en runtime:
+  - Crear lote(s): +cantidad.
+  - PENDIENTE → ENTREGADO: -cantidad.
+  - ENTREGADO → PENDIENTE: +cantidad.
+  - CANCELADO: no altera stock proyectado (hoy se ignora en el ajuste).
 
 ## Para depurar
 - Si un producto no existe en DB pero está en los Excels, se calcula la proyección y se devuelve en la respuesta, pero no se persiste.
