@@ -12,7 +12,14 @@ const parsePositiveInt = (value, defaultValue) => {
   return parsed;
 };
 
+const parseStrictPositiveInt = (value, defaultValue) => {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1) return defaultValue;
+  return parsed;
+};
+
 module.exports = {
   sendResponse,
   parsePositiveInt,
+  parseStrictPositiveInt,
 };

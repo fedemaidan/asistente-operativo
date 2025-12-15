@@ -65,5 +65,8 @@ const ProductoSchema = new mongoose.Schema(
   }
 );
 
+ProductoSchema.index({ codigo: 1 });
+ProductoSchema.index({ nombre: 1 });
+
 const Producto = mongoose.model("Producto", ProductoSchema);
 module.exports = Producto;

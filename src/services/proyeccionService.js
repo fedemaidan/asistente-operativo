@@ -10,8 +10,7 @@ const {
 } = require("../Utiles/proyeccionHelper");
 const ProductoService = require("./productoService");
 const LoteService = require("./loteService");
-
-const debugLog = (...args) => console.log("[ProyeccionService]", ...args);
+const ProductoIgnorarService = require("./productoIgnorarService");
 
 class ProyeccionService {
   constructor() {
@@ -20,6 +19,7 @@ class ProyeccionService {
     this.contenedorRepository = new ContenedorRepository();
     this.productoService = new ProductoService();
     this.loteService = new LoteService();
+    this.productoIgnorarService = new ProductoIgnorarService();
   }
 
   async obtenerLotesPendientes(productIds = []) {
@@ -46,36 +46,29 @@ class ProyeccionService {
     fechaBase = null,
   }) {
     try {
-      debugLog("Iniciando generación de proyección", {
-        ventasRegistros: ventasData?.length || 0,
-        stockRegistros: stockData?.length || 0,
-        dateDiff,
-        horizonte,
-        fechaBase,
-      });
 
       const ventasMap = buildVentasPorCodigo(ventasData, dateDiff);
       const stockMap = buildStockPorCodigo(stockData);
-      debugLog("Mapeos creados", {
-        ventasCodigos: ventasMap.size,
-        stockCodigos: stockMap.size,
-        muestraVentas: Array.from(ventasMap.entries()).slice(0, 3),
-        muestraStock: Array.from(stockMap.entries()).slice(0, 3),
-      });
-
-      const codigos = Array.from(
+      
+      const productosAIgnorar = await this.productoIgnorarService.getAll();
+      const codigosAIgnorar = productosAIgnorar.map((p) => p.codigo);
+      let codigos = Array.from(
         new Set([...ventasMap.keys(), ...stockMap.keys()])
+      ).filter(
+        (codigo) =>
+          !codigosAIgnorar.some(
+            (c) =>
+              typeof c === "string" &&
+              typeof codigo === "string" &&
+              c.toLowerCase() === codigo.toLowerCase()
+          )
       );
-      debugLog("Total códigos a procesar", codigos.length);
+
 
       const productos = await this.productoRepository.findByCodigos(codigos);
       const productoPorCodigo = new Map(
         productos.map((p) => [p.codigo, p])
       );
-      debugLog("Productos obtenidos (antes de ensureProductos)", {
-        encontrados: productos.length,
-        sinProducto: codigos.length - productos.length,
-      });
 
       await ensureProductos({
         stockData,
@@ -83,26 +76,16 @@ class ProyeccionService {
       });
 
       const productosDespuesEnsure = Array.from(productoPorCodigo.values());
-      debugLog("Productos luego de ensureProductos", {
-        total: productosDespuesEnsure.length,
-      });
 
       const lotesPendientes = await this.obtenerLotesPendientes(
         productosDespuesEnsure.map((p) => p._id)
       );
-      debugLog("Lotes pendientes", {
-        total: lotesPendientes.length,
-        muestra: lotesPendientes.slice(0, 3),
-      });
 
       const arribosPorProducto = buildArribosPorProducto(
         lotesPendientes,
         this.getFechaArriboFromLote.bind(this),
         fechaBase
       );
-      debugLog("Arribos agrupados", {
-        productosConArribos: arribosPorProducto.size,
-      });
 
       const resultados = [];
       let procesados = 0;
@@ -139,18 +122,6 @@ class ProyeccionService {
           fechaBase,
         });
 
-        if (
-          ventasInfo.cantidadPeriodo > 0 &&
-          ventasInfo.ventasDiarias === 0 &&
-          procesados < 20
-        ) {
-          debugLog("Anomalía: ventasPeriodo > 0 pero ventasDiarias = 0", {
-            codigo,
-            ventasInfo,
-            horizonte,
-          });
-        }
-
         const payloadResultado = {
           codigo,
           productoId: producto?._id || null,
@@ -167,9 +138,8 @@ class ProyeccionService {
           horizonteDias: horizonte,
         };
 
-        if (producto?._id) {
-          try {
-            const updated = await this.productoRepository.updateProyeccionFields(
+        if (producto?._id) {  
+            await this.productoRepository.updateProyeccionFields(
               producto._id,
               {
                 stockActual: stockInicial,
@@ -182,55 +152,11 @@ class ProyeccionService {
                 seAgota: simulacion.seAgota,
               }
             );
-
-            if (!updated) {
-              debugLog("updateProyeccionFields no devolvió documento", {
-                codigo,
-                productoId: producto._id,
-              });
-            } else if (procesados <= 10) {
-              debugLog("updateProyeccionFields OK", {
-                codigo,
-                productoId: producto._id,
-                ventasPeriodoActualizado: updated.ventasPeriodo,
-                ventasProyectadasActualizado: updated.ventasProyectadas,
-                stockProyectadoActualizado: updated.stockProyectado,
-              });
-            }
-          } catch (e) {
-            debugLog("Error al actualizar producto en proyección", {
-              codigo,
-              productoId: producto._id,
-              error: e.message,
-            });
-          }
         }
 
         resultados.push(payloadResultado);
         procesados += 1;
-        if (procesados <= 10 || procesados % 500 === 0) {
-          debugLog("Producto procesado (preview)", {
-            indice: procesados,
-            codigo,
-            stockInicial,
-            ventasPeriodo: ventasInfo.cantidadPeriodo,
-            ventasDiarias: ventasInfo.ventasDiarias,
-            ventasProyectadas,
-            arribos: arribos.length,
-            seAgota: simulacion.seAgota,
-            diasHastaAgotarStock: simulacion.diasHastaAgotarStock,
-            stockProyectado: simulacion.stockProyectado,
-            fechaAgotamientoStock: simulacion.fechaAgotamientoStock,
-            cantidadCompraSugerida: simulacion.cantidadCompraSugerida,
-            fechaCompraSugerida: simulacion.fechaCompraSugerida,
-          });
-        }
       }
-
-      debugLog("Proyección finalizada", {
-        totalResultados: resultados.length,
-        horizonteDias: horizonte,
-      });
 
       return {
         success: true,
@@ -241,10 +167,6 @@ class ProyeccionService {
         },
       };
     } catch (error) {
-      debugLog("Error inesperado en generarProyeccion", {
-        message: error.message,
-        stack: error.stack,
-      });
       return { success: false, error: error.message };
     }
   }

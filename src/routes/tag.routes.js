@@ -1,13 +1,14 @@
 const express = require("express");
 const tagController = require("../controllers/tagController");
-const proyeccionController = require("../controllers/proyeccionController");
 const Tag = require("../models/tag.model");
+const ProductoService = require("../services/productoService");
 
 const router = express.Router();
+const productoService = new ProductoService();
 
 router.get("/", async (req, res) => {
   try {
-    const result = await proyeccionController.getTags();
+    const result = await productoService.getTagsResumen();
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
