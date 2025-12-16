@@ -8,7 +8,6 @@ const ProductoSchema = new mongoose.Schema(
       required: true,
       trim: true,
       uppercase: true,
-      unique: true,
     },
     nombre: {
       type: String,
