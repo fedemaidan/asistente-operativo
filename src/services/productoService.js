@@ -325,6 +325,24 @@ class ProductoService {
       return { success: false, error: error.message };
     }
   }
+
+  async upsertManyByCodigo(productos = []) {
+    try {
+      const result = await this.productoRepository.upsertManyByCodigo(productos);
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async findByCodigos(codigos = []) {
+    try {
+      const data = await this.productoRepository.findByCodigos(codigos);
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = ProductoService;

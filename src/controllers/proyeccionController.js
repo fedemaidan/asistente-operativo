@@ -3,7 +3,7 @@ const {
   subirExcelBufferADrive,
 } = require("../Utiles/Funciones/Excel/excelToDrive");
 const getDatesFromExcel = require("../Utiles/Chatgpt/getDatesFromExcel");
-const { limpiarDatosVentas } = require("../Utiles/Funciones/HandleVentasExcel");
+const { limpiarDatosVentas, limpiarDatosQuiebre } = require("../Utiles/Funciones/HandleVentasExcel");
 const ProyeccionService = require("../services/proyeccionService");
 const Proyeccion = require("../models/proyeccion.model");
 
@@ -33,11 +33,45 @@ const parseFechas = async (ventasFileName, fechaInicio, fechaFin) => {
 };
 
 module.exports = {
+  getProyeccionesMetadata: async (req, res) => {
+    try {
+      const { ids } = req.body || {};
+      const rawIds = Array.isArray(ids) ? ids : [];
+      const uniqueIds = Array.from(new Set(rawIds.map((v) => String(v || "").trim()).filter(Boolean)));
+
+      if (uniqueIds.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+
+      const docs = await Proyeccion.find(
+        { _id: { $in: uniqueIds } },
+        { fechaInicio: 1, fechaFin: 1, "links.ventas": 1, "links.stock": 1, "links.quiebre": 1 }
+      )
+        .lean();
+
+      const data = (Array.isArray(docs) ? docs : []).map((d) => ({
+        _id: d?._id,
+        fechaInicio: d?.fechaInicio ?? null,
+        fechaFin: d?.fechaFin ?? null,
+        linkVentas: d?.links?.ventas || "",
+        linkStock: d?.links?.stock || "",
+        tieneQuiebre: Boolean(d?.links?.quiebre),
+        linkQuiebre: d?.links?.quiebre || "",
+      }));
+
+      return res.json({ success: true, data });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  },
   createProyeccion: async (req, res) => {
     try {
       const { fechaInicio, fechaFin, horizonte } = req.body;
       const ventasFile = req.files?.ventas?.[0];
       const stockFile = req.files?.stock?.[0];
+      const quiebreFile = req.files?.quiebre?.[0] || null;
 
       if (!ventasFile || !stockFile) {
         throw new Error("Faltan archivos ventas/stock");
@@ -56,12 +90,23 @@ module.exports = {
         error: stockError,
       } = excelBufferToJson(stockFile.buffer);
 
-      if (!ventasSuccess || !stockSuccess) {
+      let quiebreParsed = null;
+      let quiebreSuccess = true;
+      let quiebreError = null;
+      if (quiebreFile) {
+        const parsed = excelBufferToJson(quiebreFile.buffer);
+        quiebreParsed = limpiarDatosQuiebre(parsed?.data);
+        quiebreSuccess = Boolean(parsed?.success);
+        quiebreError = parsed?.error || null;
+      }
+
+      if (!ventasSuccess || !stockSuccess || !quiebreSuccess) {
         const errorPayload = {
           success: false,
           error: "No se pudieron procesar los archivos Excel",
           ventasError: ventasSuccess ? null : ventasError,
           stockError: stockSuccess ? null : stockError,
+          quiebreError: quiebreSuccess ? null : quiebreError,
         };
         const err = new Error(errorPayload.error);
         err.payload = errorPayload;
@@ -81,6 +126,14 @@ module.exports = {
         carpetaId,
         stockFile.mimetype
       );
+      const driveQuiebre = quiebreFile
+        ? await subirExcelBufferADrive(
+            quiebreFile.buffer,
+            quiebreFile.originalname,
+            carpetaId,
+            quiebreFile.mimetype
+          )
+        : null;
 
       const fechas = await parseFechas(
         ventasFile.originalname,
@@ -95,9 +148,17 @@ module.exports = {
       const proyeccion = await proyeccionService.generarProyeccion({
         ventasData: ventasParsed,
         stockData: stockParsed,
+        quiebreData: Array.isArray(quiebreParsed) ? quiebreParsed : [],
         dateDiff: fechas.dateDiff,
         horizonte: horizonteDias,
         fechaBase: fechas.fechaFin,
+        fechaInicio: fechas.fechaInicio,
+        fechaFin: fechas.fechaFin,
+        links: {
+          ventas: driveVentas?.driveUrl,
+          stock: driveStock?.driveUrl,
+          quiebre: driveQuiebre?.driveUrl || "",
+        },
       });
 
       return res.json({
@@ -105,6 +166,7 @@ module.exports = {
         links: {
           ventas: driveVentas?.driveUrl,
           stock: driveStock?.driveUrl,
+          quiebre: driveQuiebre?.driveUrl || "",
         },
         fechas: {
           fechaInicio: fechas.fechaInicio,
@@ -122,10 +184,30 @@ module.exports = {
       res.status(500).json({ success: false, error: error.message });
     }
   },
-  // Compatibilidad con flujos previos del bot
   create: async (payload) => {
     try {
-      const doc = await Proyeccion.create(payload);
+      const {
+        fechaInicio = null,
+        fechaFin = null,
+        linkStock = null,
+        linkVentas = null,
+        linkQuiebre = null,
+        dateDiff = 0,
+        horizonte = 90,
+      } = payload || {};
+
+      const doc = await Proyeccion.create({
+        active: false,
+        fechaInicio,
+        fechaFin,
+        fechaBase: fechaFin || null,
+        dateDiff: Number(dateDiff) || 0,
+        horizonte: Number(horizonte) || 90,
+        links: { stock: linkStock || "", ventas: linkVentas || "", quiebre: linkQuiebre || "" },
+        ventasData: [],
+        stockData: [],
+        quiebreData: [],
+      });
       return { success: true, data: doc };
     } catch (error) {
       return { success: false, error: error.message };

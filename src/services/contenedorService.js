@@ -1,12 +1,14 @@
 const ContenedorRepository = require("../repository/contenedorRepository");
 const LoteService = require("./loteService");
 const PedidoService = require("./pedidoService");
+const ProyeccionService = require("./proyeccionService");
 
 class ContenedorService {
   constructor() {
     this.contenedorRepository = new ContenedorRepository();
     this.loteService = new LoteService();
     this.pedidoService = new PedidoService();
+    this.proyeccionService = new ProyeccionService();
   }
 
   /**
@@ -184,6 +186,10 @@ class ContenedorService {
         };
       }
 
+      const recalculo = await this.proyeccionService.recalcularDesdeUltimoContexto();
+      if (!recalculo?.success && recalculo?.statusCode !== 409) {
+        throw new Error(recalculo?.error || "Error al recalcular proyección");
+      }
       return { success: true, data: updated };
     } catch (error) {
       return { success: false, error: error.message };
@@ -210,6 +216,10 @@ class ContenedorService {
         };
       }
 
+      const recalculo = await this.proyeccionService.recalcularDesdeUltimoContexto();
+      if (!recalculo?.success && recalculo?.statusCode !== 409) {
+        throw new Error(recalculo?.error || "Error al recalcular proyección");
+      }
       return { success: true, data: deleted };
     } catch (error) {
       return { success: false, error: error.message };

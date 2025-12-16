@@ -6,6 +6,16 @@ class ProductoRepository extends BaseRepository {
     super(Producto);
   }
 
+  normalizeCodigo(codigo) {
+    return typeof codigo === "string" ? codigo.trim().toUpperCase() : String(codigo || "").trim().toUpperCase();
+  }
+
+  normalizeCodigos(codigos = []) {
+    return Array.isArray(codigos)
+      ? codigos.map((c) => this.normalizeCodigo(c)).filter((c) => Boolean(c))
+      : [];
+  }
+
   buildActiveFilter(extraFilter) {
     if (!extraFilter || (typeof extraFilter === "object" && Object.keys(extraFilter).length === 0)) {
       return { active: true };
@@ -44,8 +54,44 @@ class ProductoRepository extends BaseRepository {
   }
 
   async findByCodigos(codigos = []) {
-    if (!Array.isArray(codigos) || codigos.length === 0) return [];
-    return this.find({ codigo: { $in: codigos } });
+    const normalized = this.normalizeCodigos(codigos);
+    if (normalized.length === 0) return [];
+    return this.find({ codigo: { $in: normalized } });
+  }
+
+  /**
+   * Upsert por codigo (evita duplicados cuando codigo es unique).
+   * Solo inserta si no existe; no pisa datos existentes.
+   */
+  async upsertManyByCodigo(productos = []) {
+    const rows = Array.isArray(productos) ? productos : [];
+    if (rows.length === 0) return { success: true, upserts: 0 };
+
+    const ops = rows
+      .map((p) => {
+        const codigo = this.normalizeCodigo(p?.codigo);
+        if (!codigo) return null;
+        return {
+          updateOne: {
+            filter: { codigo },
+            update: {
+              $setOnInsert: {
+                ...p,
+                codigo,
+                active: p?.active ?? true,
+              },
+            },
+            upsert: true,
+          },
+        };
+      })
+      .filter(Boolean);
+
+    if (ops.length === 0) return { success: true, upserts: 0 };
+
+    const result = await this.model.bulkWrite(ops, { ordered: false });
+    const upserts = result?.upsertedCount ?? 0;
+    return { success: true, upserts };
   }
 
   async updateProyeccionFields(id, payload) {

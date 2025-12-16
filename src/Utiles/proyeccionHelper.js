@@ -1,4 +1,3 @@
-const { diasHastaFecha } = require("./Funciones/HandleDates");
 const ProductoService = require("../services/productoService");
 
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
@@ -15,32 +14,116 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
-const buildVentasPorCodigo = (ventasData = [], dateDiff) => {
+const normalizeCodigo = (codigo) =>
+  typeof codigo === "string" ? codigo.trim().toUpperCase() : String(codigo || "").trim().toUpperCase();
+
+const normalizeDateToNoon = (dateLike) => {
+  if (!dateLike) return null;
+  const d = dateLike instanceof Date ? new Date(dateLike) : new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(12, 0, 0, 0);
+  return d;
+};
+
+/**
+ * Regla:
+ * - Quiebre (stock llega a 0) abre un intervalo "sin stock" desde esa fecha (inclusive)
+ * - Un ingreso con cantidad > 0 cierra el intervalo en su fecha (ese día ya cuenta como con stock)
+ */
+const buildDiasConStockPorCodigo = ({
+  quiebreData = [],
+  fechaInicio = null,
+  fechaFin = null,
+  dateDiff = 0,
+} = {}) => {
+  const inicio = normalizeDateToNoon(fechaInicio);
+  const fin = normalizeDateToNoon(fechaFin);
+  const diasPeriodo = Number(dateDiff) || 0;
+  if (!inicio || !fin || diasPeriodo <= 0 || !Array.isArray(quiebreData) || quiebreData.length === 0) {
+    return new Map();
+  }
+
+  const eventosPorCodigo = new Map(); // codigoLower -> [{ type, date, qty? }]
+
+  for (const row of quiebreData) {
+    const codigoKey = normalizeCodigo(row?.codigo || row?.Codigo);
+    if (!codigoKey) continue;
+
+    const fechaIngreso = normalizeDateToNoon(row?.fechaIngreso);
+    const cantidadIngreso = toNumber(row?.cantidadIngreso);
+    const fechaQuiebre = normalizeDateToNoon(row?.fechaQuiebre);
+
+    if (!eventosPorCodigo.has(codigoKey)) eventosPorCodigo.set(codigoKey, []);
+    const eventos = eventosPorCodigo.get(codigoKey);
+
+    if (fechaQuiebre) {
+      eventos.push({ type: "QUIEBRE", date: fechaQuiebre });
+    }
+    if (fechaIngreso && cantidadIngreso > 0) {
+      eventos.push({ type: "INGRESO", date: fechaIngreso, cantidad: cantidadIngreso });
+    }
+  }
+
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const dayIndex = (d) => Math.floor((normalizeDateToNoon(d).getTime() - inicio.getTime()) / MS_IN_DAY);
+
+  const diasConStockPorCodigo = new Map();
+
+  for (const [codigoKey, eventos] of eventosPorCodigo.entries()) {
+    if (!Array.isArray(eventos) || eventos.length === 0) continue;
+
+    eventos.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    // Armar intervalos sin stock
+    const intervalos = [];
+    let openStart = null;
+
+    for (const ev of eventos) {
+      if (ev.type === "QUIEBRE" && !openStart) {
+        openStart = ev.date;
+        continue;
+      }
+      if (ev.type === "INGRESO" && openStart && ev.date.getTime() > openStart.getTime()) {
+        intervalos.push({ start: openStart, end: ev.date }); // end es exclusivo
+        openStart = null;
+      }
+    }
+    if (openStart) {
+      intervalos.push({ start: openStart, end: fin }); // si queda abierto, lo cerramos en fin del período
+    }
+
+    let diasSinStock = 0;
+
+    for (const it of intervalos) {
+      const startDate = it.start.getTime() < inicio.getTime() ? inicio : it.start;
+      const endDate = it.end.getTime() > fin.getTime() ? fin : it.end;
+      if (endDate.getTime() <= startDate.getTime()) continue;
+
+      const startIdx = clamp(dayIndex(startDate), 0, diasPeriodo);
+      const endIdx = clamp(dayIndex(endDate), 0, diasPeriodo);
+      if (endIdx > startIdx) diasSinStock += endIdx - startIdx;
+    }
+
+    const diasConStock = Math.max(0, diasPeriodo - diasSinStock);
+    diasConStockPorCodigo.set(codigoKey, diasConStock);
+  }
+
+  return diasConStockPorCodigo;
+};
+
+const buildVentasPorCodigo = (ventasData = [], dateDiff, diasConStockPorCodigo = null) => {
   const ventas = new Map();
 
-  console.log("[ProyeccionHelper] buildVentasPorCodigo -> resumen", {
-    filasVentas: ventasData?.length || 0,
-    dateDiff,
-  });
-
-  let debugCount = 0;
-
   ventasData.forEach((venta) => {
-    const codigo = venta?.Codigo;
+    const codigo = normalizeCodigo(venta?.Codigo);
     if (!codigo) return;
     const cantidadPeriodo = toNumber(venta?.Cantidad);
-    const ventasDiarias =
-      dateDiff && dateDiff > 0 ? cantidadPeriodo / dateDiff : 0;
-
-    if (debugCount < 10) {
-      console.log("[ProyeccionHelper] fila venta", {
-        codigo,
-        cantidadPeriodo,
-        dateDiff,
-        ventasDiarias,
-      });
-      debugCount += 1;
-    }
+    const diasConStock =
+      diasConStockPorCodigo && diasConStockPorCodigo instanceof Map
+        ? diasConStockPorCodigo.get(codigo)
+        : null;
+    const divisor = diasConStock != null ? Math.max(0, Number(diasConStock) || 0) : Number(dateDiff) || 0;
+    const ventasDiarias = divisor > 0 ? cantidadPeriodo / divisor : 0;
 
     ventas.set(codigo, { ventasDiarias, cantidadPeriodo });
   });
@@ -50,7 +133,7 @@ const buildVentasPorCodigo = (ventasData = [], dateDiff) => {
 const buildStockPorCodigo = (stockData = []) => {
   const stock = new Map();
   stockData.forEach((item) => {
-    const codigo = item?.Codigo;
+    const codigo = normalizeCodigo(item?.Codigo);
     if (!codigo) return;
     const cantidad = toNumber(item?.Cantidad);
     stock.set(codigo, {
@@ -78,9 +161,6 @@ const buildArribosPorProducto = (
       if (diffDias >= 0) {
         dia = diffDias;
       }
-    } else if (fecha) {
-      // Fallback legacy: calculamos desde hoy
-      dia = diasHastaFecha(fecha);
     }
     if (dia === null) return;
 
@@ -101,33 +181,6 @@ const buildArribosPorProducto = (
   return arribosPorProducto;
 };
 
-const consumirIntervalo = (stock, currentDay, ventasDiarias, diasIntervalo) => {
-  if (diasIntervalo <= 0 || ventasDiarias <= 0) {
-    return { stock, currentDay, agotado: false, diasHastaAgotarStock: null };
-  }
-
-  const ventasIntervalo = ventasDiarias * diasIntervalo;
-  const stockDespues = stock - ventasIntervalo;
-
-  if (stockDespues < 0) {
-    const diasParaCero = Math.ceil(stock / ventasDiarias);
-    const diaAgotado = currentDay + Math.min(diasParaCero, diasIntervalo);
-    return {
-      stock: 0,
-      currentDay: diaAgotado,
-      agotado: true,
-      diasHastaAgotarStock: diaAgotado,
-    };
-  }
-
-  return {
-    stock: stockDespues,
-    currentDay: currentDay + diasIntervalo,
-    agotado: false,
-    diasHastaAgotarStock: null,
-  };
-};
-
 const simularProyeccion = ({
   horizonte = 90,
   stockInicial = 0,
@@ -141,7 +194,7 @@ const simularProyeccion = ({
       seAgota: true,
       diasHastaAgotarStock: 0,
       fechaAgotamientoStock: fechaAgot,
-      fechaCompraSugerida: fechaBase ? calcularFechaDesdeBase(fechaBase, -100) : null,
+      fechaCompraSugerida: fechaBase ? calcularFechaDesdeBase(fechaBase, 0) : new Date(),
       cantidadCompraSugerida: ventasDiarias > 0 ? Math.round(ventasDiarias * 100) : 0,
       proximoArriboDias: null,
       proximoArriboCantidad: 0,
@@ -150,56 +203,90 @@ const simularProyeccion = ({
     };
   }
 
+  // Normalizamos y ordenamos arribos (día >= 0), y los agrupamos por día para simular día-a-día.
   const eventosAll = (arribos || [])
-    .filter((a) => a.dia >= 0)
+    .filter((a) => Number.isFinite(a?.dia) && a.dia >= 0)
+    .map((a) => ({ dia: Math.floor(a.dia), cantidad: toNumber(a.cantidad) }))
     .sort((a, b) => a.dia - b.dia);
 
-  const eventosHorizon = eventosAll.filter((a) => a.dia <= horizonte);
   const proximoEvento = eventosAll.length > 0 ? eventosAll[0] : null;
 
-  // Simulación para stock proyectado a horizonte (solo eventos hasta horizonte)
-  let stockH = stockInicial;
-  let dayH = 0;
-  for (const ev of eventosHorizon) {
-    const intervalo = ev.dia - dayH;
-    const r = consumirIntervalo(stockH, dayH, ventasDiarias, intervalo);
-    stockH = r.stock;
-    dayH = r.currentDay;
-    if (r.agotado) break;
-    stockH += ev.cantidad;
+  const arribosPorDia = new Map(); // day -> totalCantidad
+  for (const ev of eventosAll) {
+    if (ev.cantidad <= 0) continue;
+    arribosPorDia.set(ev.dia, (arribosPorDia.get(ev.dia) || 0) + ev.cantidad);
   }
-  if (dayH < horizonte) {
-    const rem = horizonte - dayH;
-    const r = consumirIntervalo(stockH, dayH, ventasDiarias, rem);
-    stockH = r.stock;
-    dayH = r.currentDay;
+
+  const lastArriboDay = eventosAll.length > 0 ? eventosAll[eventosAll.length - 1].dia : -1;
+
+  /**
+   * Simula stock día por día.
+   * Regla de orden (consistente con la simulación anterior):
+   * - Al inicio del día: se suma el arribo del día (si hay).
+   * - Al final del día: se descuenta ventasDiarias (si ventasDiarias > 0).
+   */
+  const simularHastaDia = (endDayExclusive, initialStock) => {
+    let stock = initialStock;
+    const dias = Math.max(0, Math.floor(endDayExclusive));
+    for (let day = 0; day < dias; day += 1) {
+      stock += arribosPorDia.get(day) || 0;
+      if (ventasDiarias > 0) {
+        stock = Math.max(0, stock - ventasDiarias);
+      }
+    }
+    return stock;
+  };
+
+  // Stock al horizonte: se consumen ventas SOLO hasta horizonte, sumando arribos en esos días.
+  const stockAlHorizonte = simularHastaDia(horizonte, stockInicial);
+
+  // sumamos TODOS los arribos posteriores al horizonte (sin consumir ventas después).
+  let sumaArribosPostHorizonte = 0;
+  for (const ev of eventosAll) {
+    if (ev.dia >= horizonte) sumaArribosPostHorizonte += ev.cantidad;
   }
+  const stockH = stockAlHorizonte + sumaArribosPostHorizonte;
 
   // Simulación completa para fecha de agotamiento (sin límite de horizonte)
-  let stock = stockInicial;
-  let currentDay = 0;
   let diasHastaAgotarStock = null;
   let seAgota = false;
+  let agotamientoExcede365Dias = false;
 
-  for (const evento of eventosAll) {
-    const intervalo = evento.dia - currentDay;
-    const result = consumirIntervalo(stock, currentDay, ventasDiarias, intervalo);
-    stock = result.stock;
-    currentDay = result.currentDay;
-    if (result.agotado) {
-      diasHastaAgotarStock = result.diasHastaAgotarStock;
-      seAgota = true;
-      break;
+  if (ventasDiarias > 0) {
+    const MAX_DIAS_SIMULACION = 365;
+    // Simulamos día por día hasta agotar, aplicando arribos de cualquier día (>= 0).
+    let stock = stockInicial;
+    let day = 0;
+
+    // Simulamos explícitamente hasta el último día con arribo.
+    const endArribos = Math.max(0, lastArriboDay + 1);
+    const endSim = Math.min(endArribos, MAX_DIAS_SIMULACION);
+    for (; day < endSim; day += 1) {
+      stock += arribosPorDia.get(day) || 0;
+      stock = stock - ventasDiarias;
+      if (stock <= 0) {
+        seAgota = true;
+        diasHastaAgotarStock = day + 1; // cantidad de días transcurridos hasta llegar a 0
+        stock = 0;
+        break;
+      }
     }
-    stock += evento.cantidad;
-  }
 
-  if (!seAgota && ventasDiarias > 0 && stock > 0) {
-    // consumir hasta agotar (aunque sea después del horizonte)
-    const diasExtra = Math.ceil(stock / ventasDiarias);
-    diasHastaAgotarStock = currentDay + diasExtra;
-    seAgota = true;
-    stock = 0;
+    if (!seAgota && day >= MAX_DIAS_SIMULACION) {
+      agotamientoExcede365Dias = true;
+    }
+
+    // Si no se agotó todavía y ya no hay más arribos, el resto es lineal: se agota en ceil(stock/ventasDiarias) días.
+    if (!seAgota && stock > 0 && day < MAX_DIAS_SIMULACION) {
+      const diasExtra = Math.ceil(stock / ventasDiarias);
+      const diaAgotamiento = day + diasExtra;
+      if (diaAgotamiento <= MAX_DIAS_SIMULACION) {
+        seAgota = true;
+        diasHastaAgotarStock = diaAgotamiento;
+      } else {
+        agotamientoExcede365Dias = true;
+      }
+    }
   }
 
   const diasAgot = seAgota ? Math.max(0, diasHastaAgotarStock) : null;
@@ -208,11 +295,12 @@ const simularProyeccion = ({
 
   return {
     seAgota,
+    agotamientoExcede365Dias,
     diasHastaAgotarStock: diasAgot,
     fechaAgotamientoStock: fechaAgot,
     fechaCompraSugerida:
-      seAgota && fechaBase ? calcularFechaDesdeBase(fechaBase, Math.max(0, diasAgot - 100)) : null,
-    cantidadCompraSugerida: seAgota && ventasDiarias > 0 ? Math.round(ventasDiarias * 100) : 0,
+      seAgota && fechaBase ? calcularFechaDesdeBase(fechaBase, Math.max(0, diasAgot - 90)) : null,
+    cantidadCompraSugerida: seAgota && ventasDiarias > 0 ? Math.round(ventasDiarias * 90) : 0,
     proximoArriboDias: proximoEvento ? proximoEvento.dia : null,
     proximoArriboCantidad: proximoEvento ? proximoEvento.cantidad : 0,
     proximoArriboFecha:
@@ -233,11 +321,11 @@ const ensureProductos = async ({
 }) => {
   const productoService = new ProductoService();
 
-  const codigosConocidos = new Set(productoPorCodigo.keys());
+  const codigosConocidos = new Set(Array.from(productoPorCodigo.keys()).map(normalizeCodigo));
   const productosParaCrear = [];
 
   stockData.forEach((item) => {
-    const codigo = item?.Codigo;
+    const codigo = normalizeCodigo(item?.Codigo);
     if (!codigo || codigosConocidos.has(codigo)) return;
 
     codigosConocidos.add(codigo);
@@ -260,9 +348,15 @@ const ensureProductos = async ({
 
   if (productosParaCrear.length === 0) return productoPorCodigo;
 
-  const result = await productoService.createManyProductos(productosParaCrear);
-  if (result?.success && Array.isArray(result.data)) {
-    result.data.forEach((p) => {
+  // Upsert por codigo (con unique index) para evitar duplicados
+  const upsertResult = await productoService.upsertManyByCodigo(productosParaCrear);
+  if (!upsertResult?.success) return productoPorCodigo;
+
+  // Releer los productos insertados para actualizar el mapa
+  const codigosCreados = productosParaCrear.map((p) => p.codigo);
+  const fetch = await productoService.findByCodigos(codigosCreados);
+  if (fetch?.success && Array.isArray(fetch.data)) {
+    fetch.data.forEach((p) => {
       if (p?.codigo) productoPorCodigo.set(p.codigo, p);
     });
   }
@@ -274,6 +368,7 @@ module.exports = {
   buildVentasPorCodigo,
   buildStockPorCodigo,
   buildArribosPorProducto,
+  buildDiasConStockPorCodigo,
   simularProyeccion,
   ensureProductos,
 };

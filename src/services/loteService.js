@@ -1,10 +1,24 @@
 const LoteRepository = require("../repository/loteRepository");
 const ProductoService = require("./productoService");
+const ProyeccionService = require("./proyeccionService");
 
 class LoteService {
   constructor() {
     this.loteRepository = new LoteRepository();
     this.productoService = new ProductoService();
+    this.proyeccionService = new ProyeccionService();
+  }
+
+  async _recalcularProyeccionCompletaSiExiste() {
+    const result = await this.proyeccionService.recalcularDesdeUltimoContexto();
+    // Si no hay proyección activa, no cortamos la operación de lotes/pedidos.
+    if (!result?.success && result?.statusCode === 409) {
+      return { success: false, skipped: true, error: result.error };
+    }
+    if (!result?.success) {
+      throw new Error(result?.error || "Error al recalcular proyección");
+    }
+    return { success: true, skipped: false, meta: result.meta };
   }
 
   _toObjectIdString(value) {
@@ -127,6 +141,7 @@ class LoteService {
       await this._aplicarDeltaStockProyectado(
         this._buildDeltaStockProyectadoPorProducto([created], +1)
       );
+      await this._recalcularProyeccionCompletaSiExiste();
       return { success: true, data: created };
     } catch (error) {
       return { success: false, error: error.message };
@@ -157,6 +172,7 @@ class LoteService {
       await this._aplicarDeltaStockProyectado(
         this._buildDeltaStockProyectadoPorProducto(created, +1)
       );
+      await this._recalcularProyeccionCompletaSiExiste();
       return { success: true, data: created };
     } catch (error) {
       return { success: false, error: error.message };
@@ -219,6 +235,7 @@ class LoteService {
         this._buildDeltaStockProyectadoPorProducto([current], factor)
       );
 
+      await this._recalcularProyeccionCompletaSiExiste();
       return {
         success: true,
         data: updated,
@@ -287,6 +304,7 @@ class LoteService {
         this._buildDeltaStockProyectadoPorProducto(efectivos, factor)
       );
 
+      await this._recalcularProyeccionCompletaSiExiste();
       return {
         success: true,
         data: changed,
@@ -349,6 +367,7 @@ class LoteService {
         this._buildDeltaStockProyectadoPorProducto(efectivos, factor)
       );
 
+      await this._recalcularProyeccionCompletaSiExiste();
       return {
         success: true,
         data: changed,
@@ -451,6 +470,7 @@ class LoteService {
         };
       }
 
+      await this._recalcularProyeccionCompletaSiExiste();
       return { success: true, data: updated };
     } catch (error) {
       return { success: false, error: error.message };
@@ -477,6 +497,7 @@ class LoteService {
         };
       }
 
+      await this._recalcularProyeccionCompletaSiExiste();
       return { success: true, data: deleted };
     } catch (error) {
       return { success: false, error: error.message };

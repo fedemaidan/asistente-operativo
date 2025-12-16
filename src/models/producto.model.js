@@ -6,6 +6,9 @@ const ProductoSchema = new mongoose.Schema(
     codigo: {
       type: String,
       required: true,
+      trim: true,
+      uppercase: true,
+      unique: true,
     },
     nombre: {
       type: String,
@@ -51,6 +54,18 @@ const ProductoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    agotamientoExcede365Dias: {
+      type: Boolean,
+      default: false,
+    },
+    // Proyección “activa” a la que corresponden los campos proyectados del producto
+    idProyeccion: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Proyeccion",
+      required: false,
+      default: null,
+      index: true,
+    },
     active: {
       type: Boolean,
       default: true,
@@ -65,7 +80,7 @@ const ProductoSchema = new mongoose.Schema(
   }
 );
 
-ProductoSchema.index({ codigo: 1 });
+ProductoSchema.index({ codigo: 1 }, { unique: true });
 ProductoSchema.index({ nombre: 1 });
 
 const Producto = mongoose.model("Producto", ProductoSchema);
