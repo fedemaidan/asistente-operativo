@@ -1,5 +1,6 @@
 const ProductoRepository = require("../repository/productoRepository");
 const Tag = require("../models/tag.model");
+const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
 
 
 class ProductoService {
@@ -98,6 +99,133 @@ class ProductoService {
 
       const updated = await this.productoRepository.updateById(id, data, options);
 
+      if (!updated) {
+        return {
+          success: false,
+          error: "Producto no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      return { success: true, data: updated };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async agregarNotaProducto(productoId, notaRaw) {
+    try {
+      if (!productoId) {
+        return {
+          success: false,
+          error: "El ID del producto es requerido",
+          statusCode: 400,
+        };
+      }
+
+      const nota = String(notaRaw ?? "").trim();
+      if (!nota) {
+        return {
+          success: false,
+          error: "La nota es requerida",
+          statusCode: 400,
+        };
+      }
+
+      const now = getFechaArgentina();
+      const updated = await this.productoRepository.addNota(productoId, {
+        fecha: now,
+        nota,
+        updatedAt: now,
+      });
+
+      if (!updated) {
+        return {
+          success: false,
+          error: "Producto no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      return { success: true, data: updated };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async actualizarNotaProducto(productoId, notaId, notaRaw) {
+    try {
+      if (!productoId) {
+        return {
+          success: false,
+          error: "El ID del producto es requerido",
+          statusCode: 400,
+        };
+      }
+      if (!notaId) {
+        return {
+          success: false,
+          error: "El ID de la nota es requerido",
+          statusCode: 400,
+        };
+      }
+
+      const nota = String(notaRaw ?? "").trim();
+      if (!nota) {
+        return {
+          success: false,
+          error: "La nota es requerida",
+          statusCode: 400,
+        };
+      }
+
+      const now = getFechaArgentina();
+      const updated = await this.productoRepository.updateNota(productoId, notaId, {
+        nota,
+        updatedAt: now,
+      });
+
+      if (!updated) {
+        return {
+          success: false,
+          error: "Producto o nota no encontrada",
+          statusCode: 404,
+        };
+      }
+
+      return { success: true, data: updated };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async eliminarNotaProducto(productoId, notaId) {
+    try {
+      if (!productoId) {
+        return {
+          success: false,
+          error: "El ID del producto es requerido",
+          statusCode: 400,
+        };
+      }
+      if (!notaId) {
+        return {
+          success: false,
+          error: "El ID de la nota es requerido",
+          statusCode: 400,
+        };
+      }
+
+      const exists = await this.productoRepository.hasNota(productoId, notaId);
+      if (!exists) {
+        return {
+          success: false,
+          error: "Producto o nota no encontrada",
+          statusCode: 404,
+        };
+      }
+
+      const updated = await this.productoRepository.deleteNota(productoId, notaId);
       if (!updated) {
         return {
           success: false,

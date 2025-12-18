@@ -57,6 +57,11 @@ const ProductoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    notas: [{
+      fecha: { type: Date, default: getFechaArgentina },
+      nota: { type: String, default: "" },
+      updatedAt: { type: Date, default: getFechaArgentina },
+    }],
     // Proyección “activa” a la que corresponden los campos proyectados del producto
     idProyeccion: {
       type: mongoose.Schema.Types.ObjectId,

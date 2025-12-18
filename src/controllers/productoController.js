@@ -144,4 +144,48 @@ module.exports = {
       });
     }
   },
+
+  addNotaProducto: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { nota } = req.body;
+      const result = await productoService.agregarNotaProducto(id, nota);
+      return sendResponse(res, result, 201);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Error al agregar nota al producto",
+        details: error.message,
+      });
+    }
+  },
+
+  updateNotaProducto: async (req, res) => {
+    try {
+      const { id, notaId } = req.params;
+      const { nota } = req.body;
+      const result = await productoService.actualizarNotaProducto(id, notaId, nota);
+      return sendResponse(res, result);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Error al actualizar nota del producto",
+        details: error.message,
+      });
+    }
+  },
+
+  deleteNotaProducto: async (req, res) => {
+    try {
+      const { id, notaId } = req.params;
+      const result = await productoService.eliminarNotaProducto(id, notaId);
+      return sendResponse(res, result, 200);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Error al eliminar nota del producto",
+        details: error.message,
+      });
+    }
+  },
 };

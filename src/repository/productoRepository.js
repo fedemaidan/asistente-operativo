@@ -128,6 +128,55 @@ class ProductoRepository extends BaseRepository {
       { $pull: { tags: tagId } }
     );
   }
+
+  async addNota(productoId, notaDoc) {
+    if (!productoId) return null;
+    return this.model
+      .findOneAndUpdate(
+        { _id: productoId, active: true },
+        { $push: { notas: notaDoc } },
+        { new: true, runValidators: true }
+      )
+      .populate({ path: "tags", select: "nombre" })
+      .lean();
+  }
+
+  async updateNota(productoId, notaId, updateData) {
+    if (!productoId || !notaId) return null;
+    return this.model
+      .findOneAndUpdate(
+        { _id: productoId, active: true, "notas._id": notaId },
+        {
+          $set: {
+            ...(updateData?.nota !== undefined ? { "notas.$.nota": updateData.nota } : {}),
+            ...(updateData?.updatedAt ? { "notas.$.updatedAt": updateData.updatedAt } : {}),
+          },
+        },
+        { new: true, runValidators: true }
+      )
+      .populate({ path: "tags", select: "nombre" })
+      .lean();
+  }
+
+  async deleteNota(productoId, notaId) {
+    if (!productoId || !notaId) return null;
+    return this.model
+      .findOneAndUpdate(
+        { _id: productoId, active: true },
+        { $pull: { notas: { _id: notaId } } },
+        { new: true, runValidators: true }
+      )
+      .populate({ path: "tags", select: "nombre" })
+      .lean();
+  }
+
+  async hasNota(productoId, notaId) {
+    if (!productoId || !notaId) return false;
+    const doc = await this.model
+      .findOne({ _id: productoId, active: true, "notas._id": notaId }, { _id: 1 })
+      .lean();
+    return Boolean(doc?._id);
+  }
 }
 
 module.exports = ProductoRepository;
