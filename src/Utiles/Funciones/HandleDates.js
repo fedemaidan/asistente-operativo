@@ -4,6 +4,55 @@ dayjs.extend(customParseFormat);
 
 const msInDay = 1000 * 60 * 60 * 24;
 
+const excelSerialToDate = (serial) => {
+  const n = Number(serial);
+  if (!Number.isFinite(n)) return null;
+  const d = new Date(1899, 11, 30);
+  d.setDate(d.getDate() + Math.floor(n));
+  d.setHours(12, 0, 0, 0);
+  return d;
+};
+
+const normalizeDateToNoon = (dateLike) => {
+  if (!dateLike) return null;
+  const d = dateLike instanceof Date ? new Date(dateLike) : new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(12, 0, 0, 0);
+  return d;
+};
+
+const parseDateDDMMYYYY = (value) => {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) return normalizeDateToNoon(value);
+
+  if (typeof value === "number") return excelSerialToDate(value);
+
+  // string: puede venir DD/MM/YYYY o serial en string
+  if (typeof value === "string") {
+    const raw = value.trim();
+    if (!raw) return null;
+
+    // serial en string
+    if (/^\d+(\.\d+)?$/.test(raw)) {
+      const asNum = Number(raw);
+      if (Number.isFinite(asNum)) return excelSerialToDate(asNum);
+    }
+
+    const formatos = ["DD/MM/YYYY", "D/M/YYYY", "YYYY-MM-DD", "YYYY/M/D"];
+    for (const formato of formatos) {
+      const parsed = dayjs(raw, formato, true);
+      if (parsed.isValid()) return normalizeDateToNoon(parsed.toDate());
+    }
+
+    // fallback: Date nativo (no estricto)
+    return normalizeDateToNoon(raw);
+  }
+
+  return null;
+};
+
+const normalizeExcelDate = (value) => parseDateDDMMYYYY(value);
+
 
 const getDaysDiff = (
   comprobanteFechaStr,
@@ -117,4 +166,8 @@ module.exports = {
   getHoraArgentinaFormato,
   formatDateToDDMMYYYY,
   diasHastaFecha,
+  excelSerialToDate,
+  normalizeDateToNoon,
+  parseDateDDMMYYYY,
+  normalizeExcelDate,
 };

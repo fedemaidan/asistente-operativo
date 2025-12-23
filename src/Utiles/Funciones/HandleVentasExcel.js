@@ -1,4 +1,6 @@
 
+const { normalizeExcelDate } = require("./HandleDates");
+
 const limpiarDatosVentas = (data) => {
   return Object.values(data).map((item) => {
     const itemLimpio = {};
@@ -33,31 +35,6 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
-const normalizeDateToNoon = (dateLike) => {
-  if (!dateLike) return null;
-  const d = dateLike instanceof Date ? new Date(dateLike) : new Date(dateLike);
-  if (Number.isNaN(d.getTime())) return null;
-  d.setHours(12, 0, 0, 0);
-  return d;
-};
-
-// Excel serial date (Windows): days since 1899-12-30
-const excelSerialToDate = (serial) => {
-  const n = Number(serial);
-  if (!Number.isFinite(n)) return null;
-  const d = new Date(1899, 11, 30);
-  d.setDate(d.getDate() + Math.floor(n));
-  d.setHours(12, 0, 0, 0);
-  return d;
-};
-
-const normalizeExcelDate = (value) => {
-  if (value == null || value === "") return null;
-  if (value instanceof Date) return normalizeDateToNoon(value);
-  if (typeof value === "number") return excelSerialToDate(value);
-  return normalizeDateToNoon(value);
-};
-
 /**
  * Parser del Excel de quiebre/ingresos.
  *
@@ -74,29 +51,69 @@ const normalizeExcelDate = (value) => {
 const limpiarDatosQuiebre = (data) => {
   const rows = Array.isArray(data) ? data : Object.values(data || {});
 
-  return rows
-    .map((raw) => {
-      const item = raw && typeof raw === "object" ? raw : {};
-      const normalized = {};
-      Object.keys(item).forEach((k) => {
-        const nk = typeof k === "string" ? k.trim().toLowerCase() : String(k);
-        normalized[nk] = item[k];
+  const results = [];
+
+  for (const raw of rows) {
+    const item = raw && typeof raw === "object" ? raw : {};
+
+    const normalized = {};
+    Object.keys(item).forEach((k) => {
+      const nk =
+        typeof k === "string"
+          ? k.trim().toLowerCase().replace(/\s+/g, " ")
+          : String(k).trim().toLowerCase();
+      normalized[nk] = item[k];
+    });
+
+    const codigo = normalized["artículo"] ?? normalized["articulo"] ?? normalized["codigo"];
+    const descripcion = normalized["descripción"] ?? normalized["descripcion"];
+
+    // Filtramos categorías/subtotales: no tienen descripción (o la tienen como "Subtotal")
+    const descripcionStr = typeof descripcion === "string" ? descripcion.trim() : "";
+    if (!codigo || !descripcionStr) continue;
+    if (descripcionStr.toLowerCase().includes("subtotal")) continue;
+
+    const fechaQuiebre = normalizeExcelDate(
+      normalized["fecha cero"] ??
+        normalized["fecha quiebre stock (en 0 o en negativo)"] ??
+        normalized["fecha quiebre"]
+    );
+
+    const fechaIngreso = normalizeExcelDate(normalized["fecha ingreso"]);
+    const cantidadIngreso = toNumber(
+      normalized["ult. ingreso"] ??
+        normalized["ult ingreso"] ??
+        normalized["cantidad ingreso"] ??
+        normalized["ultimo ingreso"] ??
+        normalized["último ingreso"],
+      0
+    );
+
+    const base = {
+      codigo: String(codigo).trim(),
+      descripcion: descripcionStr,
+    };
+
+    if (fechaQuiebre) {
+      results.push({
+        ...base,
+        fechaIngreso: null,
+        cantidadIngreso: 0,
+        fechaQuiebre,
       });
+    }
 
-      const codigo = normalized["codigo"];
-      if (!codigo) return null;
+    if (fechaIngreso) {
+      results.push({
+        ...base,
+        fechaIngreso,
+        cantidadIngreso,
+        fechaQuiebre: null,
+      });
+    }
+  }
 
-      return {
-        codigo: String(codigo).trim(),
-        descripcion: normalized["descripcion"] ? String(normalized["descripcion"]).trim() : "",
-        fechaIngreso: normalizeExcelDate(normalized["fecha ingreso"]),
-        cantidadIngreso: toNumber(normalized["cantidad ingreso"], 0),
-        fechaQuiebre: normalizeExcelDate(
-          normalized["fecha quiebre stock (en 0 o en negativo)"]
-        ),
-      };
-    })
-    .filter(Boolean);
+  return results;
 };
 
 const proyectarStock = async (
