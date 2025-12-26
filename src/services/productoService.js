@@ -1,15 +1,37 @@
 const ProductoRepository = require("../repository/productoRepository");
 const Tag = require("../models/tag.model");
 const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
+const ProductoIgnorarService = require("./productoIgnorarService");
 
 
 class ProductoService {
   constructor() {
     this.productoRepository = new ProductoRepository();
+    this.productoIgnorarService = new ProductoIgnorarService();
   }
 
   escapeRegExp(value) {
     return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  normalizeCodigo(codigo) {
+    return typeof codigo === "string"
+      ? codigo.trim().toUpperCase()
+      : String(codigo || "").trim().toUpperCase();
+  }
+
+  async buildIgnoradosFilter(includeIgnored = false) {
+    if (includeIgnored) return null;
+
+    const ignored = await this.productoIgnorarService.getAll();
+    const codigosIgnorados = Array.isArray(ignored)
+      ? ignored
+          .map((p) => this.normalizeCodigo(p?.codigo))
+          .filter(Boolean)
+      : [];
+
+    if (codigosIgnorados.length === 0) return null;
+    return { codigo: { $nin: codigosIgnorados } };
   }
 
   async buildTextFilter(text) {
@@ -29,10 +51,24 @@ class ProductoService {
     return { $or: or };
   }
 
+  async buildProductosBusinessFilter({ text, includeIgnored = false } = {}) {
+    const filters = [];
+
+    const textFilter = await this.buildTextFilter(text);
+    if (textFilter) filters.push(textFilter);
+
+    const ignoradosFilter = await this.buildIgnoradosFilter(includeIgnored);
+    if (ignoradosFilter) filters.push(ignoradosFilter);
+
+    if (filters.length === 0) return null;
+    if (filters.length === 1) return filters[0];
+    return { $and: filters };
+  }
+
   async getAll(options = {}) {
     try {
-      const { sort = { createdAt: -1 }, text } = options;
-      const filter = await this.buildTextFilter(text);
+      const { sort = { createdAt: -1 }, text, includeIgnored = false } = options;
+      const filter = await this.buildProductosBusinessFilter({ text, includeIgnored });
       const data = await this.productoRepository.getAllActive({ sort, filter });
       return { success: true, data };
     } catch (error) {
@@ -48,9 +84,10 @@ class ProductoService {
         sort = { createdAt: -1 },
         page,
         text,
+        includeIgnored = false,
       } = options;
 
-      const filter = await this.buildTextFilter(text);
+      const filter = await this.buildProductosBusinessFilter({ text, includeIgnored });
       const result = await this.productoRepository.getPaginated({
         limit,
         offset,

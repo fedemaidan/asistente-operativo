@@ -36,6 +36,10 @@ const ProductoSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    diasHastaAgotarStock: {
+      type: Number,
+      default: 0,
+    },
     // Fecha en la que se proyecta que el stock llegue a 0
     fechaAgotamientoStock: {
       type: Date,
@@ -56,6 +60,10 @@ const ProductoSchema = new mongoose.Schema(
     agotamientoExcede365Dias: {
       type: Boolean,
       default: false,
+    },
+    diasConStock: {
+      type: Number,
+      default: 0,
     },
     notas: [{
       fecha: { type: Date, default: getFechaArgentina },

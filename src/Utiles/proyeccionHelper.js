@@ -118,14 +118,17 @@ const buildVentasPorCodigo = (ventasData = [], dateDiff, diasConStockPorCodigo =
     const codigo = normalizeCodigo(venta?.Codigo);
     if (!codigo) return;
     const cantidadPeriodo = toNumber(venta?.Cantidad);
+    // Si no hay registro de quiebre para el código, asumimos stock todo el período (dateDiff).
     const diasConStock =
       diasConStockPorCodigo && diasConStockPorCodigo instanceof Map
-        ? diasConStockPorCodigo.get(codigo)
-        : null;
+        ? diasConStockPorCodigo.has(codigo)
+          ? diasConStockPorCodigo.get(codigo)
+          : Number(dateDiff) || 0
+        : Number(dateDiff) || 0;
     const divisor = diasConStock != null ? Math.max(0, Number(diasConStock) || 0) : Number(dateDiff) || 0;
     const ventasDiarias = divisor > 0 ? cantidadPeriodo / divisor : 0;
 
-    ventas.set(codigo, { ventasDiarias, cantidadPeriodo });
+    ventas.set(codigo, { ventasDiarias, cantidadPeriodo, diasConStock });
   });
   return ventas;
 };
@@ -336,6 +339,8 @@ const ensureProductos = async ({
       stockActual: cantidad,
       ventasPeriodo: 0,
       ventasProyectadas: 0,
+      diasHastaAgotarStock: 0,
+      diasConStock: 0,
       fechaAgotamientoStock: null,
       cantidadCompraSugerida: 0,
       fechaCompraSugerida: null,

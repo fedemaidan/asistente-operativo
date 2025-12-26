@@ -130,9 +130,24 @@ class ProyeccionService {
       const ventasInfo = ventasMap.get(codigo) || {
         ventasDiarias: 0,
         cantidadPeriodo: 0,
+        diasConStock: null,
       };
 
       const ventasProyectadas = Math.round(ventasInfo.ventasDiarias * horizonte);
+      // Garantía: si hay ventas para el código, usamos EXACTAMENTE el mismo diasConStock
+      // que se usó para calcular ventasDiarias en buildVentasPorCodigo (ventasInfo.diasConStock).
+      let diasConStock = null;
+      if (ventasMap.has(codigo)) {
+        diasConStock = ventasInfo?.diasConStock;
+      } else if (diasConStockPorCodigo && diasConStockPorCodigo instanceof Map) {
+        diasConStock = diasConStockPorCodigo.has(codigo)
+          ? diasConStockPorCodigo.get(codigo)
+          : Number(dateDiff) || 0;
+      } else {
+        diasConStock = Number(dateDiff) || 0;
+      }
+      if (!Number.isFinite(Number(diasConStock))) diasConStock = Number(dateDiff) || 0;
+      diasConStock = Math.max(0, Math.trunc(Number(diasConStock) || 0));
 
       const stockExcel = stockMap.get(codigo)?.stockInicial ?? null;
 
@@ -153,6 +168,10 @@ class ProyeccionService {
         fechaBase,
       });
 
+      const diasHastaAgotarStock = Number.isFinite(Number(simulacion?.diasHastaAgotarStock))
+        ? Number(simulacion.diasHastaAgotarStock)
+        : null;
+
       const payloadResultado = {
         codigo,
         productoId: producto?._id || null,
@@ -160,7 +179,8 @@ class ProyeccionService {
         stockInicial,
         ventasPeriodo: ventasInfo.cantidadPeriodo,
         ventasProyectadas,
-        diasHastaAgotarStock: simulacion.diasHastaAgotarStock,
+        diasConStock,
+        diasHastaAgotarStock,
         fechaAgotamientoStock: simulacion.fechaAgotamientoStock,
         cantidadCompraSugerida: simulacion.cantidadCompraSugerida,
         fechaCompraSugerida: simulacion.fechaCompraSugerida,
@@ -178,6 +198,8 @@ class ProyeccionService {
           ventasPeriodo: ventasInfo.cantidadPeriodo,
           stockProyectado: simulacion.stockProyectado,
           ventasProyectadas,
+          diasConStock,
+          diasHastaAgotarStock,
           fechaAgotamientoStock: simulacion.fechaAgotamientoStock,
           cantidadCompraSugerida: simulacion.cantidadCompraSugerida,
           fechaCompraSugerida: simulacion.fechaCompraSugerida,
