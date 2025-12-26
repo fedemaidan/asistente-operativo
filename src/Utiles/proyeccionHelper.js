@@ -72,7 +72,14 @@ const buildDiasConStockPorCodigo = ({
   for (const [codigoKey, eventos] of eventosPorCodigo.entries()) {
     if (!Array.isArray(eventos) || eventos.length === 0) continue;
 
-    eventos.sort((a, b) => a.date.getTime() - b.date.getTime());
+    // Importante: si QUIEBRE e INGRESO caen el mismo día, el orden debe ser:
+    // QUIEBRE primero y luego INGRESO (para cerrar el intervalo en ese mismo día => 0 días sin stock).
+    eventos.sort((a, b) => {
+      const diff = a.date.getTime() - b.date.getTime();
+      if (diff !== 0) return diff;
+      if (a.type === b.type) return 0;
+      return a.type === "QUIEBRE" ? -1 : 1;
+    });
 
     // Armar intervalos sin stock
     const intervalos = [];
@@ -83,7 +90,7 @@ const buildDiasConStockPorCodigo = ({
         openStart = ev.date;
         continue;
       }
-      if (ev.type === "INGRESO" && openStart && ev.date.getTime() > openStart.getTime()) {
+      if (ev.type === "INGRESO" && openStart && ev.date.getTime() >= openStart.getTime()) {
         intervalos.push({ start: openStart, end: ev.date }); // end es exclusivo
         openStart = null;
       }

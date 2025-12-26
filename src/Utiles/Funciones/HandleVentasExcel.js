@@ -1,5 +1,6 @@
 
 const { normalizeExcelDate } = require("./HandleDates");
+const { excelBufferToJson } = require("./Excel/excelHandler");
 
 const limpiarDatosVentas = (data) => {
   return Object.values(data).map((item) => {
@@ -33,6 +34,69 @@ const toNumber = (value, fallback = 0) => {
     typeof value === "string" ? value.replace(",", ".").trim() : value
   );
   return Number.isFinite(n) ? n : fallback;
+};
+
+const normalizeKeys = (item) => {
+  const out = {};
+  const obj = item && typeof item === "object" ? item : {};
+  Object.keys(obj).forEach((k) => {
+    const nk =
+      typeof k === "string"
+        ? k.trim().toLowerCase().replace(/\s+/g, " ")
+        : String(k).trim().toLowerCase();
+    out[nk] = obj[k];
+  });
+  return out;
+};
+
+const limpiarDatosStockDesdeQuiebreExcel = (data) => {
+  const rows = Array.isArray(data) ? data : Object.values(data || {});
+  const results = [];
+
+  for (const raw of rows) {
+    const normalized = normalizeKeys(raw);
+    const codigo =
+      normalized["artículo"] ?? normalized["articulo"] ?? normalized["codigo"];
+    const descripcion =
+      normalized["descripción"] ??
+      normalized["descripcion"] ??
+      normalized["descrip"] ??
+      normalized["nombre"];
+
+    const descripcionStr =
+      typeof descripcion === "string" ? descripcion.trim() : "";
+    if (!codigo || !descripcionStr) continue;
+    if (descripcionStr.toLowerCase().includes("subtotal")) continue;
+
+    const cantidad = toNumber(
+      normalized["cantidad"] ??
+        normalized["stock actual"] ??
+        normalized["stock"] ??
+        0,
+      0
+    );
+
+    results.push({
+      Codigo: String(codigo).trim(),
+      Descripcion: descripcionStr,
+      Cantidad: cantidad,
+    });
+  }
+
+  return results;
+};
+
+const safeParseExcelBuffer = (file) => {
+  try {
+    const parsed = excelBufferToJson(file.buffer);
+    return {
+      success: Boolean(parsed?.success),
+      data: parsed?.data,
+      error: null,
+    };
+  } catch (error) {
+    return { success: false, data: null, error: error?.message || String(error) };
+  }
 };
 
 /**
@@ -159,5 +223,7 @@ const proyectarStock = async (
 module.exports = {
   limpiarDatosVentas,
   limpiarDatosQuiebre,
+  limpiarDatosStockDesdeQuiebreExcel,
+  safeParseExcelBuffer,
   proyectarStock,
 };

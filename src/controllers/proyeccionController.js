@@ -1,9 +1,13 @@
-const { excelBufferToJson } = require("../Utiles/Funciones/Excel/excelHandler");
 const {
   subirExcelBufferADrive,
 } = require("../Utiles/Funciones/Excel/excelToDrive");
 const getDatesFromExcel = require("../Utiles/Chatgpt/getDatesFromExcel");
-const { limpiarDatosVentas, limpiarDatosQuiebre } = require("../Utiles/Funciones/HandleVentasExcel");
+const {
+  limpiarDatosVentas,
+  limpiarDatosQuiebre,
+  limpiarDatosStockDesdeQuiebreExcel,
+  safeParseExcelBuffer,
+} = require("../Utiles/Funciones/HandleVentasExcel");
 const ProyeccionService = require("../services/proyeccionService");
 const Proyeccion = require("../models/proyeccion.model");
 
@@ -70,31 +74,42 @@ module.exports = {
     try {
       const { fechaInicio, fechaFin, horizonte } = req.body;
       const ventasFile = req.files?.ventas?.[0];
-      const stockFile = req.files?.stock?.[0];
       const quiebreFile = req.files?.quiebre?.[0] || null;
 
-      if (!ventasFile || !stockFile) {
-        throw new Error("Faltan archivos ventas/stock");
+      if (!ventasFile || !quiebreFile) {
+        throw new Error("Faltan archivos ventas/quiebre");
       }
 
       const {
         data: ventasExcelData,
         success: ventasSuccess,
         error: ventasError,
-      } = excelBufferToJson(ventasFile.buffer);
+      } = safeParseExcelBuffer(ventasFile);
       const ventasParsed = limpiarDatosVentas(ventasExcelData);
 
       const {
-        data: stockParsed,
+        data: stockExcelData,
         success: stockSuccess,
         error: stockError,
-      } = excelBufferToJson(stockFile.buffer);
+      } = safeParseExcelBuffer(quiebreFile);
+      const stockParsed = limpiarDatosStockDesdeQuiebreExcel(stockExcelData);
 
       let quiebreParsed = null;
       let quiebreSuccess = true;
       let quiebreError = null;
       if (quiebreFile) {
-        const parsed = excelBufferToJson(quiebreFile.buffer);
+        const parsed = safeParseExcelBuffer(quiebreFile);
+        const quiebreRaw = Array.isArray(parsed?.data)
+          ? parsed.data
+          : Object.values(parsed?.data || {});
+        console.log(
+          "[proyeccionController] quiebre excel crudo (primeras 200 filas):",
+          {
+            file: quiebreFile?.originalname,
+            totalFilas: Array.isArray(quiebreRaw) ? quiebreRaw.length : 0,
+            filas: (quiebreRaw || []).slice(0, 200),
+          }
+        );
         quiebreParsed = limpiarDatosQuiebre(parsed?.data);
         quiebreSuccess = Boolean(parsed?.success);
         quiebreError = parsed?.error || null;
@@ -120,20 +135,12 @@ module.exports = {
         carpetaId,
         ventasFile.mimetype
       );
-      const driveStock = await subirExcelBufferADrive(
-        stockFile.buffer,
-        stockFile.originalname,
+      const driveQuiebre = await subirExcelBufferADrive(
+        quiebreFile.buffer,
+        quiebreFile.originalname,
         carpetaId,
-        stockFile.mimetype
+        quiebreFile.mimetype
       );
-      const driveQuiebre = quiebreFile
-        ? await subirExcelBufferADrive(
-            quiebreFile.buffer,
-            quiebreFile.originalname,
-            carpetaId,
-            quiebreFile.mimetype
-          )
-        : null;
 
       const fechas = await parseFechas(
         ventasFile.originalname,
@@ -156,7 +163,7 @@ module.exports = {
         fechaFin: fechas.fechaFin,
         links: {
           ventas: driveVentas?.driveUrl,
-          stock: driveStock?.driveUrl,
+          stock: driveQuiebre?.driveUrl || "",
           quiebre: driveQuiebre?.driveUrl || "",
         },
       });
@@ -165,7 +172,7 @@ module.exports = {
         ...proyeccion,
         links: {
           ventas: driveVentas?.driveUrl,
-          stock: driveStock?.driveUrl,
+          stock: driveQuiebre?.driveUrl || "",
           quiebre: driveQuiebre?.driveUrl || "",
         },
         fechas: {
