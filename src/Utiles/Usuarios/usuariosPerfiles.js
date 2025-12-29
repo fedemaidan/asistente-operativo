@@ -39,7 +39,17 @@ Aclaracion:
         data:
         {
             numero_comprobante: "numero de comprobante de la transferencia",
-            monto: "monto de la transferencia. Pasamelo en formato float. Ejemplo: 1000.50",
+            monto: "monto de la transferencia.
+            REGLAS:
+            - Si NO hay coma (,), el monto es un entero.
+            - Los puntos (.) SIEMPRE son separadores de miles.
+            - Eliminá todos los puntos.
+            - SOLO convertir a decimal si existe coma (,).
+            - Mercado Pago no muestra decimales en montos enteros.
+            EJEMPLOS:
+            "$ 3.148.065" → 3148065
+            "$ 1.234,50" → 1234.50
+            Devolver el número en formato float sin separadores.",
             destino: "cuenta de destino. Puede ser una de las siguientes opciones: ASOCIACION CONSULTORA MUTUAL, ENSHOP SRL, SERCOB SA o NO ENCONTRADO",            
             fecha: "Es la fecha del comprobante o de transferencia. Formato dd/mm/yyyy. Si no la encuentras, devolve -",  
             hora: "Es la hora del comprobante o de transferencia. Formato hh:mm 24hs. Si no la encuentras, devolve -",
