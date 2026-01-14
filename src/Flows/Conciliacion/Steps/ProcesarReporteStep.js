@@ -24,6 +24,23 @@ module.exports = async function ProcesarReporteStep(
   });
 
   console.log("movimientosBancario", movimientosBancario);
+  
+  if (!movimientosBancario || movimientosBancario.length === 0) {
+    await sock.sendMessage(userId, {
+      text: "❌ No se encontraron movimientos bancarios en el archivo. " + userId ,
+    });
+    FlowManager.resetFlow(userId);
+    return;
+  }
+
+  if (!movimientosBancario[0].caja) {
+    await sock.sendMessage(userId, {
+      text: "❌ No se pudo identificar la caja en el archivo." + userId,
+    });
+    FlowManager.resetFlow(userId);
+    return;
+  }
+
   //const comprobantesRAW = await getComprobantesFromSheet(GOOGLE_SHEET_ID);
   const comprobantesRAW = await getComprobantesFromMongo(
     movimientosBancario[0].caja

@@ -7,8 +7,13 @@ const movimientoController = require("../../controllers/movimientoController");
 
 async function getComprobantesFromMongo(cajaNombre) {
   console.log("cajaNombre", cajaNombre);
-  const { data: caja } = await cajaController.getByNombre(cajaNombre);
+  const { data: caja, error: cajaError } = await cajaController.getByNombre(cajaNombre);
   console.log("caja", caja);
+  
+  if (cajaError || !caja) {
+    throw new Error(`Caja "${cajaNombre}" no encontrada`);
+  }
+  
   const { data, error } = await movimientoController.getAll(
     {
       active: true,
