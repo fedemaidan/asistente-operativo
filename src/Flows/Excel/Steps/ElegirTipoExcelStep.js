@@ -20,7 +20,6 @@ module.exports = async function ElegirTipoExcelStep(userId, message) {
     ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "2") {
     const movimientosExcel = parseNewJsonFinancieraToMovimiento(excelJson);
-    console.log("movimientosExcel", movimientosExcel);
     ConciliacionFlow.start(userId, movimientosExcel);
   } else if (message == "3") {
     StockFlow.start(userId, { excelJson, driveUrl });

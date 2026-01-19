@@ -5,8 +5,6 @@ module.exports = async function VerificarTipoExcelStep(userId, data) {
   const sock = botSingleton.getSock();
   const { type } = data.data;
 
-  console.log("data", data);
-
   const mensaje =
     `📊 *Archivo ${type} Detectado* 📊\n\n` +
     `Hemos recibido tu archivo ${type} correctamente. Para procesarlo de la manera adecuada, necesitamos saber qué tipo de información contiene.\n\n` +

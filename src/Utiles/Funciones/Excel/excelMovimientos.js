@@ -159,12 +159,13 @@ const parseJsonFinancieraToMovimiento = (data) => {
 
 const parseNewJsonFinancieraToMovimiento = (data) => {
   const dataArray = Array.isArray(data) ? data : Object.values(data);
+  console.log("dataArray", dataArray.slice(0, 30));
   return dataArray
     .map((value) => {
-      const importeNumber = parseImporte(value.Amount);
+      const importeNumber = parseImporte(value.__EMPTY_3);
       return {
         importe: Math.round(importeNumber),
-        fecha: value.AccountingDate,
+        fecha: value.__EMPTY_2,
         caja: "SERCOB SA",
       };
     })
@@ -178,17 +179,6 @@ const getMatchs = (comprobanteSheet, comprobanteMovimientos) => {
   );
 
   const comprobantesParseados = parseComprobantesJson(comprobantesFiltrados);
-  console.log(
-    "comprobantesParseados",
-    comprobantesParseados.length,
-    comprobantesParseados
-  );
-
-  console.log(
-    "comprobanteMovimientos",
-    comprobanteMovimientos.length,
-    comprobanteMovimientos
-  );
 
   for (const comprobante of comprobantesParseados) {
     for (const movimiento of comprobanteMovimientos) {

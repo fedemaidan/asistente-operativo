@@ -4,10 +4,6 @@ const {
   getMatchs,
 } = require("../../../Utiles/Funciones/Excel/excelMovimientos");
 const {
-  updateComprobanteToSheet,
-  getComprobantesFromSheet,
-} = require("../../../Utiles/GoogleServices/Sheets/comprobante");
-const {
   getComprobantesFromMongo,
 } = require("../../../Utiles/Funciones/comprobantes");
 const movimientoController = require("../../../controllers/movimientoController");
@@ -18,12 +14,11 @@ module.exports = async function ProcesarReporteStep(
 ) {
   const user = botSingleton.getUsuarioByUserId(userId);
   const sock = botSingleton.getSock();
-  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
   await sock.sendMessage(userId, {
     text: "🔄 Procesando...",
   });
 
-  console.log("movimientosBancario", movimientosBancario);
+  console.log("ProcesarReporteStep - movimientosBancario", movimientosBancario);
   
   if (!movimientosBancario || movimientosBancario.length === 0) {
     await sock.sendMessage(userId, {
@@ -45,7 +40,7 @@ module.exports = async function ProcesarReporteStep(
   const comprobantesRAW = await getComprobantesFromMongo(
     movimientosBancario[0].caja
   );
-  console.log("comprobantesRAW", comprobantesRAW);
+
   const matchs = getMatchs(comprobantesRAW, movimientosBancario);
   if (matchs.length === 0) {
     await sock.sendMessage(userId, {
