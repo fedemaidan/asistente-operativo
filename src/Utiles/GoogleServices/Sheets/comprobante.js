@@ -209,7 +209,7 @@ async function addComprobanteToMongo(comprobante) {
     type: "INGRESO",
     numeroFactura: comprobante.numero_comprobante,
     fechaFactura: fechaFactura,
-    clienteId: cliente.success ? cliente.data._id : null,
+    clienteId: cliente.success  && cliente.cuentaCorriente? cliente.data._id : null,
     cliente: {
       nombre: clienteParsed?.nombre || comprobante.cliente,
       ccActivas: cliente.success ? cliente.data.ccActivas : [],

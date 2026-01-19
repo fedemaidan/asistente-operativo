@@ -61,6 +61,7 @@ ${JSON.stringify(comprobante, null, 2)}
 4. Si el usuario menciona un nuevo cliente o moneda, actualiza los campos correspondientes. No puedes agregar ningun campo.
 5. El montoEnviado es SIEMPRE en ARS. Si el usuario pide cambiar el monto, se cambia el montoEnviado.
 6. Si el usuario pide cambiar la moneda solo pueden ser las siguientes opciones: ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA', 'USD_MEP_VENTA').
+7. Si el usuario menciona que es sin cuenta corriente o sin CC, poné false en el atributo cuentaCorriente.
 
 ## FORMATO DE RESPUESTA
 Devuelve SOLO un objeto JSON con el comprobante actualizado, manteniendo exactamente la misma estructura que el comprobante original, pero con los campos corregidos según la solicitud del usuario.

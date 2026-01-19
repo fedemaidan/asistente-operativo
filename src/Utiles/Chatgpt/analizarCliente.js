@@ -25,11 +25,12 @@ module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
   4. Si dice que le moneda es pesos, se refiere a ARS.
   5. Los números deben interpretarse según el formato argentino (miles con punto, decimales con coma). Si no contienen decimales, trátalos como enteros.
   6. Los números de dinero o impuestos deben ser float para que los pueda interpretar mi app en node.
+  7. Si el usuario menciona que es sin cuenta corriente o sin CC, poné false en el atributo cuentaCorriente.
   
   Responde ÚNICAMENTE con un JSON válido con este formato exacto:
   {
     "nombre": "Si es el nombre es de CC pone el NOMBRE DE LA CUENTA CORRIENTE DETECTADO, ESCRITO TAL CUAL COMO ESTA EN EL LISTADO DE CUENTA CUENTA CORRIENTE, sino poné el nombre del cliente que entendes",
-    "cuentaCorriente": "dame true o false dependiendo si el cliente tiene cuenta corriente o no",
+    "cuentaCorriente": "dame true o false dependiendo si el cliente tiene cuenta corriente o no, si el usuario menciona que es sin cuenta corriente o sin CC, poné false.",
     "moneda": ('ARS', 'USD_OFICIAL_VENTA', 'USD_BLUE_VENTA'). Es la moneda seleccionada por el cliente,
     "error": (true o false),
     "ccActivas": "array de cuentas corrientes activas del cliente seleccionado, si no tiene CC, poné un array vacio.",
