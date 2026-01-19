@@ -211,6 +211,7 @@ router.get("/", async (req, res) => {
       montoDesde,
       montoHasta,
       montoTipo, // 'cc' | 'enviado'
+      categoriasToExclude,
     } = req.query;
 
     console.log("req.query", req.query);
@@ -337,6 +338,7 @@ router.get("/", async (req, res) => {
 
     const cajasIdsArr = toArray(cajasIds, "cajasIds[]", req.query);
     const categoriasArr = toArray(categorias, "categorias[]", req.query);
+    const categoriasToExcludeArr = toArray(categoriasToExclude, "categoriasToExclude[]", req.query);
 
     if (cajasIdsArr && cajasIdsArr.length > 0) {
       filters.caja = { $in: cajasIdsArr };
@@ -344,6 +346,10 @@ router.get("/", async (req, res) => {
 
     if (categoriasArr && categoriasArr.length > 0) {
       filters.categoria = { $in: categoriasArr };
+    }
+
+    if (categoriasToExcludeArr && categoriasToExcludeArr.length > 0) {
+      filters.categoria = { $nin: categoriasToExcludeArr };
     }
 
     if (fecha) {
