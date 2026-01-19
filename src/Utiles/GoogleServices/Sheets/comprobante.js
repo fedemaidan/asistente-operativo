@@ -204,12 +204,15 @@ async function addComprobanteToMongo(comprobante) {
     nombre: cliente?.data?.nombre || comprobante.cliente,
   };
 
+  console.log("comprobante.cuentaCorriente", comprobante.cuentaCorriente);
+  console.log("clienteComprobante", cliente);
+
   const fechaFactura = new Date(año, mes - 1, dia, 14, 0, 0);
   const movimientoDataToController = {
     type: "INGRESO",
     numeroFactura: comprobante.numero_comprobante,
     fechaFactura: fechaFactura,
-    clienteId: cliente.success  && cliente.cuentaCorriente? cliente.data._id : null,
+    clienteId: cliente.success  && comprobante.cuentaCorriente? cliente.data._id : null,
     cliente: {
       nombre: clienteParsed?.nombre || comprobante.cliente,
       ccActivas: cliente.success ? cliente.data.ccActivas : [],
