@@ -477,6 +477,80 @@ class LoteService {
     }
   }
 
+  async updateLoteDetalles(id, data = {}) {
+    try {
+      if (!id) {
+        return {
+          success: false,
+          error: "El ID del lote es requerido",
+          statusCode: 400,
+        };
+      }
+
+      const current = await this.loteRepository.findById(id);
+      if (!current) {
+        return {
+          success: false,
+          error: "Lote no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      const nextCantidad = data.cantidad ? Number(data.cantidad) : current.cantidad;
+      if (!Number.isFinite(nextCantidad) || nextCantidad <= 0) {
+        return {
+          success: false,
+          error: "cantidad debe ser mayor a 0",
+          statusCode: 400,
+        };
+      }
+
+      const nextContenedor = data.contenedor !== undefined ? data.contenedor : current.contenedor;
+      const nextFechaEstimada = nextContenedor
+        ? null
+        : data.fechaEstimadaDeLlegada !== undefined
+        ? data.fechaEstimadaDeLlegada
+        : current.fechaEstimadaDeLlegada;
+
+      const delta =
+        current.estado === "PENDIENTE" ? nextCantidad - Number(current.cantidad || 0) : 0;
+
+      const updated = await this.loteRepository.updateById(
+        id,
+        {
+          $set: {
+            cantidad: nextCantidad,
+            contenedor: nextContenedor || null,
+            fechaEstimadaDeLlegada: nextFechaEstimada || null,
+          },
+        },
+        { new: true }
+      );
+
+      if (!updated) {
+        return {
+          success: false,
+          error: "Lote no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      if (delta !== 0) {
+        await this._aplicarDeltaStockProyectado(
+          this._buildDeltaStockProyectadoPorProducto(
+            [{ producto: current.producto, cantidad: Math.abs(delta) }],
+            delta > 0 ? +1 : -1
+          )
+        );
+      }
+
+      await this._recalcularProyeccionCompletaSiExiste();
+      return { success: true, data: updated };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   async deleteLote(id) {
     try {
       if (!id) {
@@ -489,6 +563,47 @@ class LoteService {
 
       const deleted = await this.loteRepository.deleteById(id);
 
+      if (!deleted) {
+        return {
+          success: false,
+          error: "Lote no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      await this._recalcularProyeccionCompletaSiExiste();
+      return { success: true, data: deleted };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deleteLoteAjustandoStock(id) {
+    try {
+      if (!id) {
+        return {
+          success: false,
+          error: "El ID del lote es requerido",
+          statusCode: 400,
+        };
+      }
+
+      const current = await this.loteRepository.findById(id);
+      if (!current) {
+        return {
+          success: false,
+          error: "Lote no encontrado",
+          statusCode: 404,
+        };
+      }
+
+      if (current.estado === "PENDIENTE") {
+        await this._aplicarDeltaStockProyectado(
+          this._buildDeltaStockProyectadoPorProducto([current], -1)
+        );
+      }
+
+      const deleted = await this.loteRepository.deleteById(id);
       if (!deleted) {
         return {
           success: false,

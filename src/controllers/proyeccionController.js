@@ -92,8 +92,9 @@ module.exports = {
         success: stockSuccess,
         error: stockError,
       } = safeParseExcelBuffer(quiebreFile);
+      console.log("[proyeccionController] stock excel data:", stockExcelData);
       const stockParsed = limpiarDatosStockDesdeQuiebreExcel(stockExcelData);
-
+      console.log("[proyeccionController] stock parsed:", stockParsed);
       let quiebreParsed = null;
       let quiebreSuccess = true;
       let quiebreError = null;

@@ -13,6 +13,19 @@ const parseProductos = (productos = []) => {
     .filter((p) => p.cantidad > 0);
 };
 
+const parseDistribucion = (distribucion = []) => {
+  if (!Array.isArray(distribucion)) return [];
+  return distribucion
+    .filter((item) => item && item.productoId && item.cantidad)
+    .map((item) => ({
+      productoId: item.productoId,
+      cantidad: Number(item.cantidad) || 0,
+      contenedor: item.contenedor || null,
+      fechaEstimadaLlegada: item.fechaEstimadaLlegada || null,
+    }))
+    .filter((item) => item.cantidad > 0);
+};
+
 
 module.exports = {
   getPedidos: async (req, res) => {
@@ -86,9 +99,11 @@ module.exports = {
         fechaEstimadaLlegada,
         productos,
         contenedor,
+        distribucion,
       } = req.body;
 
       const parsedProductos = parseProductos(productos);
+      const parsedDistribucion = parseDistribucion(distribucion);
 
       const result = await pedidoService.createPedidoConLotes({
         numeroPedido,
@@ -96,6 +111,7 @@ module.exports = {
         fechaEstimadaLlegada,
         productos: parsedProductos,
         contenedor,
+        distribucion: parsedDistribucion,
       });
 
       return sendResponse(res, result, 201);
@@ -118,6 +134,30 @@ module.exports = {
       return res.status(500).json({
         success: false,
         error: "Error al actualizar estado del pedido",
+        details: error.message,
+      });
+    }
+  },
+  updatePedidoLotes: async (req, res) => {
+    try {
+      const { pedidoId } = req.params;
+      const { create, update, remove } = req.body;
+
+      const parsedCreate = parseDistribucion(create);
+      const parsedUpdate = Array.isArray(update) ? update : [];
+      const parsedRemove = Array.isArray(remove) ? remove : [];
+
+      const result = await pedidoService.updatePedidoLotes(pedidoId, {
+        create: parsedCreate,
+        update: parsedUpdate,
+        remove: parsedRemove,
+      });
+
+      return sendResponse(res, result, result?.statusCode || 200);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Error al actualizar lotes del pedido",
         details: error.message,
       });
     }

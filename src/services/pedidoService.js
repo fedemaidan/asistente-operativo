@@ -9,6 +9,70 @@ class PedidoService {
     this.loteService = new LoteService();
   }
 
+  _normalizeDistribucion(distribucion = []) {
+    if (!Array.isArray(distribucion)) return [];
+    return distribucion
+      .filter((item) => item && item.productoId)
+      .map((item) => ({
+        productoId: item.productoId,
+        cantidad: Number(item.cantidad),
+        contenedor: item.contenedor || null,
+        fechaEstimadaLlegada: item.fechaEstimadaLlegada || null,
+      }));
+  }
+
+  async _resolveContenedoresForDistribucion(distribucion = []) {
+    const contenedoresPorCodigo = new Map();
+    const contenedoresPorId = new Map();
+
+    for (const item of distribucion) {
+      const contenedor = item.contenedor;
+      if (!contenedor) continue;
+
+      if (contenedor.tipo === "existente") {
+        const contenedorId = contenedor.id;
+        if (!contenedorId) {
+          return { success: false, error: "contenedorId es requerido", statusCode: 400 };
+        }
+        if (!contenedoresPorId.has(contenedorId)) {
+          const doc = await this.contenedorRepository.findById(contenedorId);
+          if (!doc) {
+            return { success: false, error: "Contenedor no encontrado", statusCode: 404 };
+          }
+          contenedoresPorId.set(contenedorId, doc);
+        }
+      }
+
+      if (contenedor.tipo === "nuevo") {
+        const codigo = contenedor.codigo;
+        const fechaEstimadaLlegada = contenedor.fechaEstimadaLlegada;
+        if (!codigo) {
+          return { success: false, error: "codigo de contenedor es requerido", statusCode: 400 };
+        }
+        if (!fechaEstimadaLlegada) {
+          return {
+            success: false,
+            error: "fechaEstimadaLlegada es requerida para el contenedor",
+            statusCode: 400,
+          };
+        }
+        if (!contenedoresPorCodigo.has(codigo)) {
+          const existente = await this.contenedorRepository.findByCodigo(codigo);
+          if (existente) {
+            return { success: false, error: "codigo de contenedor ya existe", statusCode: 409 };
+          }
+          const created = await this.contenedorRepository.create({
+            codigo,
+            fechaEstimadaLlegada,
+          });
+          contenedoresPorCodigo.set(codigo, created);
+        }
+      }
+    }
+
+    return { success: true, contenedoresPorCodigo, contenedoresPorId };
+  }
+
   async getAllPedidos(options = {}) {
     try {
       const {
@@ -108,6 +172,7 @@ class PedidoService {
           }
           const entry = contenedoresMap.get(contId);
           entry.productos.push({
+            loteId: lote._id,
             producto: lote.producto,
             cantidad: lote.cantidad,
             recibido: lote.estado === "ENTREGADO",
@@ -293,6 +358,221 @@ class PedidoService {
     }
   }
 
+  async _actualizarTotalesPedidoDesdeLotes(pedidoId) {
+    const lotesResult = await this.loteService.findLotes(
+      { pedido: pedidoId },
+      { populate: [{ path: "producto", select: "_id" }] }
+    );
+    if (!lotesResult.success) {
+      return { success: false, error: lotesResult.error };
+    }
+    const lotes = lotesResult.data || [];
+    const productosMap = new Map();
+    lotes.forEach((lote) => {
+      const pid = lote.producto?._id?.toString() || lote.producto?.toString();
+      if (!pid) return;
+      productosMap.set(pid, (productosMap.get(pid) || 0) + (lote.cantidad || 0));
+    });
+    const productos = Array.from(productosMap.entries()).map(([producto, cantidad]) => ({
+      producto,
+      cantidad,
+    }));
+    const updated = await this.pedidoRepository.updateById(
+      pedidoId,
+      { productos },
+      { new: true }
+    );
+    return { success: true, data: updated };
+  }
+
+  async updatePedidoLotes(pedidoId, payload = {}) {
+    try {
+      if (!pedidoId) {
+        return { success: false, error: "pedidoId es requerido", statusCode: 400 };
+      }
+
+      const pedido = await this.pedidoRepository.findById(pedidoId);
+      if (!pedido) {
+        return { success: false, error: "Pedido no encontrado", statusCode: 404 };
+      }
+
+      const { create = [], update = [], remove = [] } = payload;
+      const crear = Array.isArray(create) ? create : [];
+      const actualizar = Array.isArray(update) ? update : [];
+      const eliminar = Array.isArray(remove) ? remove : [];
+      // #region agent log
+      fetch("http://127.0.0.1:7242/ingest/2d24a2b6-12a8-4d4d-9c21-afa4382deedb", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "debug-session",
+          runId: "run1",
+          hypothesisId: "H3",
+          location: "pedidoService.js:399",
+          message: "Entrada a updatePedidoLotes",
+          data: {
+            pedidoId,
+            crearLength: crear.length,
+            actualizarIds: actualizar.map((item) => item.loteId || null),
+            eliminarIds: eliminar,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+
+      const distribucionCrear = this._normalizeDistribucion(crear);
+      const contenedoresResult = await this._resolveContenedoresForDistribucion(distribucionCrear);
+      if (!contenedoresResult.success) {
+        return contenedoresResult;
+      }
+
+      const created = [];
+      for (const item of distribucionCrear) {
+        let contenedorIdForItem = null;
+        if (item.contenedor?.tipo === "existente") {
+          contenedorIdForItem = contenedoresResult.contenedoresPorId.get(item.contenedor.id)?._id || null;
+        }
+        if (item.contenedor?.tipo === "nuevo") {
+          contenedorIdForItem =
+            contenedoresResult.contenedoresPorCodigo.get(item.contenedor.codigo)?._id || null;
+        }
+
+        const loteResult = await this.loteService.createLote({
+          pedido: pedidoId,
+          producto: item.productoId,
+          cantidad: item.cantidad,
+          contenedor: contenedorIdForItem,
+          fechaEstimadaDeLlegada: contenedorIdForItem ? null : item.fechaEstimadaLlegada,
+          estado: "PENDIENTE",
+        });
+        if (!loteResult.success) {
+          return { success: false, error: loteResult.error, statusCode: loteResult.statusCode || 500 };
+        }
+        created.push(loteResult.data);
+      }
+
+      const updated = [];
+      for (const item of actualizar) {
+        if (!item || !item.loteId) {
+          return { success: false, error: "loteId es requerido", statusCode: 400 };
+        }
+
+        let contenedorIdForItem = undefined;
+        let fechaEstimadaDeLlegada = undefined;
+        if (item.contenedor) {
+          const contenedor = item.contenedor;
+          if (contenedor.tipo === "existente") {
+            const doc = await this.contenedorRepository.findById(contenedor.id);
+            if (!doc) {
+              return { success: false, error: "Contenedor no encontrado", statusCode: 404 };
+            }
+            contenedorIdForItem = doc._id;
+          }
+          if (contenedor.tipo === "nuevo") {
+            const codigo = contenedor.codigo;
+            const fechaContenedor = contenedor.fechaEstimadaLlegada;
+            if (!codigo || !fechaContenedor) {
+              return {
+                success: false,
+                error: "codigo y fechaEstimadaLlegada son requeridos para el contenedor",
+                statusCode: 400,
+              };
+            }
+            const existente = await this.contenedorRepository.findByCodigo(codigo);
+            if (existente) {
+              return { success: false, error: "codigo de contenedor ya existe", statusCode: 409 };
+            }
+            const creado = await this.contenedorRepository.create({
+              codigo,
+              fechaEstimadaLlegada: fechaContenedor,
+            });
+            contenedorIdForItem = creado._id;
+          }
+          if (contenedor.tipo === "sin") {
+            contenedorIdForItem = null;
+            fechaEstimadaDeLlegada = item.fechaEstimadaLlegada || null;
+          }
+        }
+
+        const loteActual = await this.loteService.findLotes(
+          { _id: item.loteId },
+          { populate: [{ path: "pedido", select: "_id" }] }
+        );
+        const lote = loteActual?.data?.[0];
+        if (!lote) {
+          return { success: false, error: "Lote no encontrado", statusCode: 404 };
+        }
+        // #region agent log
+        fetch("http://127.0.0.1:7242/ingest/2d24a2b6-12a8-4d4d-9c21-afa4382deedb", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: "debug-session",
+            runId: "run1",
+            hypothesisId: "H2",
+            location: "pedidoService.js:485",
+            message: "Validación de lote vs pedido",
+            data: {
+              pedidoId,
+              loteId: item.loteId,
+              lotePedidoId: lote?.pedido?.toString() || null,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        if (lote?.pedido?.toString() !== pedidoId.toString()) {
+          return { success: false, error: "Lote no pertenece al pedido", statusCode: 400 };
+        }
+
+        const loteResult = await this.loteService.updateLoteDetalles(item.loteId, {
+          cantidad: item.cantidad,
+          contenedor: contenedorIdForItem,
+          fechaEstimadaDeLlegada,
+        });
+        if (!loteResult.success) {
+          return { success: false, error: loteResult.error, statusCode: loteResult.statusCode || 500 };
+        }
+        updated.push(loteResult.data);
+      }
+
+      const removed = [];
+      for (const loteId of eliminar) {
+        const loteActual = await this.loteService.findLotes({ _id: loteId });
+        const lote = loteActual?.data?.[0];
+        if (!lote) {
+          return { success: false, error: "Lote no encontrado", statusCode: 404 };
+        }
+        if (lote?.pedido?.toString() !== pedidoId.toString()) {
+          return { success: false, error: "Lote no pertenece al pedido", statusCode: 400 };
+        }
+        const deleted = await this.loteService.deleteLoteAjustandoStock(loteId);
+        if (!deleted.success) {
+          return { success: false, error: deleted.error, statusCode: deleted.statusCode || 500 };
+        }
+        removed.push(deleted.data);
+      }
+
+      const totalesResult = await this._actualizarTotalesPedidoDesdeLotes(pedidoId);
+      if (!totalesResult.success) {
+        return { success: false, error: totalesResult.error, statusCode: 500 };
+      }
+
+      return {
+        success: true,
+        data: {
+          pedido: totalesResult.data,
+          created,
+          updated,
+          removed,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   async getAllContenedores(options = {}) {
     try {
       const {
@@ -353,13 +633,19 @@ class PedidoService {
         fechaEstimadaLlegada,
         productos = [],
         contenedor,
+        distribucion = [],
       } = payload;
 
       if (!numeroPedido) {
         return { success: false, error: "numeroPedido es requerido", statusCode: 400 };
       }
 
-      if (!Array.isArray(productos) || productos.length === 0) {
+      const distribucionNormalizada = this._normalizeDistribucion(distribucion);
+
+      if (
+        (!Array.isArray(productos) || productos.length === 0) &&
+        distribucionNormalizada.length === 0
+      ) {
         return { success: false, error: "Debe enviar al menos un producto", statusCode: 400 };
       }
 
@@ -371,7 +657,7 @@ class PedidoService {
       let contenedorDoc = null;
       let contenedorId = null;
 
-      if (contenedor) {
+      if (distribucionNormalizada.length === 0 && contenedor) {
         const { tipo, id, codigo, fechaEstimadaLlegada: fechaContenedor } = contenedor;
 
         if (tipo === "existente") {
@@ -402,20 +688,61 @@ class PedidoService {
         }
       }
 
+      const productosTotales = distribucionNormalizada.length > 0
+        ? distribucionNormalizada.reduce((acc, item) => {
+            const key = item.productoId.toString();
+            acc.set(key, (acc.get(key) || 0) + item.cantidad);
+            return acc;
+          }, new Map())
+        : productos.reduce((acc, item) => {
+            acc.set(item.productoId, (acc.get(item.productoId) || 0) + item.cantidad);
+            return acc;
+          }, new Map());
+
       const pedido = await this.pedidoRepository.create({
         numeroPedido,
         observaciones,
-        productos: productos.map((p) => ({ producto: p.productoId, cantidad: p.cantidad })),
+        productos: Array.from(productosTotales.entries()).map(([producto, cantidad]) => ({
+          producto,
+          cantidad,
+        })),
       });
 
-      const lotesData = productos.map((p) => ({
-        pedido: pedido._id,
-        producto: p.productoId,
-        cantidad: p.cantidad,
-        contenedor: contenedorId || null,
-        fechaEstimadaDeLlegada: contenedorId ? null : fechaEstimadaLlegada,
-        estado: "PENDIENTE",
-      }));
+      let lotesData = [];
+
+      if (distribucionNormalizada.length > 0) {
+        const contenedoresResult = await this._resolveContenedoresForDistribucion(distribucionNormalizada);
+        if (!contenedoresResult.success) {
+          return contenedoresResult;
+        }
+
+        lotesData = distribucionNormalizada.map((item) => {
+          let contenedorIdForItem = null;
+          if (item.contenedor?.tipo === "existente") {
+            contenedorIdForItem = contenedoresResult.contenedoresPorId.get(item.contenedor.id)?._id || null;
+          }
+          if (item.contenedor?.tipo === "nuevo") {
+            contenedorIdForItem = contenedoresResult.contenedoresPorCodigo.get(item.contenedor.codigo)?._id || null;
+          }
+          return {
+            pedido: pedido._id,
+            producto: item.productoId,
+            cantidad: item.cantidad,
+            contenedor: contenedorIdForItem,
+            fechaEstimadaDeLlegada: contenedorIdForItem ? null : item.fechaEstimadaLlegada || fechaEstimadaLlegada,
+            estado: "PENDIENTE",
+          };
+        });
+      } else {
+        lotesData = productos.map((p) => ({
+          pedido: pedido._id,
+          producto: p.productoId,
+          cantidad: p.cantidad,
+          contenedor: contenedorId || null,
+          fechaEstimadaDeLlegada: contenedorId ? null : fechaEstimadaLlegada,
+          estado: "PENDIENTE",
+        }));
+      }
 
       const lotesResult = await this.loteService.createManyLotes(lotesData);
       if (!lotesResult.success) {
