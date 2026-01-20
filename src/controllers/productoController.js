@@ -13,16 +13,18 @@ const getSortOptions = (sortField, sortOrder) => {
 module.exports = {
   getProductos: async (req, res) => {
     try {
-      const { limit, offset, sortField, sortOrder, page, pageSize, all, text, includeIgnored } = req.query;
+      const { limit, offset, sortField, sortOrder, page, pageSize, all, text, tagId, includeIgnored } = req.query;
 
       const sort = getSortOptions(sortField, sortOrder);
       const safeText = typeof text === "string" ? text.trim() : "";
+      const safeTagId = typeof tagId === "string" ? tagId.trim() : "";
       const safeIncludeIgnored = String(includeIgnored).toLowerCase() === "true";
 
       if (String(all).toLowerCase() === "true") {
         const result = await productoService.getAll({
           sort,
           text: safeText,
+          tagId: safeTagId,
           includeIgnored: safeIncludeIgnored,
         });
         return sendResponse(res, result);
@@ -43,6 +45,7 @@ module.exports = {
         sort,
         page: shouldUsePage ? parsedPage : undefined,
         text: safeText,
+        tagId: safeTagId,
         includeIgnored: safeIncludeIgnored,
       });
       return sendResponse(res, result);

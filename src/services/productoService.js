@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const ProductoRepository = require("../repository/productoRepository");
 const Tag = require("../models/tag.model");
 const { getFechaArgentina } = require("../Utiles/Funciones/HandleDates");
@@ -51,11 +52,21 @@ class ProductoService {
     return { $or: or };
   }
 
-  async buildProductosBusinessFilter({ text, includeIgnored = false } = {}) {
+  buildTagIdFilter(tagId) {
+    const raw = typeof tagId === "string" ? tagId.trim() : "";
+    if (!raw) return null;
+    if (!mongoose.Types.ObjectId.isValid(raw)) return null;
+    return { tags: raw };
+  }
+
+  async buildProductosBusinessFilter({ text, tagId, includeIgnored = false } = {}) {
     const filters = [];
 
     const textFilter = await this.buildTextFilter(text);
     if (textFilter) filters.push(textFilter);
+
+    const tagFilter = this.buildTagIdFilter(tagId);
+    if (tagFilter) filters.push(tagFilter);
 
     const ignoradosFilter = await this.buildIgnoradosFilter(includeIgnored);
     if (ignoradosFilter) filters.push(ignoradosFilter);
@@ -67,8 +78,8 @@ class ProductoService {
 
   async getAll(options = {}) {
     try {
-      const { sort = { createdAt: -1 }, text, includeIgnored = false } = options;
-      const filter = await this.buildProductosBusinessFilter({ text, includeIgnored });
+      const { sort = { createdAt: -1 }, text, tagId, includeIgnored = false } = options;
+      const filter = await this.buildProductosBusinessFilter({ text, tagId, includeIgnored });
       const data = await this.productoRepository.getAllActive({ sort, filter });
       return { success: true, data };
     } catch (error) {
@@ -84,10 +95,11 @@ class ProductoService {
         sort = { createdAt: -1 },
         page,
         text,
+        tagId,
         includeIgnored = false,
       } = options;
 
-      const filter = await this.buildProductosBusinessFilter({ text, includeIgnored });
+      const filter = await this.buildProductosBusinessFilter({ text, tagId, includeIgnored });
       const result = await this.productoRepository.getPaginated({
         limit,
         offset,
