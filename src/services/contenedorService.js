@@ -22,7 +22,7 @@ class ContenedorService {
       if (!contenedorId) {
         return { success: false, error: "contenedorId es requerido", statusCode: 400 };
       }
-      if (!estado || !["PENDIENTE", "ENTREGADO", "CANCELADO"].includes(estado)) {
+      if (!estado || !["PENDIENTE", "ENTREGADO"].includes(estado)) {
         return { success: false, error: "estado inválido", statusCode: 400 };
       }
 
@@ -31,7 +31,7 @@ class ContenedorService {
         return { success: false, error: "Contenedor no encontrado", statusCode: 404 };
       }
 
-      const esNoPendiente = estado === "ENTREGADO" || estado === "CANCELADO";
+      const esNoPendiente = estado === "ENTREGADO";
 
       const lotesResult = await this.loteService.setEstadoPorContenedor(
         contenedorId,

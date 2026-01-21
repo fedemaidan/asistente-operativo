@@ -180,7 +180,7 @@ class LoteService {
   }
 
   /**
-   * Cambia el estado de un lote (PENDIENTE/ENTREGADO/CANCELADO).
+   * Cambia el estado de un lote (PENDIENTE/ENTREGADO).
    * Ajuste stockProyectado solo en transiciones PENDIENTE <-> ENTREGADO.
    */
   async setEstadoLote(loteId, estado) {
@@ -226,8 +226,8 @@ class LoteService {
       }
 
       let factor = 0;
-      const esDestinoNoPendiente = desired === "ENTREGADO" || desired === "CANCELADO";
-      const esOrigenNoPendiente = current.estado === "ENTREGADO" || current.estado === "CANCELADO";
+      const esDestinoNoPendiente = desired === "ENTREGADO";
+      const esOrigenNoPendiente = current.estado === "ENTREGADO";
       if (current.estado === "PENDIENTE" && esDestinoNoPendiente) factor = -1;
       if (esOrigenNoPendiente && desired === "PENDIENTE") factor = +1;
 
@@ -247,7 +247,7 @@ class LoteService {
   }
 
   /**
-   * Cambia el estado de TODOS los lotes de un contenedor a PENDIENTE/ENTREGADO/CANCELADO.
+   * Cambia el estado de TODOS los lotes de un contenedor a PENDIENTE/ENTREGADO.
    * Ajusta stockProyectado SOLO para transiciones PENDIENTE <-> ENTREGADO.
    */
   async setEstadoPorContenedor(contenedorId, estado) {
@@ -293,7 +293,7 @@ class LoteService {
       }
 
       let factor = 0;
-      const esDestinoNoPendiente = desired === "ENTREGADO" || desired === "CANCELADO";
+      const esDestinoNoPendiente = desired === "ENTREGADO";
       const efectivos = changed.filter((l) => l.estado !== desired);
       if (efectivos.length > 0) {
         if (esDestinoNoPendiente) factor = -1;
@@ -356,7 +356,7 @@ class LoteService {
       }
 
       let factor = 0;
-      const esDestinoNoPendiente = desired === "ENTREGADO" || desired === "CANCELADO";
+      const esDestinoNoPendiente = desired === "ENTREGADO";
       const efectivos = changed.filter((l) => l.estado !== desired);
       if (efectivos.length > 0) {
         if (esDestinoNoPendiente) factor = -1;

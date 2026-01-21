@@ -23,7 +23,7 @@ const loteSchema = new mongoose.Schema({
   },
   estado: {
     type: String,
-    enum: ["PENDIENTE", "ENTREGADO", "CANCELADO"],
+    enum: ["PENDIENTE", "ENTREGADO"],
     default: "PENDIENTE",
   },
   fechaEntrega: {

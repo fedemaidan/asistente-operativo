@@ -9,6 +9,15 @@ class PedidoService {
     this.loteService = new LoteService();
   }
 
+  _toIdString(value) {
+    if (!value) return null;
+    // Puede venir como ObjectId, string, o documento poblado { _id: ObjectId(...) }
+    const candidate = value?._id ?? value;
+    if (typeof candidate === "string") return candidate;
+    if (typeof candidate?.toString === "function") return candidate.toString();
+    return null;
+  }
+
   _normalizeDistribucion(distribucion = []) {
     if (!Array.isArray(distribucion)) return [];
     return distribucion
@@ -184,7 +193,7 @@ class PedidoService {
         });
 
         const contenedores = Array.from(contenedoresMap.values()).map((c) => {
-          const estado = c.recibido ? "RECIBIDO" : "EN_TRANSITO";
+          const estado = c.recibido ? "ENTREGADO" : "PENDIENTE";
           return { ...c, estado };
         });
 
@@ -243,7 +252,7 @@ class PedidoService {
       if (!pedidoId) {
         return { success: false, error: "pedidoId es requerido", statusCode: 400 };
       }
-      if (!estado || !["PENDIENTE", "ENTREGADO", "CANCELADO"].includes(estado)) {
+      if (!estado || !["PENDIENTE", "ENTREGADO"].includes(estado)) {
         return { success: false, error: "estado inválido", statusCode: 400 };
       }
 
@@ -400,26 +409,6 @@ class PedidoService {
       const crear = Array.isArray(create) ? create : [];
       const actualizar = Array.isArray(update) ? update : [];
       const eliminar = Array.isArray(remove) ? remove : [];
-      // #region agent log
-      fetch("http://127.0.0.1:7242/ingest/2d24a2b6-12a8-4d4d-9c21-afa4382deedb", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: "debug-session",
-          runId: "run1",
-          hypothesisId: "H3",
-          location: "pedidoService.js:399",
-          message: "Entrada a updatePedidoLotes",
-          data: {
-            pedidoId,
-            crearLength: crear.length,
-            actualizarIds: actualizar.map((item) => item.loteId || null),
-            eliminarIds: eliminar,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
 
       const distribucionCrear = this._normalizeDistribucion(crear);
       const contenedoresResult = await this._resolveContenedoresForDistribucion(distribucionCrear);
@@ -503,26 +492,14 @@ class PedidoService {
         if (!lote) {
           return { success: false, error: "Lote no encontrado", statusCode: 404 };
         }
-        // #region agent log
-        fetch("http://127.0.0.1:7242/ingest/2d24a2b6-12a8-4d4d-9c21-afa4382deedb", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: "debug-session",
-            runId: "run1",
-            hypothesisId: "H2",
-            location: "pedidoService.js:485",
-            message: "Validación de lote vs pedido",
-            data: {
-              pedidoId,
-              loteId: item.loteId,
-              lotePedidoId: lote?.pedido?.toString() || null,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
-        if (lote?.pedido?.toString() !== pedidoId.toString()) {
+        const lotePedidoId = this._toIdString(lote?.pedido);
+        const pedidoIdStr = this._toIdString(pedidoId);
+        if (lotePedidoId !== pedidoIdStr) {
+          console.log("[pedidoService] Lote no pertenece al pedido", {
+            pedidoId: pedidoIdStr,
+            loteId: item.loteId,
+            lotePedidoId,
+          });
           return { success: false, error: "Lote no pertenece al pedido", statusCode: 400 };
         }
 
@@ -544,7 +521,9 @@ class PedidoService {
         if (!lote) {
           return { success: false, error: "Lote no encontrado", statusCode: 404 };
         }
-        if (lote?.pedido?.toString() !== pedidoId.toString()) {
+        const lotePedidoId = this._toIdString(lote?.pedido);
+        const pedidoIdStr = this._toIdString(pedidoId);
+        if (lotePedidoId !== pedidoIdStr) {
           return { success: false, error: "Lote no pertenece al pedido", statusCode: 400 };
         }
         const deleted = await this.loteService.deleteLoteAjustandoStock(loteId);

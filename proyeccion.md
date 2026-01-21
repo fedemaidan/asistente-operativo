@@ -15,7 +15,7 @@ Objetivo: estimar agotamiento y stock proyectado por producto a un horizonte (de
 - Contenedor
   - `codigo`, `fechaEstimadaLlegada`. **No guarda estado**; el estado se deriva: `ENTREGADO` si tiene lotes y ninguno pendiente, si no, `PENDIENTE`.
 - Lote (fuente de verdad)
-  - `pedido`, `contenedor` (opcional), `producto`, `cantidad`, `estado: ["PENDIENTE","ENTREGADO","CANCELADO"]`, `fechaEntrega` (cuando pasa a ENTREGADO), `fechaEstimadaDeLlegada` (si no hay contenedor).
+  - `pedido`, `contenedor` (opcional), `producto`, `cantidad`, `estado: ["PENDIENTE","ENTREGADO"]`, `fechaEntrega` (cuando pasa a ENTREGADO), `fechaEstimadaDeLlegada` (si no hay contenedor).
   - Virtual `recibido`: true ⇔ `estado==="ENTREGADO"` (compatibilidad).
   - Fecha de arribo:
     - Si tiene contenedor → `contenedor.fechaEstimadaLlegada`.
@@ -59,7 +59,6 @@ Objetivo: estimar agotamiento y stock proyectado por producto a un horizonte (de
   - Crear lote(s): +cantidad.
   - PENDIENTE → ENTREGADO: -cantidad.
   - ENTREGADO → PENDIENTE: +cantidad.
-  - CANCELADO: no altera stock proyectado (hoy se ignora en el ajuste).
 
 ## Para depurar
 - Si un producto no existe en DB pero está en los Excels, se calcula la proyección y se devuelve en la respuesta, pero no se persiste.
