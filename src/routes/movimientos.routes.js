@@ -212,6 +212,7 @@ router.get("/", async (req, res) => {
       montoHasta,
       montoTipo, // 'cc' | 'enviado'
       categoriasToExclude,
+      excludeAportes = false,
     } = req.query;
 
     console.log("req.query", req.query);
@@ -339,6 +340,13 @@ router.get("/", async (req, res) => {
     const cajasIdsArr = toArray(cajasIds, "cajasIds[]", req.query);
     const categoriasArr = toArray(categorias, "categorias[]", req.query);
     const categoriasToExcludeArr = toArray(categoriasToExclude, "categoriasToExclude[]", req.query);
+
+
+    if (excludeAportes === "true" || excludeAportes === true) {
+      filters["cliente.nombre"] = {
+        $nin: ["APORTE CAPITAL", "APORTE EZE", "APORTE NICO"],
+      };
+    }
 
     if (cajasIdsArr && cajasIdsArr.length > 0) {
       filters.caja = { $in: cajasIdsArr };
@@ -654,8 +662,16 @@ router.get("/:id/logs", async (req, res) => {
 
 router.get("/totales-agrupados", async (req, res) => {
   try {
-    const { fechaInicio, fechaFin, categorias, cajasIds, type, moneda } =
-      req.query;
+    const {
+      fechaInicio,
+      fechaFin,
+      categorias,
+      cajasIds,
+      type,
+      moneda,
+      excludeAportes,
+      categoriasToExclude,
+    } = req.query;
 
     // Construir filtros base (igual que en GET /)
     const filters = { active: true };
@@ -665,6 +681,17 @@ router.get("/totales-agrupados", async (req, res) => {
     // Normalizar arrays
     const cajasIdsArr = toArray(cajasIds, "cajasIds[]", req.query);
     const categoriasArr = toArray(categorias, "categorias[]", req.query);
+    const categoriasToExcludeArr = toArray(
+      categoriasToExclude,
+      "categoriasToExclude[]",
+      req.query
+    );
+
+    if (excludeAportes === "true" || excludeAportes === true) {
+      filters["cliente.nombre"] = {
+        $nin: ["APORTE CAPITAL", "APORTE EZE", "APORTE NICO"],
+      };
+    }
 
     if (cajasIdsArr && cajasIdsArr.length > 0) {
       filters.caja = { $in: cajasIdsArr };
@@ -672,6 +699,13 @@ router.get("/totales-agrupados", async (req, res) => {
 
     if (categoriasArr && categoriasArr.length > 0) {
       filters.categoria = { $in: categoriasArr };
+    }
+    if (categoriasToExcludeArr && categoriasToExcludeArr.length > 0) {
+      if (filters.categoria && typeof filters.categoria === "object") {
+        filters.categoria.$nin = categoriasToExcludeArr;
+      } else {
+        filters.categoria = { $nin: categoriasToExcludeArr };
+      }
     }
 
     // Aplicar filtro de fechas (igual que en GET /)

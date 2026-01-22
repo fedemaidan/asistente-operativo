@@ -1179,20 +1179,12 @@ class MovimientoController extends BaseController {
 
   async getTotalesAgrupados(filters = {}) {
     try {
-      console.log(
-        "[getTotalesAgrupados] Filtros recibidos:",
-        JSON.stringify(filters, null, 2)
-      );
 
       // Determinar si se debe agrupar por categoría o caja basándose en los filtros
       const hasCategoriasFilter = filters.categoria && filters.categoria.$in;
       const hasCajasFilter = filters.caja && filters.caja.$in;
 
       const movimientos = await this.model.find(filters).lean();
-
-      console.log(
-        `[getTotalesAgrupados] Movimientos encontrados: ${movimientos.length}`
-      );
 
       const agrupadosPorCategoria = {};
       const agrupadosPorCaja = {};
