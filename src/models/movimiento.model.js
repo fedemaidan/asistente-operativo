@@ -156,7 +156,7 @@ const movimientosSchema = new mongoose.Schema({
       },
       valorAnterior: {
         type: mongoose.Schema.Types.Mixed,
-        required: true,
+        default: "",
       },
       valorNuevo: {
         type: mongoose.Schema.Types.Mixed,
