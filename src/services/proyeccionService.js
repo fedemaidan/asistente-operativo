@@ -10,6 +10,7 @@ const {
   buildDiasConStockPorCodigo,
   simularProyeccion,
   ensureProductos,
+  buildQuiebreMetadataPorCodigo,
 } = require("../Utiles/proyeccionHelper");
 const {
   formatDateToDDMMYYYY,
@@ -216,6 +217,7 @@ class ProyeccionService {
     });
     const ventasMap = buildVentasPorCodigo(ventasData, dateDiff, diasConStockPorCodigo);
     const stockMap = buildStockPorCodigo(stockData);
+    const quiebreMetadataPorCodigo = buildQuiebreMetadataPorCodigo(quiebreData);
 
     const productosAIgnorar = await this.productoIgnorarService.getAll();
     const codigosAIgnorar = productosAIgnorar.map((p) => p.codigo);
@@ -283,6 +285,9 @@ class ProyeccionService {
           : [];
 
       const nombreFallback = producto?.nombre || stockMap.get(codigo)?.descripcion || "";
+      const quiebreMeta = quiebreMetadataPorCodigo.get(codigo);
+      const fechaCero = quiebreMeta?.fechaCero ?? null;
+      const fechaIngreso = quiebreMeta?.fechaIngreso ?? null;
       const { payloadResultado, detalleDiario } = this.calcularProductoProyeccion({
         producto,
         codigo,
@@ -308,6 +313,8 @@ class ProyeccionService {
           fechaAgotamientoStock: payloadResultado.fechaAgotamientoStock,
           cantidadCompraSugerida: payloadResultado.cantidadCompraSugerida,
           fechaCompraSugerida: payloadResultado.fechaCompraSugerida,
+          fechaCero,
+          fechaIngreso,
           seAgota: payloadResultado.seAgota,
           agotamientoExcede365Dias: payloadResultado.agotamientoExcede365Dias,
           proyeccionDetalle: detalleDiario,
@@ -361,6 +368,7 @@ class ProyeccionService {
     const ventasData = proyeccion.ventasData || [];
     const stockData = proyeccion.stockData || [];
     const quiebreData = Array.isArray(proyeccion.quiebreData) ? proyeccion.quiebreData : [];
+    const quiebreMetadataPorCodigo = buildQuiebreMetadataPorCodigo(quiebreData);
     const dateDiff = Number(proyeccion.dateDiff) || 0;
     const horizonte = Number(proyeccion.horizonte) || 90;
     const fechaBase = proyeccion.fechaBase || proyeccion.fechaFin || null;
@@ -441,6 +449,9 @@ class ProyeccionService {
       });
 
       if (producto?._id) {
+        const quiebreMeta = quiebreMetadataPorCodigo.get(codigo);
+        const fechaCero = quiebreMeta?.fechaCero ?? null;
+        const fechaIngreso = quiebreMeta?.fechaIngreso ?? null;
         await this.productoRepository.updateProyeccionFields(producto._id, {
           idProyeccion: payloadResultado.idProyeccion,
           stockActual: payloadResultado.stockInicial,
@@ -452,6 +463,8 @@ class ProyeccionService {
           fechaAgotamientoStock: payloadResultado.fechaAgotamientoStock,
           cantidadCompraSugerida: payloadResultado.cantidadCompraSugerida,
           fechaCompraSugerida: payloadResultado.fechaCompraSugerida,
+          fechaCero,
+          fechaIngreso,
           seAgota: payloadResultado.seAgota,
           agotamientoExcede365Dias: payloadResultado.agotamientoExcede365Dias,
           proyeccionDetalle: detalleDiario,

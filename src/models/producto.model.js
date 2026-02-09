@@ -45,6 +45,14 @@ const ProductoSchema = new mongoose.Schema(
       type: Date,
       required: false,
     },
+    fechaCero: {
+      type: Date,
+      required: false,
+    },
+    fechaIngreso: {
+      type: Date,
+      required: false,
+    },
     cantidadCompraSugerida: {
       type: Number,
       default: 0,

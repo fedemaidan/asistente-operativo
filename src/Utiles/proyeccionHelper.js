@@ -118,6 +118,38 @@ const buildDiasConStockPorCodigo = ({
   return diasConStockPorCodigo;
 };
 
+const buildQuiebreMetadataPorCodigo = (quiebreData = []) => {
+  const metadata = new Map();
+  if (!Array.isArray(quiebreData) || quiebreData.length === 0) {
+    return metadata;
+  }
+
+  for (const row of quiebreData) {
+    const codigo = normalizeCodigo(row?.codigo || row?.Codigo);
+    if (!codigo) continue;
+
+    const fechaCero = normalizeDateToNoon(row?.fechaQuiebre);
+    const fechaIngreso = normalizeDateToNoon(row?.fechaIngreso);
+    if (!metadata.has(codigo)) {
+      metadata.set(codigo, { fechaCero: null, fechaIngreso: null });
+    }
+
+    const current = metadata.get(codigo);
+    if (fechaCero) {
+      if (!current.fechaCero || fechaCero.getTime() < current.fechaCero.getTime()) {
+        current.fechaCero = fechaCero;
+      }
+    }
+    if (fechaIngreso) {
+      if (!current.fechaIngreso || fechaIngreso.getTime() > current.fechaIngreso.getTime()) {
+        current.fechaIngreso = fechaIngreso;
+      }
+    }
+  }
+
+  return metadata;
+};
+
 const buildVentasPorCodigo = (ventasData = [], dateDiff, diasConStockPorCodigo = null) => {
   const ventas = new Map();
 
@@ -366,4 +398,5 @@ module.exports = {
   buildDiasConStockPorCodigo,
   simularProyeccion,
   ensureProductos,
+  buildQuiebreMetadataPorCodigo,
 };
