@@ -9,14 +9,34 @@ class LoteService {
     this.proyeccionService = new ProyeccionService();
   }
 
-  async _recalcularProyeccionCompletaSiExiste() {
-    const result = await this.proyeccionService.recalcularDesdeUltimoContexto();
-    // Si no hay proyección activa, no cortamos la operación de lotes/pedidos.
+  _collectProductoIds(items = []) {
+    const ids = new Set();
+    (items || []).forEach((item) => {
+      let target = null;
+      if (typeof item === "string") {
+        target = item;
+      } else if (item?.producto) {
+        target = item.producto;
+      } else if (item?._id) {
+        target = item._id;
+      }
+      const producto = this._toObjectIdString(target);
+      if (producto) ids.add(producto);
+    });
+    return Array.from(ids);
+  }
+
+  async _recalcularProyeccionPorProductos(productIds = []) {
+    const normalized = this._collectProductoIds(productIds);
+    if (normalized.length === 0) {
+      return { success: true, skipped: true };
+    }
+    const result = await this.proyeccionService.recalcularProductosPorIds(normalized);
     if (!result?.success && result?.statusCode === 409) {
-      return { success: false, skipped: true, error: result.error };
+      return { success: false, skipped: true };
     }
     if (!result?.success) {
-      throw new Error(result?.error || "Error al recalcular proyección");
+      throw new Error(result?.error || "Error al recalcular proyección por productos");
     }
     return { success: true, skipped: false, meta: result.meta };
   }
@@ -141,7 +161,7 @@ class LoteService {
       await this._aplicarDeltaStockProyectado(
         this._buildDeltaStockProyectadoPorProducto([created], +1)
       );
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos([created.producto]);
       return { success: true, data: created };
     } catch (error) {
       return { success: false, error: error.message };
@@ -172,7 +192,9 @@ class LoteService {
       await this._aplicarDeltaStockProyectado(
         this._buildDeltaStockProyectadoPorProducto(created, +1)
       );
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos(
+        this._collectProductoIds(created)
+      );
       return { success: true, data: created };
     } catch (error) {
       return { success: false, error: error.message };
@@ -235,7 +257,7 @@ class LoteService {
         this._buildDeltaStockProyectadoPorProducto([current], factor)
       );
 
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos([current.producto]);
       return {
         success: true,
         data: updated,
@@ -304,7 +326,7 @@ class LoteService {
         this._buildDeltaStockProyectadoPorProducto(efectivos, factor)
       );
 
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos(changed);
       return {
         success: true,
         data: changed,
@@ -367,7 +389,7 @@ class LoteService {
         this._buildDeltaStockProyectadoPorProducto(efectivos, factor)
       );
 
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos(changed);
       return {
         success: true,
         data: changed,
@@ -470,7 +492,7 @@ class LoteService {
         };
       }
 
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos([updated.producto]);
       return { success: true, data: updated };
     } catch (error) {
       return { success: false, error: error.message };
@@ -544,7 +566,7 @@ class LoteService {
         );
       }
 
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos([current.producto]);
       return { success: true, data: updated };
     } catch (error) {
       return { success: false, error: error.message };
@@ -571,7 +593,7 @@ class LoteService {
         };
       }
 
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos([deleted.producto]);
       return { success: true, data: deleted };
     } catch (error) {
       return { success: false, error: error.message };
@@ -612,7 +634,7 @@ class LoteService {
         };
       }
 
-      await this._recalcularProyeccionCompletaSiExiste();
+      await this._recalcularProyeccionPorProductos([current.producto]);
       return { success: true, data: deleted };
     } catch (error) {
       return { success: false, error: error.message };

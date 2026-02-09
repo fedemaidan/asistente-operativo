@@ -30,6 +30,29 @@ class PedidoService {
       }));
   }
 
+  _escapeRegex(value) {
+    return (value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  _normalizeEstadoFilter(estado) {
+    const normalized = (estado || "").toString().trim().toUpperCase();
+    return ["PENDIENTE", "ENTREGADO"].includes(normalized) ? normalized : null;
+  }
+
+  _buildResumenFilter(options = {}) {
+    const filter = {};
+    const estadoFiltrado = this._normalizeEstadoFilter(options.estado);
+    if (estadoFiltrado) {
+      filter.estado = estadoFiltrado;
+    }
+    const searchValue = (options.search || "").toString().trim();
+    if (searchValue.length > 0) {
+      const regex = new RegExp(this._escapeRegex(searchValue), "i");
+      filter.$or = [{ numeroPedido: regex }, { estado: regex }];
+    }
+    return filter;
+  }
+
   async _resolveContenedoresForDistribucion(distribucion = []) {
     const contenedoresPorCodigo = new Map();
     const contenedoresPorId = new Map();
@@ -88,12 +111,14 @@ class PedidoService {
         limit = 200,
         offset = 0,
         sort = { createdAt: -1 },
+        filter = {},
       } = options;
 
       const result = await this.pedidoRepository.getPaginated({
         limit,
         offset,
         sort,
+        filter,
       });
 
       return {
@@ -117,12 +142,16 @@ class PedidoService {
         limit = 200,
         offset = 0,
         sort = { createdAt: -1 },
+        search = "",
+        estado = "",
       } = options;
 
+      const filter = this._buildResumenFilter({ search, estado });
       const paginated = await this.pedidoRepository.getPaginatedWithProductos({
         limit,
         offset,
         sort,
+        filter,
       });
 
       const pedidos = paginated.data || [];

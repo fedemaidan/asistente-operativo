@@ -72,6 +72,8 @@ module.exports = {
   getPedidosResumen: async (req, res) => {
     try {
       const { limit, offset, sortField, sortOrder } = req.query;
+      const rawSearch = typeof req.query.search === "string" ? req.query.search.trim() : "";
+      const rawEstado = typeof req.query.estado === "string" ? req.query.estado.trim().toUpperCase() : "";
       const parsedLimit = parsePositiveInt(limit, 200);
       const parsedOffset = parsePositiveInt(offset, 0);
       const sort = { [sortField || "createdAt"]: sortOrder === "asc" ? 1 : -1 };
@@ -80,6 +82,8 @@ module.exports = {
         limit: parsedLimit,
         offset: parsedOffset,
         sort,
+        search: rawSearch,
+        estado: rawEstado,
       });
 
       return sendResponse(res, result);

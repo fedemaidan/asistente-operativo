@@ -191,37 +191,13 @@ const buildArribosPorProducto = (
   return arribosPorProducto;
 };
 
-const simularProyeccion = ({
-  horizonte = 90,
-  stockInicial = 0,
-  ventasDiarias = 0,
-  arribos = [],
-  fechaBase = null,
-}) => {
-  if (stockInicial <= 0) {
-    const fechaAgot = fechaBase ? calcularFechaDesdeBase(fechaBase, 0) : new Date();
-    return {
-      seAgota: true,
-      diasHastaAgotarStock: 0,
-      fechaAgotamientoStock: fechaAgot,
-      fechaCompraSugerida: fechaBase ? calcularFechaDesdeBase(fechaBase, 0) : new Date(),
-      cantidadCompraSugerida: ventasDiarias > 0 ? Math.round(ventasDiarias * 100) : 0,
-      proximoArriboDias: null,
-      proximoArriboCantidad: 0,
-      proximoArriboFecha: null,
-      stockProyectado: 0,
-    };
-  }
-
-  // Normalizamos y ordenamos arribos (día >= 0), y los agrupamos por día para simular día-a-día.
+const buildArribosPorDia = (arribos = []) => {
   const eventosAll = (arribos || [])
     .filter((a) => Number.isFinite(a?.dia) && a.dia >= 0)
     .map((a) => ({ dia: Math.floor(a.dia), cantidad: toNumber(a.cantidad) }))
     .sort((a, b) => a.dia - b.dia);
 
-  const proximoEvento = eventosAll.length > 0 ? eventosAll[0] : null;
-
-  const arribosPorDia = new Map(); // day -> totalCantidad
+  const arribosPorDia = new Map();
   for (const ev of eventosAll) {
     if (ev.cantidad <= 0) continue;
     arribosPorDia.set(ev.dia, (arribosPorDia.get(ev.dia) || 0) + ev.cantidad);
@@ -229,95 +205,100 @@ const simularProyeccion = ({
 
   const lastArriboDay = eventosAll.length > 0 ? eventosAll[eventosAll.length - 1].dia : -1;
 
-  /**
-   * Simula stock día por día.
-   * Regla de orden (consistente con la simulación anterior):
-   * - Al inicio del día: se suma el arribo del día (si hay).
-   * - Al final del día: se descuenta ventasDiarias (si ventasDiarias > 0).
-   */
-  const simularHastaDia = (endDayExclusive, initialStock) => {
-    let stock = initialStock;
-    const dias = Math.max(0, Math.floor(endDayExclusive));
-    for (let day = 0; day < dias; day += 1) {
-      stock += arribosPorDia.get(day) || 0;
-      if (ventasDiarias > 0) {
-        stock = Math.max(0, stock - ventasDiarias);
-      }
+  return { eventosAll, arribosPorDia, lastArriboDay };
+};
+
+const simularProyeccion = ({
+  horizonte = 90,
+  stockInicial = 0,
+  ventasDiarias = 0,
+  arribos = [],
+  fechaBase = null,
+}) => {
+  const { eventosAll, arribosPorDia } = buildArribosPorDia(arribos);
+  const proximoEvento = eventosAll.length > 0 ? eventosAll[0] : null;
+  const diasHorizonte = Math.max(0, Math.trunc(Number(horizonte) || 0));
+  const ventasDiariasNorm = Number.isFinite(Number(ventasDiarias)) ? Number(ventasDiarias) : 0;
+  const stockInicialNorm = Number.isFinite(Number(stockInicial)) ? Number(stockInicial) : 0;
+  const UMBRAL_DIAS_SIN_COBERTURA = 30;
+  const MAX_SIMULATION_DIAS = 365;
+
+  // Simulación operacional dentro del horizonte para calcular stock proyectado.
+  const stockFinalPorDia = [];
+  let stockOperativo = Math.max(0, stockInicialNorm);
+  for (let day = 0; day < diasHorizonte; day += 1) {
+    stockOperativo += arribosPorDia.get(day) || 0;
+    if (ventasDiariasNorm > 0) {
+      stockOperativo = Math.max(0, stockOperativo - ventasDiariasNorm);
     }
-    return stock;
-  };
-
-  // Stock al horizonte: se consumen ventas SOLO hasta horizonte, sumando arribos en esos días.
-  const stockAlHorizonte = simularHastaDia(horizonte, stockInicial);
-
-  // sumamos TODOS los arribos posteriores al horizonte (sin consumir ventas después).
-  let sumaArribosPostHorizonte = 0;
-  for (const ev of eventosAll) {
-    if (ev.dia >= horizonte) sumaArribosPostHorizonte += ev.cantidad;
+    stockFinalPorDia.push(stockOperativo);
   }
-  const stockH = stockAlHorizonte + sumaArribosPostHorizonte;
+  const stockAlHorizonte = stockFinalPorDia.length > 0 ? stockFinalPorDia[stockFinalPorDia.length - 1] : stockOperativo;
 
-  // Simulación completa para fecha de agotamiento (sin límite de horizonte)
+  // Faltante neto: demanda 90 días - (stock inicial + arribos dentro de 90 días).
+  const demandaHorizonte = ventasDiariasNorm > 0 ? ventasDiariasNorm * diasHorizonte : 0;
+  const arribosDentroHorizonte = eventosAll.reduce(
+    (acc, ev) => (ev.dia >= 0 && ev.dia < diasHorizonte ? acc + ev.cantidad : acc),
+    0
+  );
+  const ofertaTotalHorizonte = Math.max(0, stockInicialNorm) + arribosDentroHorizonte;
+  const faltanteNeto = Math.max(0, Math.ceil(demandaHorizonte - ofertaTotalHorizonte));
+
   let diasHastaAgotarStock = null;
   let seAgota = false;
   let agotamientoExcede365Dias = false;
+  let fechaAgotamientoStock = null;
+  let fechaCompraSugerida = null;
+  let stockExt = Math.max(0, stockInicialNorm);
+  let nextArriboIdx = 0;
 
-  if (ventasDiarias > 0) {
-    const MAX_DIAS_SIMULACION = 365;
-    // Simulamos día por día hasta agotar, aplicando arribos de cualquier día (>= 0).
-    let stock = stockInicial;
-    let day = 0;
+  for (let day = 0; day < MAX_SIMULATION_DIAS; day += 1) {
+    stockExt += arribosPorDia.get(day) || 0;
+    if (ventasDiariasNorm > 0) {
+      stockExt = Math.max(0, stockExt - ventasDiariasNorm);
+    }
 
-    // Simulamos explícitamente hasta el último día con arribo.
-    const endArribos = Math.max(0, lastArriboDay + 1);
-    const endSim = Math.min(endArribos, MAX_DIAS_SIMULACION);
-    for (; day < endSim; day += 1) {
-      stock += arribosPorDia.get(day) || 0;
-      stock = stock - ventasDiarias;
-      if (stock <= 0) {
+    while (nextArriboIdx < eventosAll.length && eventosAll[nextArriboIdx].dia <= day) {
+      nextArriboIdx += 1;
+    }
+
+    if (stockExt <= 0 && ventasDiariasNorm > 0) {
+      const nextArribo = eventosAll[nextArriboIdx];
+      const gap = nextArribo ? nextArribo.dia - day : Infinity;
+      if (gap >= UMBRAL_DIAS_SIN_COBERTURA || nextArribo == null) {
+        diasHastaAgotarStock = day + 1;
         seAgota = true;
-        diasHastaAgotarStock = day + 1; // cantidad de días transcurridos hasta llegar a 0
-        stock = 0;
+        fechaAgotamientoStock = fechaBase
+          ? calcularFechaDesdeBase(fechaBase, diasHastaAgotarStock)
+          : null;
         break;
-      }
-    }
-
-    if (!seAgota && day >= MAX_DIAS_SIMULACION) {
-      agotamientoExcede365Dias = true;
-    }
-
-    // Si no se agotó todavía y ya no hay más arribos, el resto es lineal: se agota en ceil(stock/ventasDiarias) días.
-    if (!seAgota && stock > 0 && day < MAX_DIAS_SIMULACION) {
-      const diasExtra = Math.ceil(stock / ventasDiarias);
-      const diaAgotamiento = day + diasExtra;
-      if (diaAgotamiento <= MAX_DIAS_SIMULACION) {
-        seAgota = true;
-        diasHastaAgotarStock = diaAgotamiento;
-      } else {
-        agotamientoExcede365Dias = true;
       }
     }
   }
 
-  const diasAgot = seAgota ? Math.max(0, diasHastaAgotarStock) : null;
-  const fechaAgot =
-    seAgota && fechaBase ? calcularFechaDesdeBase(fechaBase, diasAgot) : seAgota ? new Date() : null;
+  if (!seAgota) {
+    agotamientoExcede365Dias = MAX_SIMULATION_DIAS > 0;
+  }
+
+  const cantidadCompraSugerida = faltanteNeto > 0 ? faltanteNeto : 0;
+  if (cantidadCompraSugerida > 0 && diasHastaAgotarStock != null && fechaBase) {
+    fechaCompraSugerida = calcularFechaDesdeBase(fechaBase, diasHastaAgotarStock);
+  }
 
   return {
     seAgota,
     agotamientoExcede365Dias,
-    diasHastaAgotarStock: diasAgot,
-    fechaAgotamientoStock: fechaAgot,
-    fechaCompraSugerida:
-      seAgota && fechaBase ? calcularFechaDesdeBase(fechaBase, Math.max(0, diasAgot - 90)) : null,
-    cantidadCompraSugerida: seAgota && ventasDiarias > 0 ? Math.round(ventasDiarias * 90) : 0,
+    diasHastaAgotarStock,
+    fechaAgotamientoStock,
+    fechaCompraSugerida,
+    cantidadCompraSugerida,
     proximoArriboDias: proximoEvento ? proximoEvento.dia : null,
     proximoArriboCantidad: proximoEvento ? proximoEvento.cantidad : 0,
     proximoArriboFecha:
       proximoEvento && fechaBase
         ? calcularFechaDesdeBase(fechaBase, Math.max(0, proximoEvento.dia))
         : null,
-    stockProyectado: Math.round(stockH),
+    stockProyectado: Math.round(stockAlHorizonte),
   };
 };
 
@@ -377,9 +358,11 @@ const ensureProductos = async ({
 };
 
 module.exports = {
+  calcularFechaDesdeBase,
   buildVentasPorCodigo,
   buildStockPorCodigo,
   buildArribosPorProducto,
+  buildArribosPorDia,
   buildDiasConStockPorCodigo,
   simularProyeccion,
   ensureProductos,

@@ -7,9 +7,9 @@ class PedidoRepository extends BaseRepository {
   }
 
   async getPaginated(options = {}) {
-    const { limit, offset, sort } = options;
+    const { limit, offset, sort, filter = {} } = options;
     return this.findPaginated(
-      {},
+      filter,
       {
         limit,
         offset,
@@ -19,9 +19,9 @@ class PedidoRepository extends BaseRepository {
   }
 
   async getPaginatedWithProductos(options = {}) {
-    const { limit, offset, sort } = options;
+    const { limit, offset, sort, filter = {} } = options;
     return this.findPaginated(
-      {},
+      filter,
       {
         limit,
         offset,
