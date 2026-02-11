@@ -62,11 +62,8 @@ const parseMovimientosBanco = (arr) => {
 
 function parseImporte(importe) {
   if (typeof importe === "number") {
-    // Si el número es menor a 1000 y tiene decimales largos, probablemente es un error de parseo
     const str = importe.toString();
     if (importe < 1000 && str.includes(".")) {
-      // Intenta reconstruir el número como si fuera miles
-      // Ejemplo: 162.27273 -> 162272.73
       const partes = str.split(".");
       if (partes.length === 2 && partes[1].length > 2) {
         return parseFloat(
@@ -77,9 +74,16 @@ function parseImporte(importe) {
     return importe;
   }
   if (typeof importe === "string") {
-    let limpio = importe.replace(/\./g, "").replace(",", ".");
-    let valor = parseFloat(limpio);
-    return isNaN(valor) ? 0 : valor;
+    let limpio = importe.trim();
+    let negativo = false;
+    if (limpio.startsWith("(") && limpio.endsWith(")")) {
+      negativo = true;
+      limpio = limpio.slice(1, -1);
+    }
+    limpio = limpio.replace(/\./g, "").replace(",", ".");
+    const valor = parseFloat(limpio);
+    if (isNaN(valor)) return 0;
+    return negativo ? -valor : valor;
   }
   return 0;
 }
@@ -87,27 +91,39 @@ function parseImporte(importe) {
 const parseMovimientosBancoXls = (arr) => {
   console.log("XLS ARCHIVO", arr);
 
-  return arr.map((row) => {
-    const nuevaFecha = parseExcelDate(row["__EMPTY"]);
-    const importeStr = row["__EMPTY_6"];
-    const saldoStr = row["__EMPTY_7"];
-    const importeFinal = parseImporte(importeStr);
-    const saldoFinal = saldoStr ? parseImporte(saldoStr) : saldoStr;
-    return {
-      fecha: nuevaFecha,
-      sucOrigen: row["__EMPTY_1"],
-      descSucursal: row["__EMPTY_2"],
-      codOperativo: row["__EMPTY_3"],
-      referencia: row["__EMPTY_4"],
-      concepto: row["__EMPTY_5"],
-      importe: importeFinal,
-      saldo: saldoFinal,
-      caja: "ENSHOP SRL",
-    };
-  });
+  return arr
+    .map((row) => {
+      const nuevaFecha = parseExcelDate(row["Movimientos del Día"]);
+      const importeStr = row["__EMPTY_5"];
+      const saldoStr = row["__EMPTY_6"];
+      const importeFinal = parseImporte(importeStr);
+      const saldoFinal =
+        saldoStr !== undefined && saldoStr !== null && saldoStr !== ""
+          ? parseImporte(saldoStr)
+          : undefined;
+      return {
+        fecha: nuevaFecha,
+        sucOrigen: row["__EMPTY"],
+        descSucursal: row["__EMPTY_1"],
+        codOperativo: row["__EMPTY_2"],
+        referencia: row["__EMPTY_3"],
+        concepto: row["__EMPTY_4"],
+        importe: importeFinal,
+        saldo: saldoFinal,
+        caja: "ENSHOP SRL",
+      };
+    })
+    .filter(
+      (mov) =>
+        mov.fecha instanceof Date &&
+        !isNaN(mov.fecha.getTime()) &&
+        mov.referencia &&
+        mov.referencia !== "Referencia"
+    );
 };
 
 const parseJsonBancoToMovimiento = (data, fileName) => {
+  console.log("dataBanco", data);
   const dataArray = Array.isArray(data) ? data : Object.values(data);
 
   const limiteIndex = dataArray.findIndex((row) =>
