@@ -84,6 +84,86 @@ class ProyeccionService {
     return doc;
   }
 
+  async iniciarProyeccion({
+    ventasData,
+    stockData,
+    quiebreData,
+    dateDiff,
+    horizonte,
+    fechaBase,
+    fechaInicio,
+    fechaFin,
+    links,
+  }) {
+    const proyeccionDoc = await this._guardarContextoNuevaProyeccion({
+      ventasData,
+      stockData,
+      quiebreData,
+      dateDiff,
+      horizonte,
+      fechaBase,
+      fechaInicio,
+      fechaFin,
+      links,
+    });
+
+    this._procesarProyeccionEnBackground({
+      ventasData,
+      stockData,
+      quiebreData,
+      dateDiff,
+      horizonte,
+      fechaBase,
+      fechaInicio,
+      fechaFin,
+      proyeccionId: proyeccionDoc._id,
+    });
+
+    return proyeccionDoc;
+  }
+
+  _procesarProyeccionEnBackground(contexto) {
+    if (!contexto?.proyeccionId) return;
+
+    const contextoCopiado = {
+      ...contexto,
+      quiebreData: Array.isArray(contexto.quiebreData) ? contexto.quiebreData : [],
+      ventasData: Array.isArray(contexto.ventasData) ? contexto.ventasData : [],
+      stockData: Array.isArray(contexto.stockData) ? contexto.stockData : [],
+    };
+
+    setImmediate(async () => {
+      try {
+        await this._calcularProyeccionCompleta(contextoCopiado);
+
+        await Proyeccion.updateOne(
+          { _id: contextoCopiado.proyeccionId },
+          {
+            $set: {
+              status: "finalizada",
+              finishedAt: new Date(),
+              processingError: null,
+              lastRecalculatedAt: new Date(),
+            },
+          }
+        );
+      } catch (error) {
+        await Proyeccion.updateOne(
+          { _id: contextoCopiado.proyeccionId },
+          {
+            $set: {
+              status: "error",
+              finishedAt: new Date(),
+              processingError: error?.message || "Error procesando la proyección",
+            },
+          }
+        );
+        // eslint-disable-next-line no-console
+        console.error("[ProyeccionService] error en procesamiento:", error);
+      }
+    });
+  }
+
   _buildDetalleDiario({
     horizonte,
     stockInicial,

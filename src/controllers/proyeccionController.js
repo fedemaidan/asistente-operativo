@@ -70,6 +70,38 @@ module.exports = {
       return res.status(500).json({ success: false, error: error.message });
     }
   },
+  getProyeccionStatus: async (req, res) => {
+    try {
+      const { id } = req.params || {};
+      if (!id) {
+        return res.status(400).json({ success: false, error: "Se requiere el id de la proyección" });
+      }
+
+      const doc = await Proyeccion.findById(id).lean();
+      if (!doc) {
+        return res.status(404).json({ success: false, error: "No se encontró la proyección" });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          id: doc._id,
+          status: doc.status,
+          processingError: doc.processingError || null,
+          finishedAt: doc.finishedAt || null,
+          fechaInicio: doc.fechaInicio || null,
+          fechaFin: doc.fechaFin || null,
+          links: doc.links || {},
+          lastRecalculatedAt: doc.lastRecalculatedAt || null,
+          createdAt: doc.createdAt || null,
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[proyeccionController] getProyeccionStatus error:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  },
   createProyeccion: async (req, res) => {
     try {
       const { fechaInicio, fechaFin, horizonte } = req.body;
@@ -153,7 +185,7 @@ module.exports = {
         ? parseInt(horizonte, 10) || 90
         : 90;
 
-      const proyeccion = await proyeccionService.generarProyeccion({
+      const proyeccionDoc = await proyeccionService.iniciarProyeccion({
         ventasData: ventasParsed,
         stockData: stockParsed,
         quiebreData: Array.isArray(quiebreParsed) ? quiebreParsed : [],
@@ -170,7 +202,9 @@ module.exports = {
       });
 
       return res.json({
-        ...proyeccion,
+        success: true,
+        idProyeccion: proyeccionDoc?._id,
+        status: proyeccionDoc?.status || "procesando",
         links: {
           ventas: driveVentas?.driveUrl,
           stock: driveQuiebre?.driveUrl || "",

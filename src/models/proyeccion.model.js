@@ -66,6 +66,23 @@ const ProyeccionSchema = new mongoose.Schema(
   }
 );
 
+ProyeccionSchema.add({
+  status: {
+    type: String,
+    enum: ["procesando", "finalizada", "error"],
+    default: "procesando",
+    index: true,
+  },
+  processingError: {
+    type: String,
+    default: null,
+  },
+  finishedAt: {
+    type: Date,
+    default: null,
+  },
+});
+
 ProyeccionSchema.index({ active: 1, createdAt: -1 });
 
 const Proyeccion = mongoose.model("Proyeccion", ProyeccionSchema);

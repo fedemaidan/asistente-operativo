@@ -7,6 +7,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/metadata", proyeccionController.getProyeccionesMetadata);
 
+router.get("/:id/status", proyeccionController.getProyeccionStatus);
+
 router.post(
   "/",
   upload.fields([
