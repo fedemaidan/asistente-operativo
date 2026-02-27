@@ -10,6 +10,50 @@ const {
   deleteClienteFromAltSheet,
 } = require("../Utiles/GoogleServices/Sheets/clienteAlternativo");
 
+const formatFechaArgentina = (value) => {
+  if (!value) return null;
+  if (typeof value === "string" && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
+    return value;
+  }
+  try {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      return value;
+    }
+    return date.toLocaleDateString("es-AR", {
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+  } catch (error) {
+    return value;
+  }
+};
+
+const extractTimeFromValue = (value) => {
+  if (!value) return null;
+  const raw = typeof value === "string" ? value : value?.toISOString?.() ?? "";
+  if (!raw) return null;
+  const parts = raw.split("T");
+  if (parts.length < 2) return null;
+  return parts[1].split(":").slice(0, 2).join(":");
+};
+
+const buildFechaFacturaISO = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") {
+    const dateObj = new Date(value);
+    if (isNaN(dateObj.getTime())) {
+      return value;
+    }
+    const randomSeconds = Math.floor(Math.random() * 60);
+    dateObj.setSeconds(randomSeconds);
+    return dateObj.toISOString();
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return value;
+};
+
 class ClienteController extends BaseController {
   constructor() {
     super(Cliente);
@@ -52,6 +96,7 @@ class ClienteController extends BaseController {
     try {
       const {
         includeInactive = false,
+        sortField = "fechaEntrega",
         sortDirection = "desc",
         fechaInicio,
         fechaFin,
@@ -65,28 +110,6 @@ class ClienteController extends BaseController {
 
       const dir = sortDirection === "asc" ? 1 : -1;
 
-      // Filtros de fecha (se aplican en MEMORIA, no en la BD)
-      const dateStart = fechaInicio ? new Date(fechaInicio) : null;
-      const dateEnd = fechaFin ? new Date(fechaFin) : null;
-
-      // MOVIMIENTOS por clienteId
-      const movQuery = {
-        clienteId: id,
-      };
-      let movimientosRaw = await Movimiento.find(movQuery).lean();
-      if (!includeInactive) {
-        movimientosRaw = movimientosRaw.filter((m) => m?.active !== false);
-      }
-
-      // CUENTAS PENDIENTES: SIEMPRE por referencia directa al cliente (solo por ID)
-      const cuentasQuery = {
-        cliente: id,
-      };
-      let cuentasRaw = await CuentaPendiente.find(cuentasQuery).lean();
-      if (!includeInactive) {
-        cuentasRaw = cuentasRaw.filter((c) => c?.active !== false);
-      }
-
       // Helpers idénticos al frontend
       const toNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
       const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -96,69 +119,145 @@ class ClienteController extends BaseController {
         return isNaN(d.getTime()) ? 0 : d.getTime();
       };
 
-      // Parseo idéntico al frontend pero preservando fecha ISO cruda para ordenar
+      // Filtros de fecha (se aplican en MEMORIA, igual que estaba)
+      const dateStart = fechaInicio ? new Date(fechaInicio) : null;
+      const dateEnd = fechaFin ? new Date(fechaFin) : null;
+
+      // MOVIMIENTOS por clienteId
+      const movQuery = { clienteId: id };
+      let movimientosRaw = await Movimiento.find(movQuery).lean();
+      if (!includeInactive) movimientosRaw = movimientosRaw.filter((m) => m?.active !== false);
+
+      // CUENTAS PENDIENTES por referencia de cliente (mismo criterio que la vista actual)
+      const cuentasQuery = { cliente: id };
+      let cuentasRaw = await CuentaPendiente.find(cuentasQuery).lean();
+      if (!includeInactive) cuentasRaw = cuentasRaw.filter((c) => c?.active !== false);
+
+      // Parseo alineado con la pantalla actual
       const parsedMovs = movimientosRaw
         .filter((m) => m.type === "INGRESO")
         .map((raw) => {
-          const p = this.parseMovimiento(raw);
-          const fecha = raw.fechaFactura || raw.fechaCreacion || null; // ISO
-          const monto = round2(toNumber(p.montoCC || 0));
-          const tc = toNumber(p.tipoDeCambio || 1);
-          const montoOriginalBase = round2(toNumber(p.montoEnviado || 0));
-          const montoOriginal =
-            montoOriginalBase === 0 ? round2(monto * tc) : montoOriginalBase;
+          const montoCC =
+            raw.cuentaCorriente === "ARS"
+              ? toNumber(raw?.total?.ars || 0)
+              : raw.cuentaCorriente === "USD BLUE"
+              ? toNumber(raw?.total?.usdBlue || 0)
+              : toNumber(raw?.total?.usdOficial || 0);
+
+          const montoEnviado =
+            raw.moneda === "ARS"
+              ? toNumber(raw?.total?.ars || 0)
+              : raw.cuentaCorriente === "USD OFICIAL"
+              ? toNumber(raw?.total?.usdOficial || 0)
+              : toNumber(raw?.total?.usdBlue || 0);
+
+          const monto = round2(montoCC);
+          const tc = toNumber(raw?.tipoDeCambio || 1);
+          const montoOriginalAbs =
+            montoEnviado !== 0
+              ? Math.abs(round2(montoEnviado))
+              : Math.abs(round2(monto * tc));
+          const fechaFacturaRaw = raw?.fechaFactura || null;
+          const fechaCreacionRaw = raw?.fechaCreacion || null;
+          const fechaFacturaParsed = formatFechaArgentina(fechaFacturaRaw);
+          const fechaFacturaISO = buildFechaFacturaISO(fechaFacturaRaw);
+          const fechaEntrega = fechaFacturaRaw || fechaCreacionRaw || null;
+          const fechaOrden = fechaFacturaISO || fechaCreacionRaw || null;
+          const horaFactura = extractTimeFromValue(fechaFacturaRaw);
+          const horaCreacion = extractTimeFromValue(fechaCreacionRaw);
+
           return {
-            id: p.id || p._id || raw._id,
-            fecha,
-            descripcion: p.numeroFactura || raw.numeroFactura || raw._id,
-            cliente:
-              p?.nombreCliente || p?.clienteNombre || p?.cliente?.nombre || "-",
-            group: p.cuentaCorriente || p.CC || p.cc,
+            id: String(raw?._id),
+            _id: raw?._id,
+            fecha: fechaOrden,
+            fechaCreacion: fechaCreacionRaw,
+            horaCreacion,
+            horaFactura,
+            fechaFactura: fechaFacturaParsed,
+            fechaEntrega,
+            descripcion:
+              raw?.concepto && raw?.concepto !== "-"
+                ? raw.concepto
+                : raw?.descripcion
+                ? raw.descripcion
+                : "-",
+            cliente: raw?.cliente?.nombre || "-",
+            group: raw?.cuentaCorriente || null,
             monto,
             montoCC: monto,
             tipoDeCambio: tc,
-            descuentoAplicado: p.descuentoAplicado,
-            montoOriginal,
-            monedaOriginal: p.moneda || p.monedaDePago,
-            urlImagen: p?.urlImagen || raw?.urlImagen || null,
+            descuentoAplicado: raw?.descuentoAplicado,
+            montoOriginal: montoOriginalAbs,
+            monedaOriginal: raw?.moneda || "ARS",
+            montoYMonedaOriginal: {
+              monto: montoOriginalAbs,
+              moneda: raw?.moneda || "ARS",
+            },
+            urlImagen: raw?.urlImagen || null,
             itemType: "movimiento",
+            originalData: raw,
           };
         });
 
       const parsedCuentas = cuentasRaw.map((raw) => {
-        const p = this.parseCuentaPendiente(raw);
-        const fecha = raw.fechaCuenta || null; // ISO
-        const monto = round2(toNumber(p.montoCC || 0));
-        const tc = toNumber(p.tipoDeCambio || 1);
-        const montoOriginalBase = round2(toNumber(p.montoEnviado || 0));
-        const montoOriginal =
-          montoOriginalBase === 0 ? round2(monto * tc) : montoOriginalBase;
+        const montoCC =
+          raw.cc === "ARS"
+            ? toNumber(raw?.montoTotal?.ars || 0)
+            : raw.cc === "USD BLUE"
+            ? toNumber(raw?.montoTotal?.usdBlue || 0)
+            : toNumber(raw?.montoTotal?.usdOficial || 0);
+
+        const montoEnviado =
+          raw.moneda === "ARS"
+            ? toNumber(raw?.subTotal?.ars || 0)
+            : toNumber(raw?.subTotal?.usdBlue || 0);
+
+        const monto = round2(montoCC);
+        const tc = toNumber(raw?.tipoDeCambio || 1);
+        const montoOriginalAbs =
+          montoEnviado !== 0
+            ? Math.abs(round2(montoEnviado))
+            : Math.abs(round2(monto * tc));
+        const shouldNegate = toNumber(raw?.descuentoAplicado) <= 1;
+        const fechaEntrega = raw?.fechaCuenta || null;
+        const fechaCreacionRaw = raw?.fechaCreacion || null;
+        const horaCreacion = extractTimeFromValue(fechaCreacionRaw);
+
         return {
-          id: p.id || p._id || raw._id,
-          fecha,
-          descripcion: p.descripcion || raw.descripcion || "-",
-          cliente:
-            p?.nombreCliente ||
-            p?.clienteNombre ||
-            p?.cliente?.nombre ||
-            p?.proveedorOCliente ||
-            "-",
-          group: p.cuentaCorriente || p.CC || p.cc,
+          id: String(raw?._id),
+          _id: raw?._id,
+          fecha: fechaEntrega,
+          fechaCreacion: fechaCreacionRaw,
+          horaCreacion,
+          fechaEntrega,
+          descripcion:
+            raw?.concepto && raw?.concepto !== "-"
+              ? raw.concepto
+              : raw?.descripcion
+              ? raw.descripcion
+              : "-",
+          cliente: raw?.cliente?.nombre || raw?.proveedorOCliente || "-",
+          group: raw?.cc || null,
           monto,
           montoCC: monto,
           tipoDeCambio: tc,
-          descuentoAplicado: p.descuentoAplicado,
-          montoOriginal,
-          monedaOriginal: p.monedaDePago || p.moneda,
+          descuentoAplicado: raw?.descuentoAplicado,
+          montoOriginal: shouldNegate ? -montoOriginalAbs : montoOriginalAbs,
+          monedaOriginal: raw?.moneda || "ARS",
+          montoYMonedaOriginal: {
+            monto: shouldNegate ? -montoOriginalAbs : montoOriginalAbs,
+            moneda: raw?.moneda || "ARS",
+          },
           urlImagen: null,
           itemType: "cuentaPendiente",
+          originalData: raw,
         };
       });
 
       // Unificar
       let items = [...parsedMovs, ...parsedCuentas];
 
-      // Filtros en memoria EXACTAMENTE como en el frontend
+      // Filtros en memoria
       if (group) {
         items = items.filter((it) => (it.group || "") === group);
       }
@@ -171,19 +270,26 @@ class ClienteController extends BaseController {
         });
       }
 
-      // Calcular Debe/Haber/Saldo por grupo (igual que DataTabTable + agregarSaldoCalculado)
+      // Orden fijo de acumulación: mismo default de la vista (fechaEntrega DESC).
+      // Luego se acumula en orden cronológico ASC de esa lista.
+      const baseDesc = [...items].sort((a, b) => {
+        const bt = getTimeSafe(b.fechaEntrega || b.fecha);
+        const at = getTimeSafe(a.fechaEntrega || a.fecha);
+        if (bt !== at) return bt - at;
+        return String(b.id || "").localeCompare(String(a.id || ""));
+      });
+
+      // Calcular Debe/Haber/Saldo por grupo (misma regla que agregarSaldoCalculado)
       const groupsMap = new Map();
-      for (const it of items) {
+      for (const it of baseDesc) {
         const g = it.group || "DEFAULT";
         if (!groupsMap.has(g)) groupsMap.set(g, []);
         groupsMap.get(g).push(it);
       }
 
-      const withSaldoAsc = [];
+      const withSaldoById = new Map();
       for (const [g, arr] of groupsMap.entries()) {
-        const asc = [...arr].sort(
-          (a, b) => getTimeSafe(a.fecha) - getTimeSafe(b.fecha)
-        );
+        const asc = [...arr].reverse();
         let running = 0;
         for (const row of asc) {
           const baseMonto = row?.montoCC != null ? row.montoCC : row?.monto;
@@ -197,8 +303,7 @@ class ClienteController extends BaseController {
           const haber =
             row?.haber != null ? toNumber(row.haber) : monto > 0 ? monto : 0;
           running = round2(running + (haber - debe));
-          withSaldoAsc.push({
-            ...row,
+          withSaldoById.set(String(row.id), {
             debe: toNumber(debe),
             haber: toNumber(haber),
             saldoAcumulado: toNumber(running),
@@ -206,19 +311,46 @@ class ClienteController extends BaseController {
         }
       }
 
-      // Orden final según sortDirection requerido por la vista
-      const final = withSaldoAsc.sort((a, b) =>
+      const withSaldo = baseDesc.map((row) => ({
+        ...row,
+        ...(withSaldoById.get(String(row.id)) || { debe: 0, haber: 0, saldoAcumulado: 0 }),
+      }));
+
+      const totalesCC = withSaldo.reduce(
+        (acc, it) => {
+          const key = it.group;
+          if (key === "ARS") acc.ARS += toNumber(it.monto || 0);
+          if (key === "USD BLUE") acc["USD BLUE"] += toNumber(it.monto || 0);
+          if (key === "USD OFICIAL") acc["USD OFICIAL"] += toNumber(it.monto || 0);
+          return acc;
+        },
+        { ARS: 0, "USD BLUE": 0, "USD OFICIAL": 0 }
+      );
+
+      // Orden de visualización opcional (el saldo NO se vuelve a calcular).
+      const final = [...withSaldo].sort((a, b) =>
         dir === 1
-          ? getTimeSafe(a.fecha) - getTimeSafe(b.fecha)
-          : getTimeSafe(b.fecha) - getTimeSafe(a.fecha)
+          ? getTimeSafe(a.fechaEntrega || a.fecha) -
+            getTimeSafe(b.fechaEntrega || b.fecha)
+          : getTimeSafe(b.fechaEntrega || b.fecha) -
+            getTimeSafe(a.fechaEntrega || a.fecha)
       );
 
       return {
         success: true,
         data: final,
         total: final.length,
-        sortField: "fecha",
+        sortField,
         sortDirection,
+        totalsCC: {
+          ARS: round2(toNumber(totalesCC.ARS)),
+          "USD BLUE": round2(toNumber(totalesCC["USD BLUE"])),
+          "USD OFICIAL": round2(toNumber(totalesCC["USD OFICIAL"])),
+        },
+        accumulationOrder: {
+          field: "fechaEntrega",
+          direction: "desc",
+        },
       };
     } catch (error) {
       return { success: false, error: error.message };

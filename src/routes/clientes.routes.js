@@ -72,6 +72,7 @@ router.get("/:idCliente/cc", async (req, res) => {
   try {
     const { idCliente } = req.params;
     const {
+      sortField = "fechaEntrega",
       sortDirection = "desc",
       fechaInicio,
       fechaFin,
@@ -80,6 +81,7 @@ router.get("/:idCliente/cc", async (req, res) => {
     } = req.query;
 
     const result = await clienteController.getClienteCCComputed(idCliente, {
+      sortField,
       sortDirection,
       fechaInicio,
       fechaFin,

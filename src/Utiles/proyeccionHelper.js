@@ -1,6 +1,7 @@
 const ProductoService = require("../services/productoService");
 
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
+const DIAS_ANTICIPACION_COMPRA = 100;
 
 const calcularFechaDesdeBase = (baseDate, dias) => {
   if (!baseDate || dias == null) return null;
@@ -314,7 +315,8 @@ const simularProyeccion = ({
 
   const cantidadCompraSugerida = faltanteNeto > 0 ? faltanteNeto : 0;
   if (cantidadCompraSugerida > 0 && diasHastaAgotarStock != null && fechaBase) {
-    fechaCompraSugerida = calcularFechaDesdeBase(fechaBase, diasHastaAgotarStock);
+    const diasParaCompraSugerida = Math.max(0, diasHastaAgotarStock - DIAS_ANTICIPACION_COMPRA);
+    fechaCompraSugerida = calcularFechaDesdeBase(fechaBase, diasParaCompraSugerida);
   }
 
   return {
