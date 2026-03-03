@@ -814,8 +814,35 @@ class MovimientoController extends BaseController {
                   {
                     $cond: [
                       { $eq: ["$type", "INGRESO"] },
-                      "$total.usdOficial",
-                      { $multiply: ["$total.usdOficial", -1] },
+                      {
+                        $cond: [
+                          {
+                            $in: [
+                              { $toString: { $ifNull: ["$total.usdOficial", 0] } },
+                              ["Infinity", "-Infinity", "NaN"],
+                            ],
+                          },
+                          0,
+                          { $ifNull: ["$total.usdOficial", 0] },
+                        ],
+                      },
+                      {
+                        $multiply: [
+                          {
+                            $cond: [
+                              {
+                                $in: [
+                                  { $toString: { $ifNull: ["$total.usdOficial", 0] } },
+                                  ["Infinity", "-Infinity", "NaN"],
+                                ],
+                              },
+                              0,
+                              { $ifNull: ["$total.usdOficial", 0] },
+                            ],
+                          },
+                          -1,
+                        ],
+                      },
                     ],
                   },
                   0,
@@ -870,12 +897,16 @@ class MovimientoController extends BaseController {
           fechaUltimoPago: null,
         };
 
+        const cuentaUSDOficial = Number(cuentaData.totalUSDOficial);
+        const movUSDOficial = Number(movData.totalUSDOficial);
+        const totalUSDOficial = cuentaUSDOficial + movUSDOficial;
+
         return {
           _id: cliente._id,
           cliente: cliente.nombre,
           ARS: cuentaData.totalARS + movData.totalARS,
           "USD BLUE": cuentaData.totalUSDBlue + movData.totalUSDBlue,
-          "USD OFICIAL": cuentaData.totalUSDOficial + movData.totalUSDOficial,
+          "USD OFICIAL": totalUSDOficial,
           fechaUltimoPago: movData.fechaUltimoPago,
           fechaUltimaEntrega: cuentaData.fechaUltimaEntrega,
         };
