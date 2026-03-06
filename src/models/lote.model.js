@@ -50,6 +50,7 @@ loteSchema.set("toJSON", { virtuals: true });
 loteSchema.set("toObject", { virtuals: true });
 
 loteSchema.index({ pedido: 1, contenedor: 1 });
+loteSchema.index({ estado: 1, producto: 1 });
 
 const Lote = mongoose.model("Lote", loteSchema);
 module.exports = Lote;

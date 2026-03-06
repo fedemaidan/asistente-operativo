@@ -53,10 +53,11 @@ class ProductoRepository extends BaseRepository {
     return this.softDeleteById(id);
   }
 
-  async findByCodigos(codigos = []) {
+  async findByCodigos(codigos = [], options = {}) {
     const normalized = this.normalizeCodigos(codigos);
     if (normalized.length === 0) return [];
-    return this.find({ codigo: { $in: normalized } });
+    const { select = null } = options;
+    return this.find({ codigo: { $in: normalized } }, { select });
   }
 
   /**
@@ -96,6 +97,40 @@ class ProductoRepository extends BaseRepository {
 
   async updateProyeccionFields(id, payload) {
     return this.updateById(id, payload, { new: true });
+  }
+
+  /** Tamaño de cada batch para bulkUpdate (evita payloads gigantes y mejora throughput) */
+  static BULK_UPDATE_BATCH_SIZE = 500;
+
+  /**
+   * Actualiza campos de proyección de muchos productos en operaciones bulk por lotes.
+   * Ejecuta batches en paralelo para reducir tiempo total.
+   * @param {Array<{id: string|ObjectId, payload: Object}>} updates - Array de { id, payload }
+   * @returns {Promise<{ modifiedCount: number }>}
+   */
+  async bulkUpdateProyeccionFields(updates = []) {
+    const valid = updates.filter((u) => u?.id && u?.payload && Object.keys(u.payload).length > 0);
+    if (valid.length === 0) return { modifiedCount: 0 };
+
+    const batchSize = this.constructor.BULK_UPDATE_BATCH_SIZE;
+    const batches = [];
+    for (let i = 0; i < valid.length; i += batchSize) {
+      batches.push(valid.slice(i, i + batchSize));
+    }
+
+    const runBatch = (batch) => {
+      const ops = batch.map((u) => ({
+        updateOne: { filter: { _id: u.id }, update: { $set: u.payload } },
+      }));
+      return this.model.bulkWrite(ops, {
+        ordered: false,
+        bypassDocumentValidation: true,
+      });
+    };
+
+    const results = await Promise.all(batches.map(runBatch));
+    const modifiedCount = results.reduce((acc, r) => acc + (r?.modifiedCount ?? 0), 0);
+    return { modifiedCount };
   }
 
   async getTagsUsageByProductoCodigo() {

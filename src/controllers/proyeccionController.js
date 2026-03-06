@@ -1,7 +1,6 @@
 const {
   subirExcelBufferADrive,
 } = require("../Utiles/Funciones/Excel/excelToDrive");
-const getDatesFromExcel = require("../Utiles/Chatgpt/getDatesFromExcel");
 const {
   limpiarDatosVentas,
   limpiarDatosQuiebre,
@@ -13,25 +12,22 @@ const Proyeccion = require("../models/proyeccion.model");
 
 const proyeccionService = new ProyeccionService();
 
-const parseFechas = async (ventasFileName, fechaInicio, fechaFin) => {
-  const { date1, date2, dateDiff } = await getDatesFromExcel(ventasFileName);
-
-  if (fechaInicio && fechaFin) {
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
-    if (!isNaN(inicio) && !isNaN(fin) && inicio < fin) {
-      const computedDateDiff = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
-      return {
-        fechaInicio: new Date(inicio.setHours(13, 0, 0, 0)),
-        fechaFin: new Date(fin.setHours(13, 0, 0, 0)),
-        dateDiff: computedDateDiff,
-      };
-    }
+const parseFechas = (fechaInicio, fechaFin) => {
+  if (!fechaInicio || !fechaFin) {
+    throw new Error("Fecha de inicio y fecha de fin son obligatorias");
   }
-
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+  if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) {
+    throw new Error("Las fechas ingresadas no son válidas");
+  }
+  if (inicio >= fin) {
+    throw new Error("La fecha de inicio debe ser anterior a la fecha de fin");
+  }
+  const dateDiff = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
   return {
-    fechaInicio: new Date(new Date(date1).setHours(13, 0, 0, 0)),
-    fechaFin: new Date(new Date(date2).setHours(13, 0, 0, 0)),
+    fechaInicio: new Date(new Date(inicio).setHours(13, 0, 0, 0)),
+    fechaFin: new Date(new Date(fin).setHours(13, 0, 0, 0)),
     dateDiff,
   };
 };
@@ -104,6 +100,9 @@ module.exports = {
   },
   createProyeccion: async (req, res) => {
     try {
+      const tStart = Date.now();
+      let tLast = tStart;
+
       const { fechaInicio, fechaFin, horizonte } = req.body;
       const ventasFile = req.files?.ventas?.[0];
       const quiebreFile = req.files?.quiebre?.[0] || null;
@@ -118,35 +117,28 @@ module.exports = {
         error: ventasError,
       } = safeParseExcelBuffer(ventasFile);
       const ventasParsed = limpiarDatosVentas(ventasExcelData);
+      console.log(`[proyeccion:timing] parseVentasExcel: ${Date.now() - tLast}ms`);
+      tLast = Date.now();
 
       const {
         data: stockExcelData,
         success: stockSuccess,
         error: stockError,
       } = safeParseExcelBuffer(quiebreFile);
-      console.log("[proyeccionController] stock excel data:", stockExcelData);
       const stockParsed = limpiarDatosStockDesdeQuiebreExcel(stockExcelData);
-      console.log("[proyeccionController] stock parsed:", stockParsed);
+      console.log(`[proyeccion:timing] parseStockExcel: ${Date.now() - tLast}ms`);
+      tLast = Date.now();
       let quiebreParsed = null;
       let quiebreSuccess = true;
       let quiebreError = null;
       if (quiebreFile) {
         const parsed = safeParseExcelBuffer(quiebreFile);
-        const quiebreRaw = Array.isArray(parsed?.data)
-          ? parsed.data
-          : Object.values(parsed?.data || {});
-        console.log(
-          "[proyeccionController] quiebre excel crudo (primeras 200 filas):",
-          {
-            file: quiebreFile?.originalname,
-            totalFilas: Array.isArray(quiebreRaw) ? quiebreRaw.length : 0,
-            filas: (quiebreRaw || []).slice(0, 200),
-          }
-        );
         quiebreParsed = limpiarDatosQuiebre(parsed?.data);
         quiebreSuccess = Boolean(parsed?.success);
         quiebreError = parsed?.error || null;
       }
+      console.log(`[proyeccion:timing] parseQuiebreExcel: ${Date.now() - tLast}ms`);
+      tLast = Date.now();
 
       if (!ventasSuccess || !stockSuccess || !quiebreSuccess) {
         const errorPayload = {
@@ -168,18 +160,21 @@ module.exports = {
         carpetaId,
         ventasFile.mimetype
       );
+      console.log(`[proyeccion:timing] uploadDriveVentas: ${Date.now() - tLast}ms`);
+      tLast = Date.now();
+
       const driveQuiebre = await subirExcelBufferADrive(
         quiebreFile.buffer,
         quiebreFile.originalname,
         carpetaId,
         quiebreFile.mimetype
       );
+      console.log(`[proyeccion:timing] uploadDriveQuiebre: ${Date.now() - tLast}ms`);
+      tLast = Date.now();
 
-      const fechas = await parseFechas(
-        ventasFile.originalname,
-        fechaInicio,
-        fechaFin
-      );
+      const fechas = parseFechas(fechaInicio, fechaFin);
+      console.log(`[proyeccion:timing] parseFechas: ${Date.now() - tLast}ms`);
+      tLast = Date.now();
 
       const horizonteDias = horizonte
         ? parseInt(horizonte, 10) || 90
@@ -200,6 +195,8 @@ module.exports = {
           quiebre: driveQuiebre?.driveUrl || "",
         },
       });
+      console.log(`[proyeccion:timing] iniciarProyeccion (sync part): ${Date.now() - tLast}ms`);
+      console.log(`[proyeccion:timing] TOTAL controller: ${Date.now() - tStart}ms`);
 
       return res.json({
         success: true,
@@ -222,8 +219,14 @@ module.exports = {
       if (payload) {
         return res.status(400).json(payload);
       }
+      const msg = error?.message || "";
+      const esValidacion =
+        msg.includes("obligatorias") || msg.includes("no son válidas") || msg.includes("anterior a la fecha de fin");
+      if (esValidacion) {
+        return res.status(400).json({ success: false, error: msg });
+      }
       console.error(error);
-      res.status(500).json({ success: false, error: error.message });
+      return res.status(500).json({ success: false, error: msg });
     }
   },
   create: async (payload) => {

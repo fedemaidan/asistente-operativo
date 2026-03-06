@@ -2,6 +2,7 @@ const ProductoService = require("../services/productoService");
 
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
 const DIAS_ANTICIPACION_COMPRA = 100;
+const HORIZONTE_CANTIDAD_COMPRA_SUGERIDA = 200;
 
 const calcularFechaDesdeBase = (baseDate, dias) => {
   if (!baseDate || dias == null) return null;
@@ -268,14 +269,15 @@ const simularProyeccion = ({
   }
   const stockAlHorizonte = stockFinalPorDia.length > 0 ? stockFinalPorDia[stockFinalPorDia.length - 1] : stockOperativo;
 
-  // Faltante neto: demanda 90 días - (stock inicial + arribos dentro de 90 días).
-  const demandaHorizonte = ventasDiariasNorm > 0 ? ventasDiariasNorm * diasHorizonte : 0;
-  const arribosDentroHorizonte = eventosAll.reduce(
-    (acc, ev) => (ev.dia >= 0 && ev.dia < diasHorizonte ? acc + ev.cantidad : acc),
+  // Faltante neto: demanda del horizonte de compra - (stock inicial + arribos dentro de ese horizonte).
+  const diasHorizonteCompra = HORIZONTE_CANTIDAD_COMPRA_SUGERIDA;
+  const demandaHorizonteCompra = ventasDiariasNorm > 0 ? ventasDiariasNorm * diasHorizonteCompra : 0;
+  const arribosDentroHorizonteCompra = eventosAll.reduce(
+    (acc, ev) => (ev.dia >= 0 && ev.dia < diasHorizonteCompra ? acc + ev.cantidad : acc),
     0
   );
-  const ofertaTotalHorizonte = Math.max(0, stockInicialNorm) + arribosDentroHorizonte;
-  const faltanteNeto = Math.max(0, Math.ceil(demandaHorizonte - ofertaTotalHorizonte));
+  const ofertaTotalHorizonteCompra = Math.max(0, stockInicialNorm) + arribosDentroHorizonteCompra;
+  const faltanteNeto = Math.max(0, Math.ceil(demandaHorizonteCompra - ofertaTotalHorizonteCompra));
 
   let diasHastaAgotarStock = null;
   let seAgota = false;
@@ -376,12 +378,16 @@ const ensureProductos = async ({
   if (productosParaCrear.length === 0) return productoPorCodigo;
 
   // Upsert por codigo (con unique index) para evitar duplicados
+  const tUpsert = Date.now();
   const upsertResult = await productoService.upsertManyByCodigo(productosParaCrear);
+  console.log(`[proyeccion:timing] ensureProductos.upsertManyByCodigo (${productosParaCrear.length}): ${Date.now() - tUpsert}ms`);
   if (!upsertResult?.success) return productoPorCodigo;
 
   // Releer los productos insertados para actualizar el mapa
   const codigosCreados = productosParaCrear.map((p) => p.codigo);
+  const tFetch = Date.now();
   const fetch = await productoService.findByCodigos(codigosCreados);
+  console.log(`[proyeccion:timing] ensureProductos.findByCodigos (${codigosCreados.length}): ${Date.now() - tFetch}ms`);
   if (fetch?.success && Array.isArray(fetch.data)) {
     fetch.data.forEach((p) => {
       if (p?.codigo) productoPorCodigo.set(p.codigo, p);

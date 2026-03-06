@@ -95,6 +95,7 @@ class ProyeccionService {
     fechaFin,
     links,
   }) {
+    const tGuardar = Date.now();
     const proyeccionDoc = await this._guardarContextoNuevaProyeccion({
       ventasData,
       stockData,
@@ -106,6 +107,7 @@ class ProyeccionService {
       fechaFin,
       links,
     });
+    console.log(`[proyeccion:timing] _guardarContextoNuevaProyeccion: ${Date.now() - tGuardar}ms`);
 
     this._procesarProyeccionEnBackground({
       ventasData,
@@ -289,6 +291,9 @@ class ProyeccionService {
     fechaFin = null,
     proyeccionId = null,
   }) {
+    const tStart = Date.now();
+    let tLast = tStart;
+
     const diasConStockPorCodigo = buildDiasConStockPorCodigo({
       quiebreData,
       fechaInicio,
@@ -298,6 +303,8 @@ class ProyeccionService {
     const ventasMap = buildVentasPorCodigo(ventasData, dateDiff, diasConStockPorCodigo);
     const stockMap = buildStockPorCodigo(stockData);
     const quiebreMetadataPorCodigo = buildQuiebreMetadataPorCodigo(quiebreData);
+    console.log(`[proyeccion:timing] buildMaps (diasConStock, ventas, stock, quiebreMeta): ${Date.now() - tLast}ms`);
+    tLast = Date.now();
 
     const productosAIgnorar = await this.productoIgnorarService.getAll();
     const codigosAIgnorar = productosAIgnorar.map((p) => p.codigo);
@@ -310,28 +317,42 @@ class ProyeccionService {
             c.toLowerCase() === codigo.toLowerCase()
         )
     );
+    console.log(`[proyeccion:timing] productoIgnorarService.getAll + filter codigos (${codigos.length}): ${Date.now() - tLast}ms`);
+    tLast = Date.now();
 
-    const productos = await this.productoRepository.findByCodigos(codigos);
+    const productos = await this.productoRepository.findByCodigos(codigos, {
+      select: { _id: 1, codigo: 1, nombre: 1 },
+    });
     const productoPorCodigo = new Map(productos.map((p) => [p.codigo, p]));
+    console.log(`[proyeccion:timing] productoRepository.findByCodigos (${codigos.length}): ${Date.now() - tLast}ms`);
+    tLast = Date.now();
 
     await ensureProductos({
       stockData,
       productoPorCodigo,
     });
+    console.log(`[proyeccion:timing] ensureProductos: ${Date.now() - tLast}ms`);
+    tLast = Date.now();
 
     const productosDespuesEnsure = Array.from(productoPorCodigo.values());
 
     const lotesPendientes = await this.obtenerLotesPendientes(
       productosDespuesEnsure.map((p) => p._id)
     );
+    console.log(`[proyeccion:timing] obtenerLotesPendientes (${productosDespuesEnsure.length} productos): ${Date.now() - tLast}ms`);
+    tLast = Date.now();
 
     const arribosPorProducto = buildArribosPorProducto(
       lotesPendientes,
       this.getFechaArriboFromLote.bind(this),
       fechaBase
     );
+    console.log(`[proyeccion:timing] buildArribosPorProducto: ${Date.now() - tLast}ms`);
+    tLast = Date.now();
 
     const resultados = [];
+    const bulkUpdates = [];
+    let tLoopCalc = 0;
 
     for (const codigo of codigos) {
       const producto = productoPorCodigo.get(codigo);
@@ -368,6 +389,8 @@ class ProyeccionService {
       const quiebreMeta = quiebreMetadataPorCodigo.get(codigo);
       const fechaCero = quiebreMeta?.fechaCero ?? null;
       const fechaIngreso = quiebreMeta?.fechaIngreso ?? null;
+
+      const tCalcStart = Date.now();
       const { payloadResultado, detalleDiario } = this.calcularProductoProyeccion({
         producto,
         codigo,
@@ -380,29 +403,39 @@ class ProyeccionService {
         horizonte,
         proyeccionId,
       });
+      tLoopCalc += Date.now() - tCalcStart;
 
       if (producto?._id) {
-        await this.productoRepository.updateProyeccionFields(producto._id, {
-          idProyeccion: payloadResultado.idProyeccion,
-          stockActual: payloadResultado.stockInicial,
-          ventasPeriodo: payloadResultado.ventasPeriodo,
-          stockProyectado: payloadResultado.stockProyectado,
-          ventasProyectadas: payloadResultado.ventasProyectadas,
-          diasConStock: payloadResultado.diasConStock,
-          diasHastaAgotarStock: payloadResultado.diasHastaAgotarStock,
-          fechaAgotamientoStock: payloadResultado.fechaAgotamientoStock,
-          cantidadCompraSugerida: payloadResultado.cantidadCompraSugerida,
-          fechaCompraSugerida: payloadResultado.fechaCompraSugerida,
-          fechaCero,
-          fechaIngreso,
-          seAgota: payloadResultado.seAgota,
-          agotamientoExcede365Dias: payloadResultado.agotamientoExcede365Dias,
-          proyeccionDetalle: detalleDiario,
+        bulkUpdates.push({
+          id: producto._id,
+          payload: {
+            idProyeccion: payloadResultado.idProyeccion,
+            stockActual: payloadResultado.stockInicial,
+            ventasPeriodo: payloadResultado.ventasPeriodo,
+            stockProyectado: payloadResultado.stockProyectado,
+            ventasProyectadas: payloadResultado.ventasProyectadas,
+            diasConStock: payloadResultado.diasConStock,
+            diasHastaAgotarStock: payloadResultado.diasHastaAgotarStock,
+            fechaAgotamientoStock: payloadResultado.fechaAgotamientoStock,
+            cantidadCompraSugerida: payloadResultado.cantidadCompraSugerida,
+            fechaCompraSugerida: payloadResultado.fechaCompraSugerida,
+            fechaCero,
+            fechaIngreso,
+            seAgota: payloadResultado.seAgota,
+            agotamientoExcede365Dias: payloadResultado.agotamientoExcede365Dias,
+            proyeccionDetalle: detalleDiario,
+          },
         });
       }
 
       resultados.push(payloadResultado);
     }
+
+    const tBulkStart = Date.now();
+    await this.productoRepository.bulkUpdateProyeccionFields(bulkUpdates);
+    const tBulk = Date.now() - tBulkStart;
+    console.log(`[proyeccion:timing] loop productos (${codigos.length}): calc=${tLoopCalc}ms, bulkUpdateDB=${tBulk}ms`);
+    console.log(`[proyeccion:timing] TOTAL _calcularProyeccionCompleta: ${Date.now() - tStart}ms`);
 
     return resultados;
   }
