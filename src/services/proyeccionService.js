@@ -11,6 +11,8 @@ const {
   simularProyeccion,
   ensureProductos,
   buildQuiebreMetadataPorCodigo,
+  HORIZONTE_CANTIDAD_COMPRA_SUGERIDA,
+  DIAS_ANTICIPACION_COMPRA,
 } = require("../Utiles/proyeccionHelper");
 const {
   formatDateToDDMMYYYY,
@@ -222,6 +224,7 @@ class ProyeccionService {
     fechaBase,
     horizonte,
     proyeccionId,
+    dateDiff = 0,
   }) {
     const stockInicialParaCalculo =
       stockInicial != null && Number.isFinite(Number(stockInicial))
@@ -231,7 +234,7 @@ class ProyeccionService {
       ? Number(ventasInfo.ventasDiarias)
       : 0;
     const ventasDiarias =
-      ventasDiariasRaw > 0 ? Math.ceil(ventasDiariasRaw) : 0;
+      ventasDiariasRaw > 0 ? ventasDiariasRaw : 0;
     const ventasPeriodo = Number.isFinite(Number(ventasInfo?.cantidadPeriodo))
       ? Number(ventasInfo.cantidadPeriodo)
       : 0;
@@ -257,6 +260,24 @@ class ProyeccionService {
       ? Number(simulacion.diasHastaAgotarStock)
       : null;
 
+    const calculo = simulacion?.calculo || {};
+    const proyeccionCalculo = {
+      inputs: {
+        stockInicial: stockInicialParaCalculo,
+        ventasPeriodo,
+        diasPeriodo: Number(dateDiff) || 0,
+        diasConStock: diasConStock != null ? Number(diasConStock) : 0,
+        ventasDiarias,
+        horizonte90: Number(horizonte) || 90,
+        horizonteCompra200: HORIZONTE_CANTIDAD_COMPRA_SUGERIDA,
+        diasAnticipacion100: DIAS_ANTICIPACION_COMPRA,
+        fechaBase: fechaBase ? new Date(fechaBase).toISOString() : null,
+      },
+      arribos: calculo.arribos || [],
+      resultadosIntermedios: calculo.resultadosIntermedios || {},
+      flags: calculo.flags || {},
+    };
+
     const payloadResultado = {
       codigo,
       productoId: producto?._id || null,
@@ -275,6 +296,7 @@ class ProyeccionService {
       horizonteDias: horizonte,
       idProyeccion: proyeccionId || null,
       detalleDiario,
+      proyeccionCalculo,
     };
 
     return { payloadResultado, detalleDiario, simulacion };
@@ -402,6 +424,7 @@ class ProyeccionService {
         fechaBase,
         horizonte,
         proyeccionId,
+        dateDiff,
       });
       tLoopCalc += Date.now() - tCalcStart;
 
@@ -415,6 +438,7 @@ class ProyeccionService {
             stockProyectado: payloadResultado.stockProyectado,
             ventasProyectadas: payloadResultado.ventasProyectadas,
             diasConStock: payloadResultado.diasConStock,
+            proyeccionCalculo: payloadResultado.proyeccionCalculo,
             diasHastaAgotarStock: payloadResultado.diasHastaAgotarStock,
             fechaAgotamientoStock: payloadResultado.fechaAgotamientoStock,
             cantidadCompraSugerida: payloadResultado.cantidadCompraSugerida,
@@ -559,6 +583,7 @@ class ProyeccionService {
         fechaBase,
         horizonte,
         proyeccionId: proyeccion._id,
+        dateDiff,
       });
 
       if (producto?._id) {
@@ -570,6 +595,7 @@ class ProyeccionService {
           stockActual: payloadResultado.stockInicial,
           ventasPeriodo: payloadResultado.ventasPeriodo,
           stockProyectado: payloadResultado.stockProyectado,
+          proyeccionCalculo: payloadResultado.proyeccionCalculo,
           ventasProyectadas: payloadResultado.ventasProyectadas,
           diasConStock: payloadResultado.diasConStock,
           diasHastaAgotarStock: payloadResultado.diasHastaAgotarStock,

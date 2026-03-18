@@ -91,6 +91,10 @@ const ProductoSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    proyeccionCalculo: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
     // Proyección “activa” a la que corresponden los campos proyectados del producto
     idProyeccion: {
       type: mongoose.Schema.Types.ObjectId,

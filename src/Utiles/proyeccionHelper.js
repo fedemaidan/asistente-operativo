@@ -198,11 +198,15 @@ const buildArribosPorProducto = (
   lotesPendientes.forEach((lote) => {
     const fecha = getFechaArribo ? getFechaArribo(lote) : null;
     let dia = null;
+    let atrasado = false;
     if (fecha && fechaBase) {
       const diffMs = fecha.getTime() - fechaBase.getTime();
       const diffDias = Math.ceil(diffMs / MS_IN_DAY);
-      // Si el arribo es previo a la fecha base, no tiene sentido en la simulación
-      if (diffDias >= 0) {
+      // Si el arribo es previo a la fecha base (pendiente atrasado), lo contamos en día 0
+      if (diffDias < 0) {
+        dia = 0;
+        atrasado = true;
+      } else {
         dia = diffDias;
       }
     }
@@ -215,6 +219,7 @@ const buildArribosPorProducto = (
     arribosPorProducto.get(prodId).push({
       dia,
       cantidad: toNumber(lote.cantidad),
+      atrasado,
     });
   });
 
@@ -228,7 +233,11 @@ const buildArribosPorProducto = (
 const buildArribosPorDia = (arribos = []) => {
   const eventosAll = (arribos || [])
     .filter((a) => Number.isFinite(a?.dia) && a.dia >= 0)
-    .map((a) => ({ dia: Math.floor(a.dia), cantidad: toNumber(a.cantidad) }))
+    .map((a) => ({
+      dia: Math.floor(a.dia),
+      cantidad: toNumber(a.cantidad),
+      atrasado: Boolean(a?.atrasado),
+    }))
     .sort((a, b) => a.dia - b.dia);
 
   const arribosPorDia = new Map();
@@ -321,6 +330,28 @@ const simularProyeccion = ({
     fechaCompraSugerida = calcularFechaDesdeBase(fechaBase, diasParaCompraSugerida);
   }
 
+  const incluyoArribosAtrasados = eventosAll.some((e) => Boolean(e?.atrasado));
+  const calculo = {
+    arribos: eventosAll.map((e) => ({
+      dia: e.dia,
+      cantidad: e.cantidad,
+      atrasado: Boolean(e?.atrasado),
+    })),
+    resultadosIntermedios: {
+      demanda90: ventasDiariasNorm * diasHorizonte,
+      demanda200: ventasDiariasNorm * diasHorizonteCompra,
+      oferta200: ofertaTotalHorizonteCompra,
+      faltanteNeto,
+      stockAlDia90: stockAlHorizonte,
+      diaAgotamiento: diasHastaAgotarStock,
+    },
+    flags: {
+      incluyoArribosAtrasados,
+      seAgota,
+      agotamientoExcede365Dias,
+    },
+  };
+
   return {
     seAgota,
     agotamientoExcede365Dias,
@@ -335,6 +366,7 @@ const simularProyeccion = ({
         ? calcularFechaDesdeBase(fechaBase, Math.max(0, proximoEvento.dia))
         : null,
     stockProyectado: Math.round(stockAlHorizonte),
+    calculo,
   };
 };
 
@@ -407,4 +439,6 @@ module.exports = {
   simularProyeccion,
   ensureProductos,
   buildQuiebreMetadataPorCodigo,
+  HORIZONTE_CANTIDAD_COMPRA_SUGERIDA,
+  DIAS_ANTICIPACION_COMPRA,
 };
