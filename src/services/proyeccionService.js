@@ -399,6 +399,10 @@ class ProyeccionService {
       if (!Number.isFinite(Number(diasConStock))) diasConStock = Number(dateDiff) || 0;
       diasConStock = Math.max(0, Math.trunc(Number(diasConStock) || 0));
 
+      console.log(
+        `[proyeccion:ventasDiarias] codigo=${codigo} diasConStock=${diasConStock} cantidadPeriodo=${ventasInfo?.cantidadPeriodo || 0} dateDiff=${dateDiff} ventasDiariasRaw=${ventasInfo?.ventasDiarias || 0}`
+      );
+
       const stockExcel = stockMap.get(codigo)?.stockInicial ?? null;
 
       const stockInicial = stockExcel != null ? stockExcel : 0;

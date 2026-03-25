@@ -21,6 +21,7 @@ const users = new Map([
   ["140746145439868", { perfil: perfilCelulandia, nombre: ["Ezequiel"]}],
   ["5491126032204", { perfil: perfilCelulandia, nombre: ["Matias", "Naomi"] }],
   ["5491165000590", { perfil: perfilCelulandia, nombre: ["Nicolas"] }],
+  ["81295308767471", { perfil: perfilCelulandia, nombre: ["Nicolas"]}],
   ["5493424421565", { perfil: perfilCelulandia, nombre: ["Matias"] }],
   ["5491131906768", { perfil: perfilFinanciera, nombre: "-" }],
   ["5491133929019", { perfil: perfilFinanciera, nombre: "-" }],
