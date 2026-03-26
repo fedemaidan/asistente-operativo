@@ -9,7 +9,7 @@ module.exports = async function InicioVerificacionStep(userId) {
     await sock.sendMessage(userId, {
       text:
         "No tenemos tu numero vinculado al bot todavía.\n\n" +
-        "Enviá tu *número de teléfono* tal como está registrado en el sistema (solo dígitos, con código de país si aplica).",
+        "Enviá tu *número de teléfono* tal como está registrado en el sistema (solo dígitos, con código de país). Ej: 5491126475034 ",
     });
     FlowManager.setFlow(userId, FLOW_NAME, "ProcesarTelefonoStep", {});
   } catch (error) {

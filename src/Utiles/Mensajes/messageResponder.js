@@ -29,7 +29,7 @@ const messageResponder = async (messageType, msg, sender) => {
       await AppFlowMapper.handleMessage(sender, text, messageType);
     } else {
       await sock.sendMessage(sender, {
-        text: "Primero enviá tu número de teléfono registrado como mensaje de texto.",
+        text: "Por favor enviá tu número de teléfono registrado como mensaje de texto.",
       });
     }
     return;
