@@ -7,7 +7,7 @@ const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
 
 module.exports = async function ConfirmacionDuplicadoStep(userId, message) {
   const sock = botSingleton.getSock();
-  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+  const GOOGLE_SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
   const comprobante = FlowManager.userFlows[userId].flowData;
   const data = await opcionElegida(message);
 

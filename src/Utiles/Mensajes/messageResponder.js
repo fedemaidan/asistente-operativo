@@ -6,6 +6,11 @@ const botSingleton = require("../botSingleton");
 const { parseCsvToJson } = require("../Funciones/Csv/csvHandler");
 const { parseExcelToJson } = require("../Funciones/Excel/excelHandler");
 const { subirExcelADrive } = require("../Funciones/Excel/excelToDrive");
+const FlowManager = require("../../FlowControl/FlowManager");
+const AppFlowMapper = require("../../FlowControl/FlowMapper");
+const VerificarRemitenteFlow = require("../../Flows/VerificarRemitente/VerificarRemitenteFlow");
+
+const FLOW_VERIFICAR_REMITENTE = "VERIFICAR_REMITENTE";
 
 const messageResponder = async (messageType, msg, sender) => {
   const phoneNumber = sender.split("@")[0];
@@ -15,8 +20,26 @@ const messageResponder = async (messageType, msg, sender) => {
   console.log("messageType", messageType);
   console.log("msgContent", msg);
 
+  const activeFlow = FlowManager.getFlow(sender);
+
+  if (activeFlow?.flowName === FLOW_VERIFICAR_REMITENTE) {
+    if (messageType === "text" || messageType === "text_extended") {
+      const text =
+        msg.message.conversation || msg.message.extendedTextMessage?.text;
+      await AppFlowMapper.handleMessage(sender, text, messageType);
+    } else {
+      await sock.sendMessage(sender, {
+        text: "Primero enviá tu número de teléfono registrado como mensaje de texto.",
+      });
+    }
+    return;
+  }
+
   if (!users.has(phoneNumber)) {
     console.log(`Usuario ${phoneNumber} no encontrado en el mapa de usuarios.`);
+    if (!activeFlow) {
+      await VerificarRemitenteFlow.start(sender);
+    }
     return;
   }
 

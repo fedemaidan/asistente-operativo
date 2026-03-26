@@ -1,5 +1,4 @@
 const general_range = "Proyección Stock!A2:Z10000";
-const botSingleton = require("../../botSingleton");
 const {
   updateSheetWithBatchDelete,
   checkIfSheetExists,
@@ -8,8 +7,6 @@ const {
   addRow,
   getRowsValues,
 } = require("../General");
-
-const users = botSingleton.getUsers();
 
 function getArrayToSheetGeneral(item) {
   const values = [

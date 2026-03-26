@@ -1,10 +1,12 @@
 //const baileysAutoReporter = require("baileys-status-reporter");
+const UsuarioBotService = require("../services/usuarioBotService");
 
 class BotSingleton {
   constructor() {
     if (!BotSingleton.instance) {
       this.sock = {}; // Se guardará la instancia única de sock
       this.users = new Map(); // Mapa para almacenar usuarios y sus perfiles
+      this.usuarioBotService = new UsuarioBotService();
       // Estado de álbum por usuario: { expected, processed, caption, startTs }
       this.albumStateByUser = new Map();
       BotSingleton.instance = this;
@@ -108,9 +110,14 @@ class BotSingleton {
     }
   }
 
-  getSheetIdByUserId(userId) {
-    const phoneNumber = userId.split("@")[0];
-    const GOOGLE_SHEET_ID = this.users.get(phoneNumber).perfil.googleSheetId;
+  phoneFromUserId(userId) {
+    return String(userId || "").split("@")[0];
+  }
+
+  async getSheetIdByUserId(userId) {
+    const phoneNumber = this.phoneFromUserId(userId);
+    const row = await this.usuarioBotService.get(phoneNumber);
+    const GOOGLE_SHEET_ID = row?.perfil?.googleSheetId;
 
     if (!GOOGLE_SHEET_ID) {
       throw new Error(
@@ -121,18 +128,19 @@ class BotSingleton {
     return GOOGLE_SHEET_ID;
   }
 
-  getUsuarioByUserId(userId) {
-    const phoneNumber = userId.split("@")[0];
-    const usuario = this.users.get(phoneNumber).nombre;
-
-    return usuario;
+  async getUsuarioByUserId(userId) {
+    const phoneNumber = this.phoneFromUserId(userId);
+    const row = await this.usuarioBotService.get(phoneNumber);
+    if (!row) {
+      throw new Error(`No se encontró el usuario: ${userId}`);
+    }
+    return row.nombre;
   }
 
-  getDriveFolderIdByUserId(userId) {
-    const phoneNumber = userId.split("@")[0];
-    const driveFolderId = this.users.get(phoneNumber).perfil.driveFolderId;
-
-    return driveFolderId;
+  async getDriveFolderIdByUserId(userId) {
+    const phoneNumber = this.phoneFromUserId(userId);
+    const row = await this.usuarioBotService.get(phoneNumber);
+    return row?.perfil?.driveFolderId;
   }
 }
 

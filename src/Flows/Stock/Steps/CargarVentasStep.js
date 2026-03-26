@@ -17,7 +17,7 @@ const proyeccionController = require("../../../controllers/proyeccionController"
 module.exports = async function CargarVentasStep(userId, data) {
   try {
     const { driveUrl: ventasDriveUrl, data: excelData, fileName } = data;
-    const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+    const GOOGLE_SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
     const sock = botSingleton.getSock();
     const { excelJson: stockExcelData, driveUrl: stockDriveUrl } =
       FlowManager.userFlows[userId]?.flowData;

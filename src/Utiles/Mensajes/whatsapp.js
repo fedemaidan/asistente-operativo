@@ -1,4 +1,4 @@
-﻿// src/Utiles/Mensajes/whatsapp.js
+// src/Utiles/Mensajes/whatsapp.js
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -10,7 +10,7 @@ const QRCode = require('qrcode')
 const express = require('express')
 
 const botSingleton = require('../botSingleton')
-const users = require('../Usuarios/usuariosMap')
+const loadUsersMapFromDatabase = require('../Usuarios/usuariosMap')
 
 const AUTH_DIR = './auth_info'
 const router = express.Router()
@@ -93,6 +93,7 @@ async function connectToWhatsApp () {
 
     // 👉 Integramos tu singleton exactamente como lo venías haciendo
     await botSingleton.setSock(sock)
+    const users = await loadUsersMapFromDatabase()
     botSingleton.setUsers(users)
 
     return sock

@@ -32,7 +32,7 @@ const defaultFlow = {
 
       switch (result.accion) {
         case "Guardar archivo":
-          const carpetaId = botSingleton.getDriveFolderIdByUserId(userId);
+          const carpetaId = await botSingleton.getDriveFolderIdByUserId(userId);
           console.log("messageDrive", message);
           const response = await guardarArchivoDrive(
             message.imageUrl,

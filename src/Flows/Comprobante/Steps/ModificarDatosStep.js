@@ -39,7 +39,7 @@ module.exports = async function ModificarDatosStep(userId, message) {
       text: mensaje,
     });
 
-    const usuarios = botSingleton.getUsuarioByUserId(userId);
+    const usuarios = await botSingleton.getUsuarioByUserId(userId);
     console.log("usuariosMap", usuarios);
     if (usuarios.length === 1) {
       await sock.sendMessage(userId, {

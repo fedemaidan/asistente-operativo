@@ -5,7 +5,7 @@ const botSingleton = require("../botSingleton");
 
 const ChatModificarConfirmacion = async (message, userId) => {
   const comprobante = FlowManager.userFlows[userId]?.flowData;
-  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+  const GOOGLE_SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
   const clientes = await getClientesFromSheet(GOOGLE_SHEET_ID);
   const clientesStr = JSON.stringify(clientes.map((cliente) => cliente.nombre));
 

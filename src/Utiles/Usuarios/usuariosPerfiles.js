@@ -92,6 +92,23 @@ const perfilDriveDev = {
   driveFolderId: "1DjH4irkXeFHj1Z70vn84QVQSsB3b5LlW",
 };
 
+const PERFILES_POR_KEY = {
+  celulandiaDev: perfilCelulandiaDev,
+  celulandia: perfilCelulandia,
+  financieraDev: perfilFinancieraDev,
+  financiera: perfilFinanciera,
+  driveDev: perfilDriveDev,
+  drive: perfilDrive,
+};
+
+function getPerfilByKey(perfilKey) {
+  const perfil = PERFILES_POR_KEY[perfilKey];
+  if (!perfil) {
+    throw new Error(`perfilKey desconocido: ${perfilKey}`);
+  }
+  return perfil;
+}
+
 module.exports = {
   perfilCelulandia,
   perfilCelulandiaDev,
@@ -99,4 +116,6 @@ module.exports = {
   perfilDrive,
   perfilDriveDev,
   perfilFinancieraDev,
+  getPerfilByKey,
+  PERFILES_POR_KEY,
 };
