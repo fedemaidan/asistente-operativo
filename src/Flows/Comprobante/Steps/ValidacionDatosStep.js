@@ -13,10 +13,10 @@ const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDispl
 
 module.exports = async function ValidacionDatosStep(userId, message) {
   const sock = botSingleton.getSock();
-  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+  const GOOGLE_SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
   const comprobante = FlowManager.userFlows[userId].flowData;
 
-  const usuarios = botSingleton.getUsuarioByUserId(userId);
+  const usuarios = await botSingleton.getUsuarioByUserId(userId);
   const opcionCorregir =
     usuarios.length === 1 ? "2" : (usuarios.length + 1).toString();
   const opcionCancelar =

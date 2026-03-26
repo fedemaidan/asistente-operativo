@@ -5,7 +5,7 @@ module.exports = async function GuardarArchivoStep(userId, data) {
   console.log("GuardarArchivoStep", data);
 
   const sock = botSingleton.getSock();
-  const carpetaId = botSingleton.getDriveFolderIdByUserId(userId);
+  const carpetaId = await botSingleton.getDriveFolderIdByUserId(userId);
 
   const { success, data: fileData } = data;
 

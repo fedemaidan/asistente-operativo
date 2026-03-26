@@ -58,7 +58,7 @@ const crearOperacionFlow = {
       // Descargar y guardar la imagen en Firebase Storage
       const phoneNumber = userId.split("@")[0];
       const imageUrl = await saveImageToStorage(message, phoneNumber);
-      const SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+      const SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
 
       if (!imageUrl) {
         FlowManager.resetFlow(userId);
@@ -157,7 +157,7 @@ const crearOperacionFlow = {
   },
 
   async handle(userId, message, step, sock, messageType) {
-    const SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+    const SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
     //if (messageType !== 'text' || messageType !== 'text_extended') {
     const esTexto =
       messageType !== "text" ? messageType !== "text_extended" : false;

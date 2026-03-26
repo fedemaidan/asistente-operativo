@@ -4,6 +4,7 @@ const ComprobanteFlow = require("../Flows/Comprobante/ComprobanteFlow");
 const ExcelFlow = require("../Flows/Excel/ExcelFlow");
 const ConciliacionFlow = require("../Flows/Conciliacion/ConciliacionFlow");
 const StockFlow = require("../Flows/Stock/StockFlow");
+const VerificarRemitenteFlow = require("../Flows/VerificarRemitente/VerificarRemitenteFlow");
 
 class FlowMapper {
   async handleMessage(userId, message, messageType) {
@@ -11,6 +12,14 @@ class FlowMapper {
 
     if (flow) {
       switch (flow.flowName) {
+        case "VERIFICAR_REMITENTE":
+          await VerificarRemitenteFlow.Handle(
+            userId,
+            message,
+            flow.currentStep,
+            messageType
+          );
+          break;
         case "ENVIOCOMPROBANTE":
           await ComprobanteFlow.Handle(
             userId,

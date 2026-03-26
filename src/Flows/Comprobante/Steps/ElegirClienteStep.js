@@ -8,7 +8,7 @@ const botSingleton = require("../../../Utiles/botSingleton");
 
 module.exports = async function ElegirClienteStep(userId, message) {
   const sock = botSingleton.getSock();
-  const GOOGLE_SHEET_ID = botSingleton.getSheetIdByUserId(userId);
+  const GOOGLE_SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
   await sock.sendMessage(userId, {
     text: "⏳Analizando mensaje...⏳",
   });
@@ -45,7 +45,7 @@ module.exports = async function ElegirClienteStep(userId, message) {
     text: mensaje,
   });
 
-  const usuarios = botSingleton.getUsuarioByUserId(userId);
+  const usuarios = await botSingleton.getUsuarioByUserId(userId);
 
   if (usuarios.length === 1) {
     await sock.sendMessage(userId, {

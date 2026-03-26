@@ -8,15 +8,18 @@ const { connectToMongoDB } = require("./src/DBConnection.js");
 
 const indexRoutes = require("./src/routes/index.routes.js");
 
-PORT = 3002;
+const PORT = 3002;
 
 const startBot = async () => {
   const sock = await connectToWhatsApp();
 
   setInterval(() => console.log("Keep-alive"), 5 * 60 * 1000);
+  return sock;
 };
 
-const startApi = async () => {
+const main = async () => {
+  await connectToMongoDB();
+
   const app = express();
   app.use(
     cors({
@@ -41,11 +44,14 @@ const startApi = async () => {
     res.json({ message: "API Bot Fundas funcionando correctamente" });
   });
 
-  app.listen(PORT, async () => {
-    await connectToMongoDB();
+  app.listen(PORT, () => {
     console.log(`API running on port ${PORT}`);
   });
+
+  await startBot();
 };
 
-startBot();
-startApi();
+main().catch((err) => {
+  console.error("Error al iniciar:", err);
+  process.exitCode = 1;
+});

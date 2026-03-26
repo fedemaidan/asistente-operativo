@@ -12,7 +12,7 @@ module.exports = async function ProcesarReporteStep(
   userId,
   movimientosBancario
 ) {
-  const user = botSingleton.getUsuarioByUserId(userId);
+  const user = await botSingleton.getUsuarioByUserId(userId);
   const sock = botSingleton.getSock();
   await sock.sendMessage(userId, {
     text: "🔄 Procesando...",
