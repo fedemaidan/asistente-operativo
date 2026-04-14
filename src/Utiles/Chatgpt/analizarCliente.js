@@ -1,4 +1,4 @@
-const { getByChatGpt4o } = require("./Base");
+const { getByChatGpt5Mini } = require("./Base");
 const clienteController = require("../../controllers/clienteController");
 
 module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
@@ -19,7 +19,7 @@ module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
   
   Reglas:
   1. Identifica la moneda mencionada (ARS, USD Blue, USD Oficial, USD MEP).
-  2. Si no se menciona una moneda específicamente, busca en el atributo ccActivas y si tiene solo una cuenta corriente selecciona esa, si tiene mas de una cuenta corriente asume que es ARS (Pesos Argentinos).
+  2. Si no se menciona una moneda específicamente, busca en el atributo ccActivas y si tiene solo una cuenta corriente selecciona esa, si tiene mas de una cuenta corriente que incluye la moneda ARS, asume que es ARS (Pesos Argentinos), y si tiene 2 cuentas corrientes, una con USD Oficial y otra con USD Blue, asume que es USD Blue.
   4. Si el usuario selecciona un cliente del listado de cuentas corrientes con una moneda que no se encuentra en su listado de ccActivas, error = true.
   3. Si no se especifica que tipo de dolar es, asume que es el blue.
   4. Si dice que le moneda es pesos, se refiere a ARS.
@@ -39,7 +39,7 @@ module.exports = async function analizarCliente(message, GOOGLE_SHEET_ID) {
     `;
 
   try {
-    const response = await getByChatGpt4o(prompt);
+    const response = await getByChatGpt5Mini(prompt);
     const responseData = JSON.parse(response);
 
     if (responseData.nombre) {

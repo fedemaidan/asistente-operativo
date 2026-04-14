@@ -4,11 +4,7 @@ function limpiarJson(str) {
   return str.replace(/```json\n?|```\n?/g, "").trim();
 }
 
-async function getByChatgpt4Vision(
-  urlsImagenesFacturas,
-  prompt,
-  temperature = 0.2
-) {
+async function getByChatgpt4Vision(urlsImagenesFacturas, prompt) {
   const content = [{ type: "text", text: prompt }];
 
   for (i in urlsImagenesFacturas) {
@@ -22,17 +18,19 @@ async function getByChatgpt4Vision(
     content.push(obj);
   }
 
+  // gpt-5.4-mini: no enviar temperature (solo admite el default interno; 0.2 u otros valores → 400)
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    // response_format: { type: "json_object" },
+    model: "gpt-5.4-mini",
     messages: [
       {
         role: "user",
         content: content,
       },
     ],
-    temperature: temperature,
+    max_completion_tokens: 10000,
+    response_format: { type: "json_object" },
   });
+  console.log("responseeeee", JSON.stringify(response, null, 2));
   return limpiarJson(response.choices[0].message.content);
 }
 
@@ -60,8 +58,41 @@ async function getByChatGpt4o(prompt) {
     return null;
   }
 }
+
+async function getByChatGpt5Mini(prompt) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_completion_tokens: 10000,
+      response_format: { type: "json_object" },
+    });
+    return limpiarJson(response.choices[0].message.content);
+  } catch (error) {
+    console.error("Error en OpenAI:", error);
+    return null;
+  }
+}
+
+async function getByChatGpt54Nano(prompt) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5.4-nano",
+      messages: [{ role: "user", content: prompt }],
+      max_completion_tokens: 10000,
+      response_format: { type: "json_object" },
+    });
+    return limpiarJson(response.choices[0].message.content);
+  } catch (error) {
+    console.error("Error en OpenAI:", error);
+    return null;
+  }
+}
+
 module.exports = {
   getByChatgpt35TurboByText,
   getByChatgpt4Vision,
   getByChatGpt4o,
+  getByChatGpt5Mini,
+  getByChatGpt54Nano,
 };

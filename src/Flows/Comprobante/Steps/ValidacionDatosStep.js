@@ -1,14 +1,10 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
-const opcionElegida = require("../../../Utiles/Chatgpt/opcionElegida");
 const {
   addComprobanteToSheet,
   esDuplicado,
 } = require("../../../Utiles/GoogleServices/Sheets/comprobante");
 const DolarService = require("../../../Utiles/Funciones/Moneda/dolarService");
 const botSingleton = require("../../../Utiles/botSingleton");
-const {
-  formatCurrency,
-} = require("../../../Utiles/Funciones/Moneda/formatCurrency");
 const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDisplay");
 
 module.exports = async function ValidacionDatosStep(userId, message) {

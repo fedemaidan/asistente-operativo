@@ -29,7 +29,6 @@ module.exports = async function ElegirTipoExcelStep(userId, message) {
     });
     FlowManager.resetFlow(userId);
   } else {
-    console.log("opcionElegida", message);
     await sock.sendMessage(userId, {
       text: "❓ *Opción no reconocida*\n\nPor favor, seleccione una opción válida respondiendo con un número:\n\n*1.* 🏦 Reporte Banco\n*2.* 💰 Reporte Financiera\n*3.* 🧾 Reporte Stock\n*4.* ❌ Cancelar",
     });

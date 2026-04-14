@@ -1,4 +1,4 @@
-const { getByChatGpt4o } = require("./Base");
+const { getByChatGpt54Nano } = require("./Base");
 
 const opcion = {
   accion: "Confirmar",
@@ -25,7 +25,7 @@ Formato de respuesta esperado (EXCLUSIVAMENTE JSON, sin texto adicional):
 ${JSON.stringify(opcion, null, 2)}
 `;
 
-  const response = await getByChatGpt4o(prompt);
+  const response = await getByChatGpt54Nano(prompt);
   const respuesta = JSON.parse(response);
 
   if (respuesta.hasOwnProperty("json_data")) {

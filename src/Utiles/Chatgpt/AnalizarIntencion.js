@@ -1,4 +1,4 @@
-const { getByChatGpt4o } = require("./Base");
+const { getByChatGpt5Mini } = require("./Base");
 const { formatDateToDDMMYYYY } = require("../Funciones/HandleDates");
 
 
@@ -69,7 +69,7 @@ El usuario dice: "${messageStr}"
 Tienes estas acciones posibles debes analizar la palabra clave del usuario: ${opcionesTxt}.
 `;
 
-    const response = await getByChatGpt4o(prompt);
+    const response = await getByChatGpt5Mini(prompt);
     const respuesta = JSON.parse(response);
 
     console.log(respuesta, response);

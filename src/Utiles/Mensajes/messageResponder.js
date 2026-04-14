@@ -89,9 +89,10 @@ const messageResponder = async (messageType, msg, sender) => {
           }
 
           const ComprobanteFlow = users.get(phoneNumber).perfil.ComprobanteFlow;
+          const datosExtraidos = transcripcion?.data ?? transcripcion;
           ComprobanteFlow.start(
             sender,
-            { ...transcripcion.data, imagen: imageUrl },
+            { ...datosExtraidos, imagen: imageUrl },
             sock
           );
         } else if (users.get(phoneNumber).perfil.name === "financiera") {
@@ -205,9 +206,10 @@ const messageResponder = async (messageType, msg, sender) => {
             const transcripcion = await transcribeImage(pdfUrl, phoneNumber);
             const ComprobanteFlow =
               users.get(phoneNumber).perfil.ComprobanteFlow;
+            const datosExtraidos = transcripcion?.data ?? transcripcion;
             ComprobanteFlow.start(
               sender,
-              { ...transcripcion.data, imagen: pdfUrl },
+              { ...datosExtraidos, imagen: pdfUrl },
               sock
             );
             return;
