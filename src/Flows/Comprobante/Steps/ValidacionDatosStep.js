@@ -8,6 +8,7 @@ const botSingleton = require("../../../Utiles/botSingleton");
 const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDisplay");
 
 module.exports = async function ValidacionDatosStep(userId, message) {
+  try {
   const sock = botSingleton.getSock();
   const GOOGLE_SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
   const comprobante = FlowManager.userFlows[userId].flowData;
@@ -81,5 +82,10 @@ module.exports = async function ValidacionDatosStep(userId, message) {
     await sock.sendMessage(userId, {
       text: "Disculpa, no lo he entendido, elige una de las opciones disponibles",
     });
-  }
-};
+  }} catch (error) {    
+    console.error("❌ Error en ValidacionDatosStep:", error);
+    await sock.sendMessage(userId, {
+      text: `❌ *Ha ocurrido un error inesperado.*\n\n${error.message}\n\nPor favor, intenta nuevamente desde el principio.`,
+    });
+    FlowManager.resetFlow(userId);
+}};

@@ -7,6 +7,7 @@ const CURRENCY_DISPLAY = require("../../../Utiles/Funciones/Moneda/CurrencyDispl
 const botSingleton = require("../../../Utiles/botSingleton");
 
 module.exports = async function ElegirClienteStep(userId, message) {
+  try {
   const sock = botSingleton.getSock();
   const GOOGLE_SHEET_ID = await botSingleton.getSheetIdByUserId(userId);
   await sock.sendMessage(userId, {
@@ -79,5 +80,10 @@ module.exports = async function ElegirClienteStep(userId, message) {
     "ENVIOCOMPROBANTE",
     "ValidacionDatosStep",
     comprobante
-  );
+  );    
+  } catch (error) {
+    console.error("❌ Error en ElegirClienteStep:", error);
+    FlowManager.resetFlow(userId);
+  }
+
 };
