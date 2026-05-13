@@ -648,6 +648,7 @@ class LoteService {
         populate: [
           { path: "producto", select: "codigo nombre" },
           { path: "contenedor", select: "codigo fechaEstimadaLlegada" },
+          { path: "pedido", select: "numeroPedido" },
         ],
       });
 
