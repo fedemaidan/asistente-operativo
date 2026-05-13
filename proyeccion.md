@@ -69,9 +69,9 @@ Objetivo: estimar agotamiento y stock proyectado por producto a un horizonte (de
 ## Desglose auditable (proyeccionCalculo)
 - Cada producto persiste un objeto `proyeccionCalculo` con el detalle del cálculo para transparencia.
 - Estructura:
-  - `inputs`: `stockInicial`, `ventasPeriodo`, `diasPeriodo`, `diasConStock`, `ventasDiarias`, `horizonte90`, `horizonteCompra200`, `diasAnticipacion100`, `fechaBase`.
+  - `inputs`: `stockInicial`, `ventasPeriodo`, `diasPeriodo`, `diasConStock`, `ventasDiarias`, `horizonte90`, `horizonteCompra`, `diasAnticipacion`, `fechaBase`.
   - `arribos`: lista de arribos usados (cada uno con `dia`, `cantidad`, `atrasado`).
-  - `resultadosIntermedios`: `demanda90`, `demanda200`, `oferta200`, `faltanteNeto`, `stockAlDia90`, `diaAgotamiento`.
+  - `resultadosIntermedios`: `demanda90`, `demandaCompra`, `ofertaCompra`, `faltanteNeto`, `stockAlDia90`, `diaAgotamiento`.
   - `flags`: `incluyoArribosAtrasados`, `seAgota`, `agotamientoExcede365Dias`.
 - Se calcula en `proyeccionService.calcularProductoProyeccion` y se persiste junto con el resto de campos de proyección.
 - `simularProyeccion` (proyeccionHelper) devuelve `calculo` en su resultado.
@@ -88,8 +88,8 @@ Objetivo: estimar agotamiento y stock proyectado por producto a un horizonte (de
   2. **Días hasta agotar stock**: resultado de la simulación día a día.
   3. **Stock proyectado (día 90)**: stock final al horizonte.
   4. **Fecha agotamiento**: fecha en que el stock llega a 0.
-  5. **Cantidad a comprar (200 días)**: `demanda200 − oferta200` con detalle.
-  6. **Fecha compra sugerida**: fecha base + (día agotamiento − 100 días).
+  5. **Cantidad a comprar (`horizonteCompra` días)**: `demandaCompra − ofertaCompra` con detalle. Horizonte controlado por `HORIZONTE_CANTIDAD_COMPRA_SUGERIDA` en `proyeccionHelper.js` (hoy 100).
+  6. **Fecha compra sugerida**: fecha base + (día agotamiento − `DIAS_ANTICIPACION_COMPRA`).
   7. **Pedidos considerados**: chips con arribos; los atrasados se marcan como "al inicio".
 - El tab se deshabilita si el producto no tiene `proyeccionCalculo` (requiere recalcular la proyección).
 - Textos pensados para usuarios no técnicos.

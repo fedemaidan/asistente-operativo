@@ -2,7 +2,7 @@ const ProductoService = require("../services/productoService");
 
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
 const DIAS_ANTICIPACION_COMPRA = 100;
-const HORIZONTE_CANTIDAD_COMPRA_SUGERIDA = 200;
+const HORIZONTE_CANTIDAD_COMPRA_SUGERIDA = 100;
 
 const calcularFechaDesdeBase = (baseDate, dias) => {
   if (!baseDate || dias == null) return null;
@@ -339,8 +339,8 @@ const simularProyeccion = ({
     })),
     resultadosIntermedios: {
       demanda90: ventasDiariasNorm * diasHorizonte,
-      demanda200: ventasDiariasNorm * diasHorizonteCompra,
-      oferta200: ofertaTotalHorizonteCompra,
+      demandaCompra: ventasDiariasNorm * diasHorizonteCompra,
+      ofertaCompra: ofertaTotalHorizonteCompra,
       faltanteNeto,
       stockAlDia90: stockAlHorizonte,
       diaAgotamiento: diasHastaAgotarStock,
